@@ -11,6 +11,7 @@ enter_code(s, [:right])
 check 'full code arms boss rush on the title', s.iv(:rush_armed) && s.mode == :title
 s.step([:a], 1); s.step([], 2)
 check 'A then starts boss rush', s.iv(:rush) && s.iv(:level) == 3 && s.mode == :intro
+check 'boss rush gives 5 lives', s.iv(:lives) == 5
 
 s = Sim.new; s.step([], 5)
 enter_code(s, Game::RUSH_CODE); s.step([:start], 1); s.step([], 2)
@@ -56,3 +57,5 @@ s = Sim.new; s.step([], 5)
 pitches = []
 Game::RUSH_CODE.each { |k| s.step([k], 1); pitches << s.args.audio[:code][:pitch]; s.step([], 2) }
 check 'code presses climb in pitch', pitches.each_cons(2).all? { |a, b| b > a }
+s = Sim.new; s.step([], 5); s.step([:start], 1); s.step([], 2)
+check 'normal game still gives 3 lives', s.iv(:lives) == 3

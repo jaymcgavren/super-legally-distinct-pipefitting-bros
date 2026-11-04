@@ -155,7 +155,7 @@ class Game
 
   def new_game(rush = false)
     @rush = rush
-    @score = 0; @nuts = 0; @lives = 3
+    @score = 0; @nuts = 0; @lives = rush ? 5 : 3
     @level = rush ? RUSH_LEVELS[0] : 0
     @checkpoint = nil
     @powered = rush
