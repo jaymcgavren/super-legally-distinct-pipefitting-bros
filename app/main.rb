@@ -99,18 +99,16 @@ class Game
                elsif d.down then :down
                elsif d.left then :left
                elsif d.right then :right
-               elsif d.b then :b
-               elsif d.a then :a
-               elsif d.start then :start
                end
   end
 
-  # Up Up Down Down Left Right Left Right B A Start on the title screen
-  RUSH_CODE = %i[up up down down left right left right b a start]
+  # Up Up Down Down Left Right Left Right on the title screen locks in
+  # Boss Rush; the next game started is a Boss Rush run.
+  RUSH_CODE = %i[up up down down left right left right]
   RUSH_LEVELS = [3, 7, 11, 15, 19, 23, 27, 31]
 
   # nut chime climbing a major scale, one step per correct code press
-  CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17]
+  CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12]
   def code_note(i)
     @args.audio[:code] = { input: 'sounds/nut.wav', gain: 1.0, pitch: 2.0**(CODE_STEPS[i] / 12.0) }
   end
@@ -149,6 +147,7 @@ class Game
     @mode = :title
     @mode_t = 0
     @rush = false
+    @rush_armed = false
     @code_i = 0
     load_level(0, false)
     music_stop
@@ -374,15 +373,16 @@ class Game
       shadow_label(x, 180, BROS[i][:name], 4, sel ? [252, 240, 160] : [140, 140, 140])
     end
     shadow_label(640, 120, 'PRESS START', 4, [255, 255, 255]) if (@mode_t / 30) % 2 == 0
+    shadow_label(640, 366, 'BOSS RUSH', 4, [232, 72, 64]) if @rush_armed
     shadow_label(640, 70, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
     shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
-    expected = RUSH_CODE[@code_i || 0]
-    if feed_code
+    if !@rush_armed && feed_code
+      @rush_armed = true
       sfx(:oneup)
-      new_game(true)
-    elsif (@in_start_down || @in_a_down) && @in_code != expected
+    end
+    if @in_start_down || @in_a_down
       sfx(:checkpoint)
-      new_game
+      new_game(@rush_armed)
     end
   end
 
