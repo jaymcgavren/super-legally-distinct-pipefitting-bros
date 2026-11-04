@@ -95,6 +95,31 @@ class Game
     @in_start_down = d.start
     @in_left_down = d.left
     @in_right_down = d.right
+    @in_code = if d.up then :up
+               elsif d.down then :down
+               elsif d.left then :left
+               elsif d.right then :right
+               elsif d.b then :b
+               elsif d.a then :a
+               elsif d.start then :start
+               end
+  end
+
+  # Up Up Down Down Left Right Left Right B A Start on the title screen
+  RUSH_CODE = %i[up up down down left right left right b a start]
+  RUSH_LEVELS = [3, 7, 11, 15, 19, 23, 27, 31]
+
+  # advance the secret-code matcher; true once the whole code is in
+  def feed_code
+    return false unless @in_code
+    if @in_code == RUSH_CODE[@code_i]
+      @code_i += 1
+    else
+      @code_i = @in_code == :up ? (@code_i == 2 ? 2 : 1) : 0
+    end
+    return false unless @code_i == RUSH_CODE.size
+    @code_i = 0
+    true
   end
 
   def sfx(name)
@@ -116,14 +141,18 @@ class Game
   def to_title
     @mode = :title
     @mode_t = 0
+    @rush = false
+    @code_i = 0
     load_level(0, false)
     music_stop
   end
 
-  def new_game
-    @score = 0; @nuts = 0; @lives = 3; @level = 0
+  def new_game(rush = false)
+    @rush = rush
+    @score = 0; @nuts = 0; @lives = 3
+    @level = rush ? RUSH_LEVELS[0] : 0
     @checkpoint = nil
-    @powered = false
+    @powered = rush
     to_intro
   end
 
@@ -208,8 +237,13 @@ class Game
       start = [cone[:c], cone[:r]]
       cone[:lit] = true
     end
+    if @rush && @boss
+      start = [@arena_c + 1, 7]
+      @enemies.reject! { |e| e.x < (@arena_c + 1) * T }
+    end
     @p = Player.new(start[0] * T + 12, tile_bottom(start[1]))
     @p.powered = @powered if use_checkpoint
+    @p.powered = true if @rush
     @time = lv[:time] || SHIFT_LEN
     @time_acc = 0
     @warned = false
@@ -335,7 +369,11 @@ class Game
     shadow_label(640, 120, 'PRESS START', 4, [255, 255, 255]) if (@mode_t / 30) % 2 == 0
     shadow_label(640, 70, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
     shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
-    if @in_start_down || @in_a_down
+    expected = RUSH_CODE[@code_i || 0]
+    if feed_code
+      sfx(:oneup)
+      new_game(true)
+    elsif (@in_start_down || @in_a_down) && @in_code != expected
       sfx(:checkpoint)
       new_game
     end
@@ -347,6 +385,7 @@ class Game
     draw_hud
     label(640, 440, @lv[:name], 6, [252, 240, 160])
     label(640, 370, @lv[:title], 4, [244, 120, 24])
+    label(640, 560, "BOSS RUSH #{@level / 4 + 1} OF 8", 4, [232, 72, 64]) if @rush
     spr(BROS[@bro][:path], 560, 210, 64, 80, 0, 0, 8, 20)
     label(680, 270, "x #{@lives}", 5, [255, 255, 255])
     return unless @mode_t > 150
@@ -660,7 +699,7 @@ class Game
     label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
     label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_t > 110
     return unless @time <= 0 && @mode_t > 300
-    @level += 1
+    @level += @rush ? 4 : 1
     @checkpoint = nil
     if @level >= LEVELS.size
       @mode = :win
@@ -679,8 +718,8 @@ class Game
       label(640, 440, 'GAME OVER', 8, [232, 72, 64])
       label(640, 350, 'YOU ARE FIRED', 4, [255, 255, 255])
     else
-      label(640, 500, 'ALL MAINS SHUT OFF!', 6, [252, 240, 160])
-      label(640, 420, 'OVERTIME APPROVED', 4, [244, 120, 24])
+      label(640, 500, @rush ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, [252, 240, 160])
+      label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, [244, 120, 24])
       label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, [255, 255, 255])
     end
     label(640, 260, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
