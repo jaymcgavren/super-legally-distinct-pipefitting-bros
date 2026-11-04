@@ -1,0 +1,18 @@
+# npm dependencies (package.json + package-lock.json pin them)
+node_modules/
+
+# Upstream runtime checkout (github.com/wasmcart/wasmcart-mruby).
+# main.wasm is vendored from its build/ at commit 57bb06e; see LICENSE.txt.
+wasmcart-mruby/
+
+# Build output from pack.sh
+*.wasc
+
+# Save data the runtime writes beside the cart
+*.sav
+
+# OS clutter
+.DS_Store
+
+# Scratch screenshots from headless test runs
+shots/
