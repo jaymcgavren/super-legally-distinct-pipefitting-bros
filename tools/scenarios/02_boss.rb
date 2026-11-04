@@ -61,7 +61,7 @@ s.step([:b], 1); s.step([], 20)
 check 'wrench hits the boss', b.data[:hp] == hp - 1
 
 # the boss valve appears between the girders, and clears even if it lands on you
-[[:left, -3], [:on, 0], [:right, 4], [:girder, 13]].each do |name, off|
+[[:left, -3], [:on, 0], [:right, 4], [:girder, 13], [:far_right, 5]].each do |name, off|
   s = Sim.new.start(d_levels[0])
   ac = s.iv(:arena_c)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
@@ -77,6 +77,12 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
   if name == :left
     check 'boss valve sits between the girders', g && g[:c] == gc &&
       (5..7).all? { |r| s.g.cell(g[:c], r) == '.' } && (6..13).all? { |k| s.g.cell(ac + k, 5) == '.' }
+  end
+  if %i[right girder far_right].include?(name)
+    s.step([], 30)
+    check "boss valve does not clear by itself (player #{name})", s.mode == :play
+    s.step([], 1) until s.p.on_ground
+    s.step([:left], 1) until s.mode != :play || s.p.x < gc * T - 200
   end
   begin
     s.step(name == :left ? [:right] : [], 240)

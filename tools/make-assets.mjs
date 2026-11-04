@@ -102,6 +102,22 @@ save('enemies.png', strip(ENEMY_FRAMES, 8, 12, {
 }, true));
 
 // ── items: 8x8 art, rows doubled -> 8x16 frames ─────────────────────
+// valve handwheel: fixed rim, hub, and 4 spokes rasterized at `deg`
+function wheelFrame(deg) {
+  const rim = ['..VVVV..', '.V....V.', 'V......V', 'V......V', 'V......V', 'V......V', '.V....V.', '..VVVV..'];
+  const g = rim.map((r) => r.split(''));
+  for (let k = 0; k < 4; k++) {
+    const a = ((deg + k * 90) * Math.PI) / 180, dx = Math.cos(a), dy = -Math.sin(a);
+    for (let y = 1; y < 7; y++) for (let x = 1; x < 7; x++) {
+      const px = x + 0.5 - 4, py = y + 0.5 - 4;          // pixel centre from wheel centre
+      const t = px * dx + py * dy;                      // distance along the spoke
+      if (t > 0 && t < 3.6 && Math.abs(px * dy - py * dx) < 0.72) g[y][x] = 'V';
+    }
+  }
+  for (const [x, y] of [[3, 3], [4, 3], [3, 4], [4, 4]]) g[y][x] = 'P';
+  return g.map((r) => r.join(''));
+}
+if (process.env.SHOW_WHEEL) [0, 30, 60].forEach((d) => console.log(wheelFrame(d).join('\n') + '\n'));
 const ITEM_FRAMES = [
   ['........', '.NNNNN..', 'NN...NN.', 'NN...NN.', 'NN...NN.', '.NNNNN..', '........', '........'], // 0 nut
   ['........', '..NNN...', '.NN.NN..', '.NN.NN..', '.NN.NN..', '..NNN...', '........', '........'], // 1 nut turn
@@ -111,8 +127,9 @@ const ITEM_FRAMES = [
   ['..KKKK..', '.K....K.', 'LLLLLLLL', 'LLLLLLLL', 'LLAAALLL', 'LLLLLLLL', 'LLLLLLLL', '........'], // 5 lunchbox
   ['...CC...', '...CC...', '..cccc..', '..CCCC..', '.CCCCCC.', '.cccccc.', 'CCCCCCCC', 'GGGGGGGG'], // 6 cone off
   ['...ll...', '..llll..', '..cccc..', '..CCCC..', '.CCCCCC.', '.cccccc.', 'CCCCCCCC', 'GGGGGGGG'], // 7 cone lit
-  ['..VVVV..', '.V.VV.V.', 'V..VV..V', 'VVVPPVVV', 'VVVPPVVV', 'V..VV..V', '.V.VV.V.', '..VVVV..'], // 8 wheel a
-  ['..VVVV..', '.VV..VV.', 'V.V..V.V', 'V..PP..V', 'V..PP..V', 'V.V..V.V', '.VV..VV.', '..VVVV..'], // 9 wheel b
+  wheelFrame(0),  // 8  valve wheel, 4 spokes turned 0 / 30 / 60 degrees
+  wheelFrame(30), // 9
+  wheelFrame(60), // 10
 ];
 save('items.png', strip(ITEM_FRAMES, 8, 16, {
   N: [228, 184, 48], W: [176, 180, 196], K: [80, 80, 88], L: [56, 120, 200], A: [236, 236, 236],

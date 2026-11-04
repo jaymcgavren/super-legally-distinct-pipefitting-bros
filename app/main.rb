@@ -548,15 +548,23 @@ class Game
       sfx(:checkpoint)
       popup(cone[:c] * T, tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
-    if @goal && p.x + p.w > @goal[:c] * T + 8
-      # walked into it from the left: stop at the valve. Already on or past it
-      # (the boss valve can appear on top of you): clear where you stand.
+    if goal_touched?(p)
       p.x = @goal[:c] * T + 8 - p.w if p.x < @goal[:c] * T
       p.vx = 0.0
       start_clear
       return
     end
     die if p.y < -140
+  end
+
+  # Walking in from the left stops you at the valve. The boss valve can also
+  # appear on top of you, or you can walk back into it from the right: that
+  # counts only if you actually overlap it (it is 3 tiles tall).
+  def goal_touched?(p)
+    return false unless @goal
+    gx = @goal[:c] * T
+    return p.x + p.w > gx + 8 if p.x < gx
+    p.x < gx + T - 8 && p.y < tile_bottom(@goal[:r]) + 3 * T
   end
 
   def collect_nuts(a)
@@ -1109,7 +1117,7 @@ class Game
       gy = tile_bottom(@goal[:r])
       spr(@theme[:tiles], gx, gy, T, T, 72, 0, 8, 16)
       spr(@theme[:tiles], gx, gy + T, T, T, 72, 0, 8, 16)
-      f = (@goal[:turn] / 6) % 2
+      f = (@goal[:turn] / 5) % 3
       spr('sprites/items.png', gx, gy + 2 * T, T, T, 64 + f * 8, 0, 8, 16)
       label(gx + 32, gy + 3 * T + 28, 'MAIN', 2, [255, 255, 255], true)
     end
