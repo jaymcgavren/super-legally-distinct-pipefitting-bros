@@ -27,7 +27,7 @@ doesn't set the theme.
   `node_modules/wasmcart/SPEC.md`, `node_modules/wasmcart/include/`.
 - Ignore the older wasmcart copy in the npx cache
   (`~/.npm/_npx/*/node_modules/wasmcart`, v0.24 / ABI v3).
-- The project isn't a git repo yet.
+- The project is a local git repo (branch `main`) with no remote.
 
 ## Setup (from https://wasmcart.org/languages/ruby)
 
