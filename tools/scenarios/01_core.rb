@@ -132,10 +132,10 @@ s.step([], 130); s.step([:start])
 check 'back to title', s.mode == :title
 
 # --- win after last level ---
-s = Sim.new.start(2)
+s = Sim.new.start(LEVELS.size - 1)
 g = s.iv(:goal)
 s.put(g[:c] - 3); s.step([:right], 120); s.step([], 700)
-check 'win screen after 1-C', s.mode == :win
+check 'win screen after last level', s.mode == :win
 
 # --- 50 nuts = 1UP ---
 s = Sim.new.start(0)

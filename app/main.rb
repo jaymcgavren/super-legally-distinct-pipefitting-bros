@@ -23,7 +23,7 @@ FALL_MAX  = -15.0
 SHIFT_LEN = 300
 TICK_LEN  = 24      # frames per SHIFT unit
 
-SOLID = { '#' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }
+SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }
 COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000]
 
 THEMES = {
@@ -33,6 +33,8 @@ THEMES = {
            cloud: [248, 184, 168], bush: [48, 100, 80], bush_dk: [28, 64, 52], tiles: 'sprites/tiles_dusk.png' },
   night: { sky: [[8, 12, 48]], cloud: [52, 60, 108], bush: [28, 84, 48], bush_dk: [12, 52, 28],
            tiles: 'sprites/tiles_night.png', stars: true },
+  indoor: { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
+            tiles: 'sprites/tiles_indoor.png', indoor: true },
 }
 BROS = [
   { name: 'DEZ',   path: 'sprites/dez.png' },
@@ -948,12 +950,48 @@ class Game
     o.solids << [0, 0, VW, 128, 0, 0, 0]
   end
 
+  # Indoors: a brick back wall over the sky, with occasional windows (holes
+  # in the wall) that show the parallax sky, clouds and bushes outside.
+  WIN_ROWS = (4..6)
+  def window_at?(c)
+    m = c % 13
+    return false unless m == 6 || m == 7
+    left = c - (m - 6)
+    WIN_ROWS.all? { |r| !SOLID[cell(left, r)] && !SOLID[cell(left + 1, r)] }
+  end
+
+  def draw_back_wall(cam, tiles, c0, c1)
+    c0.upto(c1 + 1) do |c|
+      win = window_at?(c)
+      x = c * T - cam
+      8.times do |r|
+        next if win && WIN_ROWS.include?(r)
+        spr(tiles, x, tile_bottom(r), T, T, 88, 0, 8, 16)
+      end
+    end
+    wood = [140, 88, 44]; sill = [196, 148, 92]
+    c0.upto(c1 + 1) do |c|
+      next unless c % 13 == 6 && window_at?(c)
+      x = c * T - cam
+      bot = tile_bottom(WIN_ROWS.last); top = tile_top(WIN_ROWS.first)
+      w = 2 * T
+      rect(x, bot, w, 8, sill)                 # sill
+      rect(x - 8, bot - 8, w + 16, 8, wood)
+      rect(x, top - 8, w, 8, wood)             # head
+      rect(x, bot, 8, top - bot, wood)         # jambs
+      rect(x + w - 8, bot, 8, top - bot, wood)
+      rect(x + T - 4, bot, 8, top - bot, wood) # mullion
+      rect(x, (bot + top) / 2 - 4, w, 8, wood) # transom bar
+    end
+  end
+
   def draw_tiles
     cam = @cam.to_i
     tiles = @theme[:tiles]
     c0 = [cam / T, 0].max
     c1 = [(cam + VW) / T, @cols - 1].min
     nut_f = (@frame / 8) % 4
+    draw_back_wall(cam, tiles, c0, c1) if @theme[:indoor]
     ROWS.times do |r|
       row = @grid[r]
       y = tile_bottom(r)
@@ -964,7 +1002,8 @@ class Game
         b = @bumps[r * 10000 + c]
         yy = b ? y + BUMP_ARC[BUMP_ARC.size - b] : y
         case ch
-        when '#' then spr(tiles, x, yy, T, T, cell(c, r - 1) == '#' ? 0 : 8, 0, 8, 16)
+        when '#' then spr(tiles, x, yy, T, T, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
+        when 'F' then spr(tiles, x, yy, T, T, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
         when '=' then spr(tiles, x, yy, T, T, 16, 0, 8, 16)
         when 'C', 'W', 'M' then spr(tiles, x, yy, T, T, 24, 0, 8, 16)
         when 'U' then spr(tiles, x, yy, T, T, 32, 0, 8, 16)

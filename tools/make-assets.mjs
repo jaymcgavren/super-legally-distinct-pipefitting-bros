@@ -171,11 +171,17 @@ const TILES = [
     'gggggggg', 'gdgdgdgd', 'gggggggg', 'gdgdgdgd', 'gggggggg', 'gdgdgdgd', 'gggggggg', 'dddddddd'], // 8 steam vent
   ['.oPPPPo.', ...Array(6).fill('.spppps.'), '.oPPPPo.', ...Array(8).fill('.spppps.')], // 9 standpipe
   ['hhhhhhhh', 'yyKKyyKK', 'KyyKKyyK', 'dddddddd', ...Array(12).fill('........')], // 10 lift
+  BRICK.concat(BRICK).map((s) => s.replace(/B/g, '1').replace(/m/g, '2')),  // 11 back wall (indoors)
+  ['WWWWWWWW', 'wwwwwwww', 'wwwwwww3', 'wwwwwwww', '33333333', 'www3wwww', 'wwwwwwww', '33333333',
+    'wwwwww3w', 'wwwwwwww', '33333333', '44444444', '4..44..4', '44444444', '4..44..4', '44444444'], // 12 wood floor
+  ['44444444', '4..44..4', '44444444', '4..44..4', '44444444', '33333333', '44444444', '4..44..4',
+    '44444444', '4..44..4', '44444444', '33333333', '44444444', '4..44..4', '44444444', '33333333'], // 13 subfloor
 ];
 const THEMES = {
   day:   { B: [176, 76, 40],  m: [92, 36, 20],  C: [212, 208, 196], c: [180, 176, 164], k: [96, 92, 88] },
   dusk:  { B: [140, 60, 84],  m: [64, 24, 48],  C: [220, 168, 140], c: [176, 132, 124], k: [84, 48, 64] },
   night: { B: [92, 96, 128],  m: [36, 36, 60],  C: [168, 172, 196], c: [128, 132, 160], k: [48, 48, 72] },
+  indoor: { B: [156, 72, 48], m: [84, 36, 24],  C: [180, 120, 72],  c: [148, 92, 52],   k: [84, 52, 32] },
 };
 const COMMON = {
   h: [188, 196, 208], g: [128, 136, 152], r: [72, 76, 92], d: [80, 84, 100],
@@ -183,6 +189,8 @@ const COMMON = {
   q: [72, 56, 48], U: [150, 120, 100], u: [120, 96, 80],
   P: [236, 152, 80], p: [200, 108, 44], o: [140, 68, 24], f: [140, 68, 24],
   s: [140, 68, 24], S: [200, 108, 44], K: [24, 24, 24],
+  1: [96, 44, 36], 2: [56, 24, 20],                       // back wall brick / mortar
+  W: [220, 164, 96], w: [184, 120, 64], 3: [120, 72, 36], 4: [92, 56, 28], // wood
 };
 for (const [name, t] of Object.entries(THEMES)) {
   // crate body uses lowercase r for red; rivets use r in girder -> remap
