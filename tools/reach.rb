@@ -14,7 +14,7 @@ def analyze(level)
   g.instance_variable_set(:@lifts, [])
   g.instance_variable_set(:@vents, [])
   g.instance_variable_set(:@cones, [])
-  goal = g.instance_variable_get(:@goal)
+  goal = g.instance_variable_get(:@goal) || { c: g.instance_variable_get(:@cols) - 12 }  # boss: reach the arena
   g.instance_variable_set(:@goal, nil)
   cols = g.instance_variable_get(:@cols)
   standable = ->(c, r) { !SOLID[g.cell(c, r)] && (SOLID[g.cell(c, r + 1)] || g.cell(c, r + 1) == '-') && r < 9 }

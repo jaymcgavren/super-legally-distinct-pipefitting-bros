@@ -169,6 +169,9 @@ class Game
     @enemies = []; @lifts = []; @vents = []; @cones = []; @items = []
     @particles = []; @popups = []; @bumps = {}; @multi = {}
     @wrench = nil; @goal = nil
+    @boss = nil; @boss_on = false; @shots = []; @shake = 0; @banner = 0
+    @rng = 1 + idx * 31
+    boss_at = nil
     start = [2, 7]
     @grid.each_with_index do |row, r|
       row.each_with_index do |ch, c|
@@ -190,10 +193,11 @@ class Game
         when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
         when 'K' then @cones << { c: c, r: r, lit: false }; row[c] = '.'
         when 'G' then @goal = { c: c, r: r, turn: 0 }; row[c] = '.'
-        when 'B' then @goal = { c: c + 4, r: r, turn: 0 }; row[c] = '.'  # boss: placeholder goal
+        when 'B' then boss_at = [c, r]; row[c] = '.'
         end
       end
     end
+    spawn_boss(boss_at[0], boss_at[1]) if boss_at
     @vents.each do |v|
       h = 0
       h += 1 while h < 3 && !SOLID[cell(v[:c], v[:r] - h - 1)]
@@ -365,11 +369,15 @@ class Game
     update_lifts
     update_player
     update_enemies if @mode == :play
+    update_boss if @boss && @mode == :play
     update_wrench
     update_items
     update_effects
     update_camera
+    sh = @shake > 0 ? ((@frame % 4) < 2 ? 6 : -6) : 0
+    @cam += sh
     draw_world(true)
+    @cam -= sh
   end
 
   def tick_paused
@@ -800,6 +808,10 @@ class Game
       knock(e, w.vx > 0 ? 1 : -1)
       add_score(200, e.x, e.y + 60)
     end
+    if @boss && @boss_on && overlap?(w, @boss) && !w.data[:back]
+      boss_hit(1)
+      w.data[:back] = true
+    end
     @wrench = nil if w.t > 150
   end
 
@@ -877,6 +889,7 @@ class Game
   def update_camera
     p = @p
     target = p.x + p.w / 2 - 560 + p.facing * 90
+    target = max_cam if @boss_on
     @cam += (target - @cam) * 0.1
     @cam = 0.0 if @cam < 0
     @cam = max_cam.to_f if @cam > max_cam
@@ -1092,7 +1105,9 @@ class Game
         spr('sprites/enemies.png', x - 6, e.y.to_i, T, 48, f * 8, 0, 8, 12, false, a, 0, e.state == :dead)
       end
     end
+    draw_boss(cam) if @boss
     draw_player
+    draw_boss_hud if @boss
     if @wrench
       w = @wrench
       # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
@@ -1143,6 +1158,8 @@ class Game
     o << { x: 1256, y: 700, text: "SHIFT #{pad3(t)}", size_px: 4, alignment_enum: 2, r: tc[0], g: tc[1], b: tc[2] }
   end
 end
+
+require 'app/boss.rb'
 
 def tick(args)
   $game ||= Game.new(args)

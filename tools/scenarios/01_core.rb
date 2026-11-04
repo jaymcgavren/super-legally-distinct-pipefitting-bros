@@ -149,6 +149,10 @@ check 'back to title', s.mode == :title
 
 # --- win after last level ---
 s = Sim.new.start(LEVELS.size - 1)
+if s.iv(:boss)
+  s.put(s.iv(:arena_c) + 3); s.step([], 2)
+  s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
+end
 g = s.iv(:goal)
 s.put(g[:c] - 3); s.step([:right], 120); s.step([], 700)
 check 'win screen after last level', s.mode == :win

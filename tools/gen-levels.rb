@@ -54,13 +54,16 @@ def build(world, sec, seed)
   end
   rows = Array.new(10) { |r| segs.map { |s| s[r] }.join }
   cols = rows[0].size
-  # one checkpoint in the middle of the level, on open floor
-  mid_c = (names.size / 2) * 20
-  (mid_c + 1..mid_c + 18).each do |c|
-    next unless rows[7][c] == '.' && rows[7][c + 1] == '.' && '#F'.include?(rows[8][c])
-    next unless rows[6][c] == '.'
-    rows[7][c] = 'K'
-    break
+  # a checkpoint in the middle of the level (and one before a boss arena)
+  spots = [(names.size / 2) * 20]
+  spots << (names.size - 2) * 20 if boss
+  spots.each do |seg_c|
+    (seg_c + 1..seg_c + 18).each do |c|
+      next unless rows[7][c] == '.' && rows[7][c + 1] == '.' && '#F'.include?(rows[8][c])
+      next unless rows[6][c] == '.'
+      rows[7][c] = 'K'
+      break
+    end
   end
   # make sure there is a wrench crate somewhere in the first half
   unless rows.any? { |r| r[0, cols / 2].include?('W') }

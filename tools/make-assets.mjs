@@ -150,6 +150,28 @@ function wrenchFrame(deg) {
 const WRENCH_FRAMES = [0, 1, 2, 3, 4, 5, 6].map((i) => wrenchFrame(i * 360 / 7));
 save('wrench.png', strip(WRENCH_FRAMES, 8, 16, { W: [196, 200, 212], H: [236, 236, 244] }, true));
 if (process.env.SHOW_WRENCH) WRENCH_FRAMES.forEach((f, i) => console.log(`frame ${i}\n${f.join('\n')}`));
+// ── Big Rusty (boss): 8x14 art, rows doubled -> 8x28 frames, drawn at
+// double width (a 2600 NUSIZ quad-ish player) by the game ────────────
+const RUSTY_HEAD = ['..VVVV..', '.V.GG.V.', '..VVVV..', '..RRRR..', '.RRRRRR.'];
+const RUSTY_FRAMES = [
+  [...RUSTY_HEAD, 'RRYYRYYR', 'RRKYRKYR', 'RRRRRRRR', 'RRKKKKRR', 'RRRRRRRR', 'RDRRRRDR', 'RRRRRRRR', '.RR..RR.', 'RR....RR'], // 0 walk a
+  [...RUSTY_HEAD, 'RRYYRYYR', 'RRYKRYKR', 'RRRRRRRR', 'RRKKKKRR', 'RRRRRRRR', 'RDRRRRDR', 'RRRRRRRR', '.RR..RR.', '.RR..RR.'], // 1 walk b
+  ['........', '........', ...RUSTY_HEAD, 'RRYYRYYR', 'RRKYRKYR', 'RRRRRRRR', 'RRKKKKRR', 'RDRRRRDR', 'RRRRRRRR', 'RRRRRRRR', 'RRR..RRR'], // 2 crouch
+  [...RUSTY_HEAD, 'RRYYRYYR', 'RRKYRKYR', 'RRRRRRRR', 'RKKKKKKR', 'RRRRRRRR', 'RDRRRRDR', 'RRRRRRRR', 'R.R..R.R', '........'], // 3 air
+  [...RUSTY_HEAD, 'RYRYRYRY', 'RRYRRYRR', 'RYRYRYRY', 'RRRRRRRR', 'RRKKKKRR', 'RDRRRRDR', 'RRRRRRRR', '.RR..RR.', 'RR....RR'], // 4 hurt
+  [...RUSTY_HEAD, 'RRYYRYYR', 'RRKYRKYR', 'RKKKKKKR', 'RKOOOOKR', 'RKKKKKKR', 'RDRRRRDR', 'RRRRRRRR', '.RR..RR.', 'RR....RR'], // 5 mouth open
+  [...RUSTY_HEAD, 'RYYYRYYY', 'RYKYRYKY', 'RRRRRRRR', 'RRKKKKRR', 'RRRRRRRR', 'RDRRRRDR', 'RRRRRRRR', '.RR..RR.', 'RR....RR'], // 6 angry
+  ['.S.SS.S.', 'SS.SS.SS', 'SSSSSSSS', ...Array(11).fill('........')],                                                  // 7 spiked crown
+];
+save('rusty.png', strip(RUSTY_FRAMES, 8, 28, {
+  V: [216, 48, 48], G: [160, 160, 168], R: [168, 84, 32], D: [104, 48, 20], Y: [252, 220, 96],
+  K: [40, 16, 8], O: [236, 120, 40], S: [208, 212, 224],
+}, true));
+// boss projectiles: 0 rust glob, 1 bolt  (8x8 art doubled -> 8x16)
+save('shots.png', strip([
+  ['........', '..RRR...', '.RRORR..', '.RRRRR..', '..RRR...', '........', '........', '........'],
+  ['..GGGG..', '..GGGG..', '...GG...', '...GG...', '...GG...', '...GG...', '...GG...', '........'],
+], 8, 16, { R: [168, 84, 32], O: [236, 120, 40], G: [176, 180, 196] }, true));
 // 1x1 white pixel for tinted rectangles drawn in sprite order
 save('px.png', strip([['W']], 1, 1, { W: [255, 255, 255] }, false));
 
@@ -260,6 +282,10 @@ sfx('tick', R(2, () => ['sq', 5, 8]));
 sfx('checkpoint', [...R(6, () => ['sq6', 9, 10]), ...R(14, (i) => ['sq6', 6, 10 - i * 0.6])]);
 sfx('pause', [...R(4, () => ['sq', 10, 9]), null, null, null, null, ...R(4, () => ['sq', 10, 9])]);
 sfx('warn', notes([['sq6', 6], ['sq6', 8], ['sq6', 6], ['sq6', 8]], 6));
+sfx('pound', [...R(4, () => ['noise', 30, 15]), ...R(26, (i) => ['buzz', 18 + (i >> 2), 13 - i * 0.5])]);
+sfx('bosshit', [...R(4, () => ['noise', 4, 14]), ...R(16, (i) => ['sq6', 20 - i, 12 - i * 0.7])]);
+sfx('bossdie', R(90, (i) => [i % 6 < 3 ? 'noise' : 'buzz', 8 + (i >> 3), 14 - i * 0.15]));
+sfx('spit', R(10, (i) => ['buzz', 4 + i, 11 - i]));
 
 // ── music: notes quantized to the nearest TIA divider pitch ─────────
 const NOTE = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
@@ -317,6 +343,19 @@ for (let bar = 0; bar < 16; bar++) for (let e = 0; e < 8; e++) {
   for (let i = 0; i < E8; i++) drums.push(hit[i] || null);
 }
 track('theme', [melody(themeLead, LEAD, 10, 3), melody(themeBass, BASS, 9, 4), drums]);
+
+// boss theme: A minor riff, faster drums
+const bossLead = parse(`
+  A4 . A4 C5 . A4 D#5 .   E5 . D5 C5 . B4 . .    A4 . A4 C5 . A4 E5 .   F5 . E5 D5 . C5 B4 .
+  A4 . A4 C5 . A4 D#5 .   E5 . G5 F5 . E5 . .    A5 . G5 F5 E5 D5 C5 B4  A4 . . . E4 . . .`, 10);
+const bossBass = parse(['A2', 'A2', 'F2', 'E2', 'A2', 'A2', 'D3', 'E2']
+  .map((r) => `${r} ${r} ${up(r)} ${r} ${r} ${up(r)} ${r} ${up(r)}`).join(' '), 10);
+const bossDrums = [];
+for (let bar = 0; bar < 8; bar++) for (let e = 0; e < 8; e++) {
+  const hit = e % 2 === 0 ? [['noise', 1100, 11], ['noise', 900, 7], ['noise', 700, 4]] : [['noise', 9000, 6], ['noise', 9000, 3]];
+  for (let i = 0; i < 10; i++) bossDrums.push(hit[i] || null);
+}
+track('boss', [melody(bossLead, LEAD, 10, 3), melody(bossBass, BASS, 9, 3), bossDrums]);
 track('clear', [
   melody([['C5', 6], ['E5', 6], ['G5', 6], ['C6', 18], ['G5', 6], ['A5', 6], ['B5', 6], ['C6', 48]], LEAD, 11, 3),
   melody([['C3', 18], ['G2', 18], ['F2', 18], ['C3', 48]], BASS, 9, 3),
