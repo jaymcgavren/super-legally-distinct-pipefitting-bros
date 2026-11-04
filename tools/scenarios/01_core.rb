@@ -151,6 +151,7 @@ check 'back to title', s.mode == :title
 s = Sim.new.start(LEVELS.size - 1)
 if s.iv(:boss)
   s.put(s.iv(:arena_c) + 3); s.step([], 2)
+  s.step([], 1) while s.iv(:warning) > 0
   s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
 end
 g = s.iv(:goal)

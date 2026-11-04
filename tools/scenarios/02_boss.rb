@@ -9,6 +9,14 @@ d_levels.each_with_index do |li, n|
   s.p.x = (ac + 3) * T + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.snap
   s.step([], 2)
   check "#{LEVELS[li][:name]} fight starts and gate closes", s.iv(:boss_on) && s.g.cell(ac, 6) == '#'
+  if n == 0
+    check 'warning plays the klaxon', s.sounds.include?('sounds/klaxon.wav')
+    check 'boss music waits for the warning', s.args.audio[:music].nil?
+    s.step([], 80)
+    check 'boss holds still during the warning', b.state == :wait && s.iv(:warning) > 0
+  end
+  s.step([], 1) while s.iv(:warning) > 0
+  check "#{LEVELS[li][:name]} boss music after the warning", s.args.audio[:music] && s.args.audio[:music][:input] == 'sounds/boss.wav' if n == 0
   # survive a while with invulnerability, record which moves were used
   seen = {}
   1500.times do
@@ -45,6 +53,7 @@ s = Sim.new.start(d_levels[0])
 b = s.iv(:boss); ac = s.iv(:arena_c)
 s.p.x = (ac + 3) * T + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.p.powered = true; s.p.facing = 1; s.snap
 s.step([], 2)
+s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
 hp = b.data[:hp]
 b.x = s.p.x + 150; b.state = :wait

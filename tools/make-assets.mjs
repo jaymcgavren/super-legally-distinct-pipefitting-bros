@@ -286,6 +286,11 @@ sfx('pound', [...R(4, () => ['noise', 30, 15]), ...R(26, (i) => ['buzz', 18 + (i
 sfx('bosshit', [...R(4, () => ['noise', 4, 14]), ...R(16, (i) => ['sq6', 20 - i, 12 - i * 0.7])]);
 sfx('bossdie', R(90, (i) => [i % 6 < 3 ? 'noise' : 'buzz', 8 + (i >> 3), 14 - i * 0.15]));
 sfx('spit', R(10, (i) => ['buzz', 4 + i, 11 - i]));
+// klaxon: three rising wails, 48 frames apart (matches the WARNING flash)
+sfx('klaxon', R(144, (i) => {
+  const k = i % 48;
+  return k < 36 ? [k % 2 ? 'sq6' : 'buzz', k % 2 ? 16 - (k >> 2) : 3, 13 - (k >> 4)] : null;
+}));
 
 // ── music: notes quantized to the nearest TIA divider pitch ─────────
 const NOTE = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };

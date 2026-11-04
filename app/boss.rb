@@ -10,6 +10,7 @@ BOSS_MOVES = [
   [:bolts,  'BOLT STORM'],
   [:enrage, 'SHORT FUSE'],
 ]
+WARN_LEN = 160   # klaxon + WARNING card before each fight
 BOSS_W = 112
 BOSS_H = 104
 
@@ -33,6 +34,7 @@ class Game
     @shots = []
     @shake = 0
     @banner = 0
+    @warning = 0
   end
 
   # call every play tick when this level has a boss
@@ -43,9 +45,16 @@ class Game
     unless @boss_on
       return unless p.x > (@arena_c + 2) * T
       @boss_on = true
-      @banner = 180
+      @warning = WARN_LEN
       8.times { |r| @grid[r][@arena_c] = '#' }   # the gate slams shut
       sfx(:bump)
+      sfx(:klaxon)
+      music_stop
+    end
+    if @warning > 0
+      @warning -= 1
+      return if @warning > 0
+      @banner = 180
       music(:boss)
     end
     @banner -= 1 if @banner > 0
@@ -333,6 +342,7 @@ class Game
   def draw_boss_hud
     b = @boss
     return unless b && @boss_on && b.state != :dead
+    return draw_warning if @warning > 0
     d = b.data
     label(640, 628, 'BIG RUSTY', 3, [252, 240, 160], true)
     w = 16 * d[:max]
@@ -346,5 +356,16 @@ class Game
     n = boss_level
     label(640, 470, n == 1 ? 'BIG RUSTY BLOCKS THE MAIN!' : 'BIG RUSTY IS BACK!', 5, [252, 240, 160], true)
     label(640, 410, "NEW MOVE: #{BOSS_MOVES[n - 1][1]}", 4, [244, 120, 24], true)
+  end
+
+  # three red pulses in time with the klaxon wails
+  def draw_warning
+    k = (WARN_LEN - @warning) % 48
+    on = k < 36
+    rect(0, 0, VW, PLAY_H, [200, 0, 0], 70 - k * 2) if on
+    return unless on || @warning < 16
+    rect(0, 340, VW, 240, [0, 0, 0], 150)
+    label(640, 560, 'WARNING', 16, [232, 40, 40], true)
+    label(640, 412, 'HUGE ENEMY APPROACH', 5, [236, 212, 64], true)
   end
 end
