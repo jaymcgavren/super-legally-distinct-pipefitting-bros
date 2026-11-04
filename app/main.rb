@@ -109,6 +109,12 @@ class Game
   RUSH_CODE = %i[up up down down left right left right b a start]
   RUSH_LEVELS = [3, 7, 11, 15, 19, 23, 27, 31]
 
+  # nut chime climbing a major scale, one step per correct code press
+  CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17]
+  def code_note(i)
+    @args.audio[:code] = { input: 'sounds/nut.wav', gain: 1.0, pitch: 2.0**(CODE_STEPS[i] / 12.0) }
+  end
+
   # advance the secret-code matcher; true once the whole code is in
   def feed_code
     return false unless @in_code
@@ -117,6 +123,7 @@ class Game
     else
       @code_i = @in_code == :up ? (@code_i == 2 ? 2 : 1) : 0
     end
+    code_note(@code_i - 1) if @code_i > 0
     return false unless @code_i == RUSH_CODE.size
     @code_i = 0
     true

@@ -41,3 +41,9 @@ Game::RUSH_LEVELS.each_with_index do |lv, i|
   s.step([], 1) until s.mode == :play || s.mode == :win
 end
 check 'boss rush ends on the win screen', s.mode == :win
+
+# --- each code press chimes one step higher ---
+s = Sim.new; s.step([], 5)
+pitches = []
+Game::RUSH_CODE.first(10).each { |k| s.step([k], 1); pitches << s.args.audio[:code][:pitch]; s.step([], 2) }
+check 'code presses climb in pitch', pitches.each_cons(2).all? { |a, b| b > a }
