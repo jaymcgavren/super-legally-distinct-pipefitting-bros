@@ -36,6 +36,10 @@ THEMES = {
   indoor: { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
             tiles: 'sprites/tiles_indoor.png', indoor: true },
 }
+THEMES[:dusk][:sun] = true
+# inside a building, with the windows showing a sunset or the night sky
+THEMES[:indoor_dusk] = THEMES[:dusk].merge(tiles: 'sprites/tiles_indoor.png', indoor: true)
+THEMES[:indoor_night] = THEMES[:night].merge(tiles: 'sprites/tiles_indoor.png', indoor: true)
 BROS = [
   { name: 'DEZ',   path: 'sprites/dez.png' },
   { name: 'OZZIE', path: 'sprites/ozzie.png' },
@@ -1012,7 +1016,7 @@ class Game
         o.solids << [1040 - w * 4, 560 - dy * 8, w * 8, 8, 236, 232, 196]
       end
     end
-    if @lv[:theme] == :dusk
+    if th[:sun]
       [[8, 0], [14, 1], [18, 2], [20, 3], [20, 4], [20, 5]].each do |w, dl|
         o.solids << [900 - w * 4, 300 - dl * 16, w * 8, 16, 252, 224, 104]
       end

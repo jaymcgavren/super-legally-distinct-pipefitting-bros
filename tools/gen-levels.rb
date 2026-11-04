@@ -1,5 +1,5 @@
 # Builds app/levels.rb: 8 jobsites x sections A-D from tools/segments.rb.
-#   A  rooftops by day      B  inside a building
+#   A  rooftops by day      B  inside a building (day, sunset or night outside)
 #   C  rooftops at sunset   D  rooftops at night, boss arena at the end
 # Later jobsites draw harder segments, mirror some, and add enemies. Every
 # level is checked with tools/reach.rb; a level that fails is rerolled.
@@ -17,6 +17,8 @@ TITLES = [
   ['LAST CALL', 'THE OLD MILL', 'CITY MAINS', 'THE FINAL VALVE'],
 ]
 THEME = %i[day indoor dusk night]
+# the time of day seen through the windows of each jobsite's B building
+INDOOR_TIME = %i[indoor indoor_dusk indoor_night indoor indoor_dusk indoor_night indoor_dusk indoor_night]
 OUT = File.expand_path('../app/levels.rb', __dir__)
 
 def pool(kind, world)
@@ -80,7 +82,7 @@ def build(world, sec, seed)
     rows[7][c] = rng.rand < 0.3 + world * 0.05 ? 'v' : 'r'
     extra -= 1
   end
-  { name: "JOBSITE #{world}-#{'ABCD'[sec]}", title: TITLES[world - 1][sec], theme: THEME[sec],
+  { name: "JOBSITE #{world}-#{'ABCD'[sec]}", title: TITLES[world - 1][sec], theme: sec == 1 ? INDOOR_TIME[world - 1] : THEME[sec],
     boss: boss ? world : nil, time: boss ? 400 : 300, segs: names, rows: rows }
 end
 
