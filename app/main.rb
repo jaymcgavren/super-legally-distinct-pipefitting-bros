@@ -1025,12 +1025,14 @@ class Game
       o.solids << [x - 16, cy - 32, 208, 16, cc[0], cc[1], cc[2]]
     end
     b = th[:bush]; bd = th[:bush_dk]
+    # indoors the bushes sit higher so they show through the windows (y 192..384)
+    by = th[:indoor] ? 240 : 128
     [[16, 96], [240, 144], [512, 80], [784, 128], [1056, 112], [1300, 96]].each do |bx, w|
       x = (((bx - @cam * 0.5) % 1600) - 160).to_i
-      o.solids << [x + w / 4, 192, w / 2, 16, b[0], b[1], b[2]]
-      o.solids << [x + 8, 176, w - 16, 16, b[0], b[1], b[2]]
-      o.solids << [x, 140, w, 36, b[0], b[1], b[2]]
-      o.solids << [x, 128, w, 12, bd[0], bd[1], bd[2]]
+      o.solids << [x + w / 4, by + 64, w / 2, 16, b[0], b[1], b[2]]
+      o.solids << [x + 8, by + 48, w - 16, 16, b[0], b[1], b[2]]
+      o.solids << [x, by + 12, w, 36, b[0], b[1], b[2]]
+      o.solids << [x, by, w, 12, bd[0], bd[1], bd[2]]
     end
     # the alley between buildings
     o.solids << [0, 0, VW, 128, 0, 0, 0]
