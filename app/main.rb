@@ -15,6 +15,7 @@ PLAY_H  = 640
 
 WALK_MAX  = 4.2
 RUN_MAX   = 6.8
+PLAYER_H  = 72
 JUMP_V    = 19.5
 GRAV_HOLD = 0.65
 GRAV_CUT  = 1.6
@@ -59,7 +60,7 @@ end
 class Player < Actor
   attr_accessor :powered, :invuln, :coyote, :buffer, :jumping, :combo, :anim, :skid, :throw_t
   def initialize(x, y)
-    super(:player, x, y, 40, 72)
+    super(:player, x, y, 40, PLAYER_H)
     @facing = 1; @powered = false; @invuln = 0; @coyote = 0; @buffer = 0
     @jumping = false; @combo = 0; @anim = 0.0; @skid = false; @throw_t = 0
   end
@@ -228,7 +229,8 @@ class Game
           row[c] = '.'
         when 'L', 'H'
           l = Actor.new(:lift, c * T, tile_top(r) - 16, 128, 16)
-          l.data = { bx: l.x, by: l.y, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
+          l.data = { bx: l.x, by: l.y, amp: 2 * T, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
+          lower_pit_lift(l, c, r) if ch == 'L'
           @lifts << l
           row[c] = '.'
         when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
@@ -458,15 +460,34 @@ class Game
     die if @time <= 0
   end
 
+  # A vertical lift over a pit with a ceiling above swings lower, and half as
+  # far, so a full running jump off it never hits the ceiling: indoors the
+  # standard +/-2 tile swing put the lift so close to the roof that jumps
+  # across the pit got cut short.
+  JUMP_RISE = (JUMP_V + RUN_MAX * 0.28)**2 / (2 * GRAV_HOLD)
+  def lower_pit_lift(l, c, r)
+    cols = [c, c + 1]
+    return unless cols.all? { |cc| (r + 1...ROWS).none? { |rr| SOLID[cell(cc, rr)] } }
+    ceil = (0...r).to_a.reverse.find { |rr| cols.any? { |cc| SOLID[cell(cc, rr)] } }
+    return unless ceil
+    max_top = tile_bottom(ceil) - PLAYER_H - JUMP_RISE
+    top = l.y + l.h
+    return if top + 2 * T <= max_top
+    d = l.data
+    d[:amp] = T
+    d[:by] = max_top - T - l.h
+    l.y = d[:by]
+  end
+
   def update_lifts
     @lifts.each do |l|
       d = l.data
       s = Math.sin(@frame * 6.2832 / 240 + d[:phase])
       if d[:axis] == :x
-        nx = d[:bx] + s * 2 * T
+        nx = d[:bx] + s * d[:amp]
         d[:dx] = nx - l.x; d[:dy] = 0.0; l.x = nx
       else
-        ny = d[:by] + s * 2 * T
+        ny = d[:by] + s * d[:amp]
         d[:dy] = ny - l.y; d[:dx] = 0.0; l.y = ny
       end
     end

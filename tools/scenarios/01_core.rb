@@ -176,3 +176,30 @@ check 'wrench hitting the valve clears the level', cleared && s.p.x < g[:c] * T 
 check 'wrench is put away on valve hit', s.iv(:wrench).nil?
 s.step([], 700)
 check 'wrench clear advances to 1-B', s.iv(:level) == 1
+
+# --- lifts over a pit under a ceiling swing low enough to jump off at full height ---
+lv_of = ->(name) { LEVELS.index { |l| l[:name] == name } }
+ceil_bottom = Sim.new.g.tile_bottom(0)
+s = Sim.new.start(lv_of['JOBSITE 1-B'])
+pit = s.iv(:lifts).select { |l| [165, 170].include?((l.data[:bx] / T).to_i) }
+check '1-B has its two pit lifts', pit.size == 2
+check '1-B pit lifts swing half as far', pit.all? { |l| l.data[:amp] == T }
+check '1-B pit lifts never come within a full jump of the ceiling',
+      pit.all? { |l| l.data[:by] + l.h + l.data[:amp] + PLAYER_H + Game::JUMP_RISE <= ceil_bottom }
+check '1-B pit lifts stay above the death line', pit.all? { |l| l.data[:by] - l.data[:amp] > -140 + PLAYER_H }
+# jump off the first lift at the top of its swing, running: the head never touches the ceiling
+l = pit[0]
+top = l.data[:by] + l.h + l.data[:amp]
+s.set(:lifts, [])
+s.p.x = l.x + 40; s.p.y = top; s.p.vx = RUN_MAX; s.p.vy = 0.0; s.p.on_ground = true; s.snap
+peak = top
+s.step([:right, :b, :a], 1)
+60.times { s.step([:right, :b, :a]); peak = [peak, s.p.y].max; break if s.p.vy < 0 }
+check "running jump from the 1-B pit lift's highest point peaks below the ceiling (#{peak.to_i} + #{PLAYER_H} < #{ceil_bottom})",
+      peak + PLAYER_H < ceil_bottom && peak > top + Game::JUMP_RISE * 0.9
+# lifts elsewhere keep the full swing: a lift over floor indoors, and outdoor lifts
+s = Sim.new.start(lv_of['JOBSITE 4-B'])
+check '4-B lift over the floor keeps its full swing',
+      s.iv(:lifts).any? { |lf| (lf.data[:bx] / T).to_i == 106 && lf.data[:amp] == 2 * T }
+s = Sim.new.start(lv_of['JOBSITE 3-A'])
+check 'outdoor lifts keep their full swing', s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * T }
