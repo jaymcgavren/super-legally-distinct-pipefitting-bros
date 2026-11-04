@@ -1025,14 +1025,28 @@ class Game
       o.solids << [x - 16, cy - 32, 208, 16, cc[0], cc[1], cc[2]]
     end
     b = th[:bush]; bd = th[:bush_dk]
-    # indoors the bushes sit higher so they show through the windows (y 192..384)
-    by = th[:indoor] ? 240 : 128
-    [[16, 96], [240, 144], [512, 80], [784, 128], [1056, 112], [1300, 96]].each do |bx, w|
-      x = (((bx - @cam * 0.5) % 1600) - 160).to_i
-      o.solids << [x + w / 4, by + 64, w / 2, 16, b[0], b[1], b[2]]
-      o.solids << [x + 8, by + 48, w - 16, 16, b[0], b[1], b[2]]
-      o.solids << [x, by + 12, w, 36, b[0], b[1], b[2]]
-      o.solids << [x, by, w, 12, bd[0], bd[1], bd[2]]
+    if th[:indoor]
+      # indoors, trees of varying heights, so the windows (y 192..384) show
+      # trunks rising from the ground into blocky canopies
+      TREES.each do |bx, w, cy|
+        x = (((bx - @cam * 0.5) % 1600) - 160).to_i
+        tw = w >= 120 ? 24 : 16
+        o.solids << [x + w / 2 - tw / 2, 128, tw, cy - 120, 104, 68, 36]
+        o.solids << [x + w / 2 - tw / 2, 128, 8, cy - 120, 72, 44, 20]
+        o.solids << [x, cy, w, 16, bd[0], bd[1], bd[2]]
+        o.solids << [x - 8, cy + 16, w + 16, 40, b[0], b[1], b[2]]
+        o.solids << [x, cy + 56, w, 24, b[0], b[1], b[2]]
+        o.solids << [x + 16, cy + 80, w - 32, 16, b[0], b[1], b[2]]
+        o.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, b[0], b[1], b[2]]
+      end
+    else
+      [[16, 96], [240, 144], [512, 80], [784, 128], [1056, 112], [1300, 96]].each do |bx, w|
+        x = (((bx - @cam * 0.5) % 1600) - 160).to_i
+        o.solids << [x + w / 4, 192, w / 2, 16, b[0], b[1], b[2]]
+        o.solids << [x + 8, 176, w - 16, 16, b[0], b[1], b[2]]
+        o.solids << [x, 140, w, 36, b[0], b[1], b[2]]
+        o.solids << [x, 128, w, 12, bd[0], bd[1], bd[2]]
+      end
     end
     # the alley between buildings
     o.solids << [0, 0, VW, 128, 0, 0, 0]
@@ -1041,6 +1055,8 @@ class Game
   # Indoors: a brick back wall over the sky, with occasional windows (holes
   # in the wall) that show the parallax sky, clouds and bushes outside.
   WIN_ROWS = (4..6)
+  # [x, canopy width, canopy bottom y] for the trees seen through windows
+  TREES = [[16, 96, 232], [240, 144, 296], [512, 80, 208], [784, 128, 272], [1056, 112, 312], [1300, 96, 248]]
   def window_at?(c)
     m = c % 13
     return false unless m == 6 || m == 7
