@@ -179,6 +179,7 @@ class Game
     # Rusty ignores the girders: he stays on the arena floor, between the walls
     b.vy -= GRAV_FALL
     b.vy = FALL_MAX if b.vy < FALL_MAX
+    b.prev_y = b.y
     b.y += b.vy
     b.on_ground = false
     if b.y <= 128
@@ -248,7 +249,10 @@ class Game
     p = @p
     return if b.state == :dead || @mode != :play
     return unless overlap?(p, b)
-    if p.vy < 0 && p.prev_y >= b.y + b.h * 0.6 && !boss_spiky?
+    # a stomp is the player coming down onto him *relative to his motion*, so
+    # Rusty hopping up into your feet counts too
+    closing = (p.y - p.prev_y) - (b.y - b.prev_y) < 0
+    if closing && p.prev_y >= b.prev_y + b.h * 0.6 && !boss_spiky?
       if boss_hit(2)
         p.vy = @in_a ? 18.0 : 14.0
         p.jumping = @in_a

@@ -124,3 +124,34 @@ s.p.facing = -1; s.step([:b], 1)
 cleared = false
 40.times { s.step([]); (cleared = true; break) if s.mode == :clear }
 check 'wrench clears the boss valve from the right', cleared
+
+# Rusty hopping up into the player's feet counts as a stomp, not a hit
+[[:rising, 3.0], [:still, 0.0], [:falling, -2.0]].each do |name, pvy|
+  s = Sim.new.start(d_levels[0])
+  ac = s.iv(:arena_c)
+  s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
+  s.set(:banner, 0)
+  b = s.iv(:boss); b.state = :wait; b.t = 0; b.data[:inv] = 0
+  b.y = 128.0; b.vy = 13.0; b.x = s.p.x + 200
+  hp = b.data[:hp]
+  s.p.powered = true; s.p.invuln = 0
+  s.p.x = b.x + 30; s.p.y = b.y + b.h + 4; s.p.vy = pvy; s.p.on_ground = false; s.snap
+  s.step([], 1)
+  check "Rusty rising into the player's feet is a stomp (player #{name})",
+        b.data[:hp] < hp && s.p.powered && s.mode == :play
+end
+
+# ...but walking into him, or him landing on you, still hurts
+[[:side, 0.0, 0], [:landed_on, -10.0, 1]].each do |name, bvy, above|
+  s = Sim.new.start(d_levels[0])
+  ac = s.iv(:arena_c)
+  s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
+  s.set(:banner, 0)
+  b = s.iv(:boss); b.state = :wait; b.t = 0; b.data[:inv] = 0
+  b.x = s.p.x + 200; b.y = 128.0 + above * 60; b.vy = bvy
+  hp = b.data[:hp]
+  s.p.powered = true; s.p.invuln = 0
+  s.p.x = above == 1 ? b.x + 30 : b.x - 20; s.snap
+  s.step([], 1)
+  check "Rusty still hurts the player (#{name})", !s.p.powered && b.data[:hp] == hp
+end
