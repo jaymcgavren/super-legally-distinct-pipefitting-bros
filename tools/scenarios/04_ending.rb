@@ -35,7 +35,13 @@ check 'camera races at the valve speed', (fast - END_TOP_V).abs < 0.01
 s.step([], 1) until s.iv(:mode_t) >= END_SLOW + 60
 check 'camera slows down', s.iv(:lift_v) < fast * 0.3 && s.iv(:lift_v) > 1
 check 'valve flies off the top', s.iv(:rk).nil? || s.iv(:rk)[:y] - s.iv(:lift) > 720
-s.step([], 1) until s.iv(:mode_t) >= END_TEXT + 40
+spawns = []
+until s.iv(:mode_t) >= END_TEXT + 200
+  n0 = s.iv(:fw_n); s.step([]); spawns << s.iv(:mode_t) if s.iv(:fw_n) > n0
+end
+gaps = spawns.each_cons(2).map { |a, b| b - a }
+puts "  firework gaps #{gaps.inspect}"
+check 'fireworks burst on an irregular cadence', gaps.uniq.size >= 3 && gaps.max > gaps.min * 2
 labels = s.args.outputs.labels.map { |l| l[:text] }
 check 'fireworks burst', s.iv(:fw).size > 0 && s.sounds.include?('sounds/firework.wav')
 check 'CONGRATULATION! / JOB COMPLETE', labels.include?('CONGRATULATION!') && labels.include?('JOB COMPLETE')
@@ -54,12 +60,12 @@ check 'third credit joins below', CREDITS.all? { |c| txt.().include?(c) } &&
 check 'fireworks behind the credits', s.iv(:fw).size > 0
 s.step([], 1) until s.iv(:mode_t) >= END_THANKS + 1
 rusty = []
-(RUSTY_FALL - END_THANKS + 40).times do
+(RUSTY_FALL - END_THANKS + 100).times do
   s.step([])
   r = s.args.outputs.sprites.find { |sp| sp[:path] == 'sprites/rusty.png' }
   rusty << r if r
 end
-check 'Big Rusty falls past the centre, upside-down, during THANK YOU', rusty.size.between?(10, 60) &&
+check 'Big Rusty falls past the centre, upside-down, during THANK YOU', rusty.size.between?(60, 90) &&
   rusty.all? { |r| r[:flip_vertically] } && rusty.each_cons(2).all? { |a, b| b[:y] < a[:y] } &&
   rusty.any? { |r| (r[:y] + 56 - 360).abs < 40 } && (rusty[0][:x] + 64 - 640).abs < 16 &&
   s.args.outputs.labels.any? { |l| l[:text] == 'THANK YOU FOR PLAYING!!!' }

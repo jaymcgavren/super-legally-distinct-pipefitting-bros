@@ -21,7 +21,7 @@ END_PROMPT = END_THANKS + 150  # final score + PRESS START
 CREDITS = ['CODE: JAY MCGAVREN', 'CONCEPT: CPRO', 'WASMCART: LUIS MONTES']
 CREDIT_GAP = 90
 RUSTY_FALL = END_THANKS + 40   # Big Rusty tumbles past, upside-down
-RUSTY_FALL_V = 30
+RUSTY_FALL_V = 12             # px/frame: about 1.25 s to cross the screen
 END_TOP_V = 36.0               # the valve's top speed, px/frame
 END_LOCK_Y = 380               # where the camera holds the valve on screen
 FW_COLS = [[255, 48, 48], [48, 255, 96], [64, 112, 255]]
@@ -42,6 +42,8 @@ class Game
     @steam = []                # [x, y, vx, vy, life, size], world coords
     @fw = []
     @fw_n = 0
+    @fw_next = END_FIRE
+    @end_rng = 12345
     @twinkle = nil
     @end_shake = 0.0
     @end_stars ||= Array.new(70) { |i| [(i * 389 + 41) % VW, (i * 157 + 23) % 760, i % 3] }
@@ -119,11 +121,11 @@ class Game
     if t >= END_FIRE
       music(:clear, false) if t == END_FIRE
       music(:theme) if t > END_FIRE + 30 && @args.audio[:music].nil?
-      if (t - END_FIRE) % 34 == 0
-        k = @fw_n
-        @fw << { x: 160 + (k * 467) % 960, y: 200 + (k * 251) % 380, col: FW_COLS[k % 3], t: 0 }
-        @fw_n += 1
-        sfx(:firework)
+      if t >= @fw_next
+        # irregular cadence: quick doubles, short gaps and longer lulls
+        (end_rand(4) == 0 ? 2 : 1).times { spawn_firework }
+        r = end_rand(10)
+        @fw_next = t + (r < 3 ? 8 + end_rand(10) : r < 8 ? 22 + end_rand(26) : 55 + end_rand(30))
       end
       @fw.each { |f| f[:t] += 1 }
       @fw.reject! { |f| f[:t] > 72 }
@@ -133,6 +135,17 @@ class Game
     if t > END_PROMPT && (@in_start_down || @in_a_down)
       to_title
     end
+  end
+
+  def end_rand(n)
+    @end_rng = (@end_rng * 75 + 74) % 65537
+    @end_rng % n
+  end
+
+  def spawn_firework
+    @fw << { x: 160 + end_rand(960), y: 180 + end_rand(400), col: FW_COLS[end_rand(3)], t: 0 }
+    @fw_n += 1
+    sfx(:firework)
   end
 
   def draw_ending
