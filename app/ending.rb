@@ -24,6 +24,7 @@ RUSTY_FALL = END_THANKS + 40   # Big Rusty tumbles past, upside-down
 RUSTY_FALL_V = 12             # px/frame: about 1.25 s to cross the screen
 END_TOP_V = 36.0               # the valve's top speed, px/frame
 END_LOCK_Y = 380               # where the camera holds the valve on screen
+FW_GRAV = 0.14                 # px/frame^2 pulling firework stars down
 FW_COLS = [[255, 48, 48], [48, 255, 96], [64, 112, 255]]
 
 class Game
@@ -244,7 +245,7 @@ class Game
     if k < 5
       rect(f[:x] - 80, f[:y] - 80, 160, 160, [255, 255, 255], 200 - k * 30)
     end
-    droop = k * k / 40
+    droop = k * k * FW_GRAV / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |rf, off, sz|
       r = (40 + k * 10) * rf
       12.times do |i|

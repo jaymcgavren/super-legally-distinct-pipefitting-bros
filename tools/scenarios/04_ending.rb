@@ -79,3 +79,14 @@ check 'start after the ending goes to the title', s.mode == :title
 
 s = to_ending(true)
 check 'boss rush ends with the same ending', s.mode == :ending
+
+# firework stars fall under gravity: the burst's centre of mass sinks, accelerating
+s = Sim.new.start(0)
+mean_y = lambda do |k|
+  s.args.outputs.clear; s.g.instance_variable_set(:@o, s.args.outputs)
+  s.g.send(:draw_firework, { x: 640, y: 400, col: [255, 0, 0], t: k })
+  ys = s.args.outputs.sprites.map { |r| r[:y] + r[:h] / 2.0 }
+  ys.sum / ys.size
+end
+y20, y40, y60 = mean_y.(20), mean_y.(40), mean_y.(60)
+check 'firework stars are pulled down by gravity', y20 > y40 && y40 > y60 && (y40 - y60) > (y20 - y40) * 1.5 && 400 - y60 > 200
