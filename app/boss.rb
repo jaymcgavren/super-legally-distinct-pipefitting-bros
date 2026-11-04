@@ -354,7 +354,7 @@ class Game
     end
     return unless @banner > 0
     n = boss_level
-    label(640, 470, n == 1 ? 'BIG RUSTY BLOCKED MAIN!!!' : 'BIG RUSTY RETURN!!!', 5, [252, 240, 160], true)
+    label(640, 470, n == 1 ? 'BIG RUSTY BLOCKS MAIN!!!' : 'BIG RUSTY RETURN!!!', 5, [252, 240, 160], true)
     label(640, 410, "NEW MOVE: #{BOSS_MOVES[n - 1][1]}", 4, [244, 120, 24], true)
   end
 
