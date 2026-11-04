@@ -59,3 +59,31 @@ hp = b.data[:hp]
 b.x = s.p.x + 150; b.state = :wait
 s.step([:b], 1); s.step([], 20)
 check 'wrench hits the boss', b.data[:hp] == hp - 1
+
+# the boss valve appears between the girders, and clears even if it lands on you
+[[:left, -3], [:on, 0], [:right, 4], [:girder, 13]].each do |name, off|
+  s = Sim.new.start(d_levels[0])
+  ac = s.iv(:arena_c)
+  s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
+  s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99)
+  gc = ac + 10
+  if name == :girder
+    s.put(ac + 16, 4)           # standing on the right girder
+  else
+    s.put(gc + off)
+  end
+  s.step([], 1) until s.iv(:goal) || s.mode != :play
+  g = s.iv(:goal)
+  if name == :left
+    check 'boss valve sits between the girders', g && g[:c] == gc &&
+      (5..7).all? { |r| s.g.cell(g[:c], r) == '.' } && (6..13).all? { |k| s.g.cell(ac + k, 5) == '.' }
+  end
+  begin
+    s.step(name == :left ? [:right] : [], 240)
+    s.step([], 700)
+    ok = %i[intro play].include?(s.mode) && s.iv(:level) == d_levels[0] + 1
+  rescue => e
+    puts "  #{e.class}: #{e.message}"; ok = false
+  end
+  check "boss valve clears the stage (player #{name})", ok
+end

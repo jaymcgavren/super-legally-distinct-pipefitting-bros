@@ -549,7 +549,9 @@ class Game
       popup(cone[:c] * T, tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
     if @goal && p.x + p.w > @goal[:c] * T + 8
-      p.x = @goal[:c] * T + 8 - p.w
+      # walked into it from the left: stop at the valve. Already on or past it
+      # (the boss valve can appear on top of you): clear where you stand.
+      p.x = @goal[:c] * T + 8 - p.w if p.x < @goal[:c] * T
       p.vx = 0.0
       start_clear
       return

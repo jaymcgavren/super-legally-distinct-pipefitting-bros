@@ -66,7 +66,7 @@ class Game
       b.vy -= 0.6
       b.y += b.vy
       if b.t == 120
-        @goal = { c: @cols - 4, r: 7, turn: 0 }
+        @goal = { c: @arena_c + 10, r: 7, turn: 0 }   # between the arena girders
         sfx(:appear)
         popup(@goal[:c] * T, tile_top(7) + 60, 'MAIN VALVE')
       end
