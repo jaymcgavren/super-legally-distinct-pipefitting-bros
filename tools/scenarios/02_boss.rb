@@ -93,3 +93,19 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
   end
   check "boss valve clears the stage (player #{name})", ok
 end
+
+# bolt storm: 3 bolts (5 when angry), falling at 0.675 px/frame^2
+s = Sim.new.start(d_levels[6])
+ac = s.iv(:arena_c)
+s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
+s.set(:banner, 0)
+b = s.iv(:boss); b.state = :bolts; b.t = 0; s.set(:shots, [])
+s.p.invuln = 999
+s.step([], 1)
+bolts = s.iv(:shots).select { |sh| sh[:k] == :bolt }
+check 'bolt storm drops 3 bolts', bolts.size == 3
+s.step([], 1) until bolts[0][:t] >= 41
+v1 = bolts[0][:vy]; s.step([], 1)
+check 'bolts fall 25% slower', (bolts[0][:vy] - v1 + 0.675).abs < 0.001
+b.data[:angry] = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
+check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh[:k] == :bolt } == 5

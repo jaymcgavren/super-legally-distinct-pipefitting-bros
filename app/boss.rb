@@ -166,7 +166,7 @@ class Game
       b.vx = 0.0
       if b.t == 1
         sfx(:warn)
-        cnt = angry ? 6 : 4
+        cnt = angry ? 5 : 3
         cnt.times do |i|
           c = @arena_c + 2 + boss_rand(16)
           c = col_at(p.x + p.w / 2) if i == 0
@@ -281,7 +281,7 @@ class Game
         end
       when :bolt
         next if s[:t] < 40
-        s[:vy] -= 0.9
+        s[:vy] -= 0.675   # 25% slower than the original 0.9
         s[:y] += s[:vy]
         if s[:y] <= 128
           s[:dead] = true
