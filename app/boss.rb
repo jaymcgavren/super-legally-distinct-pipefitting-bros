@@ -10,6 +10,7 @@ BOSS_MOVES = [
   [:bolts,  'BOLT STORM'],
   [:enrage, 'SHORT FUSE'],
 ]
+BOLT_WARN = 64   # frames a bolt's shadow shows before it drops (was 40)
 WARN_LEN = 160   # klaxon + WARNING card before each fight
 BOSS_W = 112
 BOSS_H = 104
@@ -280,7 +281,7 @@ class Game
           puff(s[:x] + 16, s[:y])
         end
       when :bolt
-        next if s[:t] < 40
+        next if s[:t] < BOLT_WARN
         s[:vy] -= 0.675   # 25% slower than the original 0.9
         s[:y] += s[:vy]
         if s[:y] <= 128
@@ -289,7 +290,7 @@ class Game
           sfx(:bump)
         end
       end
-      next if s[:dead] || (s[:k] == :bolt && s[:t] < 40)
+      next if s[:dead] || (s[:k] == :bolt && s[:t] < BOLT_WARN)
       hurt if @mode == :play && rect_hit?(p, s[:x] + 4, s[:y], s[:w] - 8, s[:h] - 4)
       if @wrench && s[:k] == :glob && overlap?(@wrench, Actor.new(:x, s[:x], s[:y], s[:w], s[:h]))
         s[:dead] = true
@@ -313,7 +314,7 @@ class Game
         end
       when :glob then spr('sprites/shots.png', x, s[:y].to_i, 32, 32, 0, 0, 8, 16)
       when :bolt
-        if s[:t] < 40
+        if s[:t] < BOLT_WARN
           rect(x, 128, 32, 8, [24, 24, 24], (s[:t] / 4).even? ? 220 : 120)
         else
           spr('sprites/shots.png', x - 8, s[:y].to_i, 48, 48, 8, 0, 8, 16)

@@ -104,7 +104,9 @@ s.p.invuln = 999
 s.step([], 1)
 bolts = s.iv(:shots).select { |sh| sh[:k] == :bolt }
 check 'bolt storm drops 3 bolts', bolts.size == 3
-s.step([], 1) until bolts[0][:t] >= 41
+s.step([], 1) until bolts[0][:t] >= BOLT_WARN - 1
+check 'bolt shadow warns for BOLT_WARN frames', bolts[0][:y] == 700.0 && BOLT_WARN > 40
+s.step([], 2)
 v1 = bolts[0][:vy]; s.step([], 1)
 check 'bolts fall 25% slower', (bolts[0][:vy] - v1 + 0.675).abs < 0.001
 b.data[:angry] = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
