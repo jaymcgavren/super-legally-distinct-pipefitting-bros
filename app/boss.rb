@@ -282,7 +282,7 @@ class Game
         end
       when :bolt
         next if s[:t] < BOLT_WARN
-        s[:vy] -= 0.675   # 25% slower than the original 0.9
+        s[:vy] -= 0.506   # 0.9, then 25% slower twice
         s[:y] += s[:vy]
         if s[:y] <= 128
           s[:dead] = true
@@ -315,7 +315,15 @@ class Game
       when :glob then spr('sprites/shots.png', x, s[:y].to_i, 32, 32, 0, 0, 8, 16)
       when :bolt
         if s[:t] < BOLT_WARN
-          rect(x, 128, 32, 8, [24, 24, 24], (s[:t] / 4).even? ? 220 : 120)
+          # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
+          k = s[:t] < 0 ? 0 : s[:t]
+          flash = (k / 4).even?
+          w = 32 + (k * 48 / BOLT_WARN)
+          cx = x + 16
+          rect(cx - 16, 128, 32, 592, [232, 40, 40], flash ? 80 : 45) if k > 0
+          rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? [252, 220, 40] : [232, 40, 40], 255)
+          rect(cx - w / 2, 130, w, 14, [0, 0, 0], 235)
+          label(cx, 236, '!', 6, flash ? [252, 220, 40] : [232, 40, 40], true) if k > 0
         else
           spr('sprites/shots.png', x - 8, s[:y].to_i, 48, 48, 8, 0, 8, 16)
         end
