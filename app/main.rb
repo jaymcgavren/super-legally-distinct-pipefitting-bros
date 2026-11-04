@@ -1051,7 +1051,9 @@ class Game
     draw_player
     if @wrench
       w = @wrench
-      spr('sprites/wrench.png', w.x.to_i - cam - 4, w.y.to_i, 48, 24, 0, 0, 8, 6, false, 255, (w.t * 30) % 360)
+      # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
+      f = (w.t / 2) % 7
+      spr('sprites/wrench.png', w.x.to_i - cam - 4, w.y.to_i - 14, 48, 48, f * 8, 0, 8, 16, w.facing < 0)
     end
     @particles.each do |pt|
       rect(pt[0].to_i - cam, pt[1].to_i, 8, 8, pt[5], [pt[4] * 20, 255].min)
@@ -1078,7 +1080,7 @@ class Game
     x = p.x.to_i - cam - 12
     if p.powered && f != 6 && @wrench.nil?
       wx = p.facing > 0 ? x - 6 : x + 22
-      spr('sprites/wrench.png', wx, p.y.to_i + 30, 48, 18, 0, 0, 8, 6, p.facing < 0, 255, p.facing > 0 ? 70 : -70)
+      spr('sprites/wrench.png', wx, p.y.to_i + 22, 40, 40, 8, 0, 8, 16, p.facing < 0)
     end
     spr(BROS[@bro][:path], x, p.y.to_i, 64, 80, f * 8, 0, 8, 20, flip)
   end

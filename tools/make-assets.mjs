@@ -119,8 +119,37 @@ save('items.png', strip(ITEM_FRAMES, 8, 16, {
   C: [244, 120, 24], c: [236, 236, 236], G: [80, 80, 88], l: [255, 240, 96],
   V: [216, 48, 48], P: [160, 160, 168],
 }, true));
-// thrown wrench: 8x3 art doubled -> 8x6
-save('wrench.png', strip([['W.W.....', 'WWWWWWWW', 'W.W.....']], 8, 6, { W: [196, 200, 212] }, true));
+// spinning wrench: 7 pre-drawn frames (no runtime rotation). An open-end
+// wrench outline is rasterized at 360/7 degree steps onto an 8x8 art grid
+// (rows doubled -> 8x16 frames), keeping the chunky 2600 look.
+function wrenchFrame(deg) {
+  const a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  const inShape = (x, y) => {
+    const ax = Math.abs(x);
+    if (ax <= 0.75 && y >= -3.6 && y <= 1.0) return 'W';            // handle
+    if (ax <= 1.9 && y >= 0.6 && y <= 1.8) return 'H';             // head
+    if (ax >= 0.7 && ax <= 1.9 && y >= 1.0 && y <= 3.6) return 'H'; // jaws
+    return null;
+  };
+  const rows = [];
+  for (let r = 0; r < 8; r++) {
+    let row = '';
+    for (let c = 0; c < 8; c++) {
+      const hits = {}; let n = 0;
+      for (let sy = 0; sy < 4; sy++) for (let sx = 0; sx < 4; sx++) {
+        const px = c + (sx + 0.5) / 4 - 4, py = 4 - (r + (sy + 0.5) / 4);
+        const k = inShape(px * ca + py * sa, -px * sa + py * ca);
+        if (k) { hits[k] = (hits[k] || 0) + 1; n++; }
+      }
+      row += n >= 6 ? ((hits.H || 0) > (hits.W || 0) ? 'H' : 'W') : '.';
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+const WRENCH_FRAMES = [0, 1, 2, 3, 4, 5, 6].map((i) => wrenchFrame(i * 360 / 7));
+save('wrench.png', strip(WRENCH_FRAMES, 8, 16, { W: [196, 200, 212], H: [236, 236, 244] }, true));
+if (process.env.SHOW_WRENCH) WRENCH_FRAMES.forEach((f, i) => console.log(`frame ${i}\n${f.join('\n')}`));
 // 1x1 white pixel for tinted rectangles drawn in sprite order
 save('px.png', strip([['W']], 1, 1, { W: [255, 255, 255] }, false));
 
