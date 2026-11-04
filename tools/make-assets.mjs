@@ -303,6 +303,9 @@ sfx('pound', [...R(4, () => ['noise', 30, 15]), ...R(26, (i) => ['buzz', 18 + (i
 sfx('bosshit', [...R(4, () => ['noise', 4, 14]), ...R(16, (i) => ['sq6', 20 - i, 12 - i * 0.7])]);
 sfx('bossdie', R(90, (i) => [i % 6 < 3 ? 'noise' : 'buzz', 8 + (i >> 3), 14 - i * 0.15]));
 sfx('spit', R(10, (i) => ['buzz', 4 + i, 11 - i]));
+// ending: a steam blast that rises in pitch, and a firework pop with crackle
+sfx('blast', R(80, (i) => ['noise', Math.max(0, 14 - (i >> 2)), 15 - i * 0.17]));
+sfx('firework', [...R(4, () => ['noise', 3, 15]), ...R(44, (i) => (i % 3 === 0 || i % 7 === 0 ? ['noise', 1 + (i % 4), 11 - i * 0.22] : null))]);
 // klaxon: three rising wails, 48 frames apart (matches the WARNING flash)
 sfx('klaxon', R(144, (i) => {
   const k = i % 48;

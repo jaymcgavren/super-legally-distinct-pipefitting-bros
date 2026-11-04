@@ -170,6 +170,7 @@ class Game
   end
 
   def tick
+    @o = @args.outputs
     @frame += 1
     @mode_t += 1
     @played = {}
@@ -183,6 +184,7 @@ class Game
     when :clear    then tick_clear
     when :gameover then tick_end(:gameover)
     when :win      then tick_end(:win)
+    when :ending   then tick_ending
     end
     @args.gtk.debug_score = @score
     @args.gtk.debug_aux = @p ? @p.x.to_i : 0
@@ -691,6 +693,7 @@ class Game
   end
 
   def start_clear
+    return start_ending if @level == LEVELS.size - 1
     @mode = :clear
     @mode_t = 0
     @powered = @p.powered
@@ -962,21 +965,21 @@ class Game
 
   # ── drawing ───────────────────────────────────────────────────────
   def spr(path, x, y, w, h, sx, sy, sw, sh, flip = false, a = 255, angle = 0, flipv = false)
-    @args.outputs.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: sx, source_y: sy,
+    @o.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: sx, source_y: sy,
                                source_w: sw, source_h: sh, flip_horizontally: flip, flip_vertically: flipv,
                                a: a, angle: angle }
   end
 
   def rect(x, y, w, h, col, a = 255)
-    @args.outputs.sprites << { x: x, y: y, w: w, h: h, path: 'sprites/px.png',
+    @o.sprites << { x: x, y: y, w: w, h: h, path: 'sprites/px.png',
                                r: col[0], g: col[1], b: col[2], a: a }
   end
 
   def label(x, y, text, size, col, shadow = false)
     if shadow
-      @args.outputs.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
+      @o.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
     end
-    @args.outputs.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: col[0], g: col[1], b: col[2] }
+    @o.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: col[0], g: col[1], b: col[2] }
   end
 
   def shadow_label(x, y, text, size, col)
@@ -985,7 +988,7 @@ class Game
 
   def draw_background
     th = @theme
-    o = @args.outputs
+    o = @o
     sky = th[:sky]
     o.background_color = sky[0]
     if sky.size > 1
@@ -1108,7 +1111,7 @@ class Game
     end
   end
 
-  def draw_world(entities)
+  def draw_world(entities, hud = true)
     draw_background
     cam = @cam.to_i
     draw_tiles
@@ -1126,9 +1129,11 @@ class Game
       gy = tile_bottom(@goal[:r])
       spr(@theme[:tiles], gx, gy, T, T, 72, 0, 8, 16)
       spr(@theme[:tiles], gx, gy + T, T, T, 72, 0, 8, 16)
-      f = (@goal[:turn] / 5) % 3
-      spr('sprites/items.png', gx, gy + 2 * T, T, T, 64 + f * 8, 0, 8, 16)
-      label(gx + 32, gy + 3 * T + 28, 'MAIN', 2, [255, 255, 255], true)
+      unless @goal[:gone]
+        f = (@goal[:turn] / 5) % 3
+        spr('sprites/items.png', gx, gy + 2 * T, T, T, 64 + f * 8, 0, 8, 16)
+        label(gx + 32, gy + 3 * T + 28, 'MAIN', 2, [255, 255, 255], true)
+      end
     end
     @vents.each do |v|
       k = (@frame + v[:phase]) % 180
@@ -1185,7 +1190,7 @@ class Game
     @popups.each do |pp|
       label(pp[0].to_i - cam + 20, pp[1].to_i, pp[2], 3, [255, 255, 255], true)
     end
-    draw_hud
+    draw_hud if hud
   end
 
   def draw_player
@@ -1213,7 +1218,7 @@ class Game
     rect(0, PLAY_H, VW, 720 - PLAY_H, [16, 16, 16])
     rect(0, PLAY_H, VW, 4, [60, 60, 60])
     col = [236, 212, 64]
-    o = @args.outputs.labels
+    o = @o.labels
     o << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: col[0], g: col[1], b: col[2] }
     o << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     o << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: col[0], g: col[1], b: col[2] }
@@ -1225,6 +1230,7 @@ class Game
 end
 
 require 'app/boss.rb'
+require 'app/ending.rb'
 
 def tick(args)
   $game ||= Game.new(args)

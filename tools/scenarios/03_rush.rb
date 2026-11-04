@@ -48,9 +48,9 @@ Game::RUSH_LEVELS.each_with_index do |lv, i|
   s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
   g = s.iv(:goal)
   s.put(g[:c] - 3); s.step([:right], 120); s.step([], 700)
-  s.step([], 1) until s.mode == :play || s.mode == :win
+  s.step([], 1) until s.mode == :play || s.mode == :ending
 end
-check 'boss rush ends on the win screen', s.mode == :win
+check 'boss rush ends with the ending', s.mode == :ending
 
 # --- each code press chimes one step higher ---
 s = Sim.new; s.step([], 5)

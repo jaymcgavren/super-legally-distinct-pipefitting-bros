@@ -19,8 +19,8 @@ class Outs
   def initialize; @h = Hash.new { |h, k| h[k] = [] }; end
   def method_missing(n, *a) = n.to_s.end_with?('=') ? nil : @h[n]
   def respond_to_missing?(*) = true
-  def [](k) = @h[k]
-  def clear = @h.clear
+  def [](k) = (@t ||= {})[k] ||= Outs.new
+  def clear = (@h.clear; @t&.each_value(&:clear))
 end
 
 class Gtk

@@ -155,8 +155,8 @@ if s.iv(:boss)
   s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
 end
 g = s.iv(:goal)
-s.put(g[:c] - 3); s.step([:right], 120); s.step([], 700)
-check 'win screen after last level', s.mode == :win
+s.put(g[:c] - 3); s.step([:right], 120)
+check 'last level plays the ending', s.mode == :ending
 
 # --- 50 nuts = 1UP ---
 s = Sim.new.start(0)
