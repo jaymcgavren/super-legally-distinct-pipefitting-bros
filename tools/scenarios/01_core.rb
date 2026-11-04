@@ -1,3 +1,12 @@
+# spawn a lone active blob on the start segment's open floor
+def lone_blob(s, col)
+  s.iv(:enemies).clear
+  e = Actor.new(:blob, col * T + 8, s.g.tile_bottom(7), 48, 40)
+  e.active = true; e.vx = -1.0
+  s.iv(:enemies) << e
+  e
+end
+
 # --- jump feel ---
 s = Sim.new.start(0)
 s.put(4)
@@ -30,26 +39,31 @@ check 'still playing after stomp', s.mode == :play
 
 # --- touching a blob kills unpowered player ---
 s = Sim.new.start(0)
-e = s.iv(:enemies).find { |en| en.kind == :blob }
-s.p.x = e.x - 50; s.p.y = e.y; s.snap
+s.put(3); e = lone_blob(s, 8)
 e.active = true
-s.step([:right], 30)
+s.step([:right], 90)
 check 'side contact kills', s.mode == :dying
 
 # --- powered player shrinks to unpowered instead ---
 s = Sim.new.start(0)
-e = s.iv(:enemies).find { |en| en.kind == :blob }
+s.put(3); e = lone_blob(s, 8)
 s.p.powered = true
-s.p.x = e.x - 50; s.p.y = e.y; s.snap
 e.active = true
-s.step([:right], 30)
+s.step([:right], 90)
 check 'powered contact only loses power', s.mode == :play && !s.p.powered && s.p.invuln > 0
 
 # --- wrench crate -> pickup -> throw ---
 s = Sim.new.start(0)
 g = s.g
-c = 46; r = 5
-check 'W crate where expected', g.cell(c, r) == 'W'
+# a wrench crate with open air beneath it down to the floor
+c, r = nil
+g.instance_variable_get(:@cols).times do |cc|
+  rr = (0..7).find { |k| g.cell(cc, k) == 'W' }
+  next unless rr && ((rr + 1)..7).all? { |k| g.cell(cc, k) == '.' } && SOLID[g.cell(cc, 8)]
+  c, r = cc, rr
+  break
+end
+check 'found a W crate over open floor', !c.nil?
 s.put(c)
 s.p.x = c * T + 12
 s.step([:a], 30); s.step([], 40)
@@ -60,8 +74,9 @@ s.step([], 40)
 s.p.x = item.x; s.p.y = item.y; s.step([], 2) if item
 check 'wrench pickup powers up', s.p.powered
 s.step([], 30)
-e = s.iv(:enemies).find { |en| en.kind == :blob && en.x > s.p.x }
-e.active = true; e.x = s.p.x + 220; e.y = s.p.y; e.state = :walk
+s.put(c + 1)
+e = lone_blob(s, 0)
+e.x = s.p.x + 220; e.y = s.p.y
 s.p.facing = 1
 s.step([:b], 1); s.step([], 40)
 check 'thrown wrench knocks enemy', e.state == :dead
@@ -71,8 +86,8 @@ check 'wrench comes back', s.iv(:wrench).nil?
 # --- pit death and respawn ---
 s = Sim.new.start(0)
 lives = s.iv(:lives)
-s.p.x = 14 * T + 40 + 2 * 20 * T; s.p.y = 300  # pit in seg 2 cols 14-15
-s.p.x = (40 + 14) * T + 12; s.snap
+pit = (0...s.g.instance_variable_get(:@cols)).find { |c| (0..9).none? { |r| SOLID[s.g.cell(c, r)] || s.g.cell(c, r) == '-' } && (0..9).none? { |r| SOLID[s.g.cell(c + 1, r)] } }
+s.p.x = pit * T + 12; s.p.y = 300; s.snap
 s.step([], 60)
 check 'pit kills', s.mode == :dying
 s.step([], 200)
@@ -105,7 +120,8 @@ hurt = false
 check 'vent steam hurts', hurt
 
 # --- lift carries the player ---
-s = Sim.new.start(0)
+lift_lv = (0...LEVELS.size).find { |i| LEVELS[i][:rows].any? { |row| row =~ /[LH]/ } }
+s = Sim.new.start(lift_lv)
 l = s.iv(:lifts)[0]
 s.step([], 1)
 s.p.x = l.x + 40; s.p.y = l.y + l.h + 2; s.p.vy = 0

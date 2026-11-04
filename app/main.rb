@@ -158,8 +158,12 @@ class Game
     lv = LEVELS[idx]
     @lv = lv
     @theme = THEMES[lv[:theme]]
-    rows = Array.new(ROWS) { '' }
-    lv[:segs].each { |s| s.each_with_index { |row, r| rows[r] += row } }
+    if lv[:rows]
+      rows = lv[:rows]
+    else
+      rows = Array.new(ROWS) { '' }
+      lv[:segs].each { |s| s.each_with_index { |row, r| rows[r] += row } }
+    end
     @cols = rows[0].size
     @grid = rows.map { |row| a = []; row.size.times { |i| a << row[i] }; a }
     @enemies = []; @lifts = []; @vents = []; @cones = []; @items = []
@@ -186,6 +190,7 @@ class Game
         when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
         when 'K' then @cones << { c: c, r: r, lit: false }; row[c] = '.'
         when 'G' then @goal = { c: c, r: r, turn: 0 }; row[c] = '.'
+        when 'B' then @goal = { c: c + 4, r: r, turn: 0 }; row[c] = '.'  # boss: placeholder goal
         end
       end
     end
@@ -201,7 +206,7 @@ class Game
     end
     @p = Player.new(start[0] * T + 12, tile_bottom(start[1]))
     @p.powered = @powered if use_checkpoint
-    @time = SHIFT_LEN
+    @time = lv[:time] || SHIFT_LEN
     @time_acc = 0
     @warned = false
     @cam = [[@p.x - 480, 0].max, max_cam].min.to_f
