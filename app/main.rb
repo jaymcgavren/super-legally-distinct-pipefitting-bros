@@ -868,6 +868,15 @@ class Game
       boss_hit(1)
       w.data[:back] = true
     end
+    # a wrench that hits the main valve turns it: level clear
+    if @goal && @mode == :play &&
+       rect_hit?(w, @goal[:c] * T, tile_bottom(@goal[:r]), T, 3 * T)
+      @wrench = nil
+      sfx(:bump)
+      popup(@goal[:c] * T, tile_bottom(@goal[:r]) + 3 * T + 80, 'NICE SHOT')
+      start_clear
+      return
+    end
     @wrench = nil if w.t > 150
   end
 

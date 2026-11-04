@@ -111,3 +111,16 @@ v1 = bolts[0][:vy]; s.step([], 1)
 check 'bolts fall 25% slower', (bolts[0][:vy] - v1 + 0.675).abs < 0.001
 b.data[:angry] = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
 check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh[:k] == :bolt } == 5
+
+# wrench at the boss valve from the right side
+s = Sim.new.start(d_levels[0])
+ac = s.iv(:arena_c)
+s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
+s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99)
+s.put(ac + 15); s.p.powered = true
+s.step([], 1) until s.iv(:goal)
+s.step([], 10)
+s.p.facing = -1; s.step([:b], 1)
+cleared = false
+40.times { s.step([]); (cleared = true; break) if s.mode == :clear }
+check 'wrench clears the boss valve from the right', cleared

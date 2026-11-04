@@ -163,3 +163,16 @@ s = Sim.new.start(0)
 s.set(:nuts, 49); l0 = s.iv(:lives)
 s.g.send(:add_nut)
 check '50 nuts gives 1UP', s.iv(:lives) == l0 + 1 && s.iv(:nuts) == 0
+
+# --- a thrown wrench that hits the main valve clears the level ---
+s = Sim.new.start(0)
+g = s.iv(:goal)
+s.put(g[:c] - 5); s.p.powered = true; s.p.facing = 1
+s.iv(:enemies).clear
+s.step([:b], 1)
+cleared = false
+40.times { s.step([]); (cleared = true; break) if s.mode == :clear }
+check 'wrench hitting the valve clears the level', cleared && s.p.x < g[:c] * T - 3 * T
+check 'wrench is put away on valve hit', s.iv(:wrench).nil?
+s.step([], 700)
+check 'wrench clear advances to 1-B', s.iv(:level) == 1
