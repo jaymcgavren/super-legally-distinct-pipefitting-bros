@@ -83,7 +83,7 @@ def build(world, sec, seed)
     extra -= 1
   end
   { name: "JOBSITE #{world}-#{'ABCD'[sec]}", title: TITLES[world - 1][sec], theme: sec == 1 ? INDOOR_TIME[world - 1] : THEME[sec],
-    boss: (world - 1) * 4 + sec + 1, time: 400, segs: names, rows: rows }
+    boss: (world - 1) * 4 + sec + 1, time: 500, segs: names, rows: rows }
 end
 
 def write(levels)

@@ -8,7 +8,7 @@
 #   P  player start         G  main shutoff valve   F  wood floor (indoors)
 #   B  boss spawn (arena)
 LEVELS = [
-  { name: 'JOBSITE 1-A', title: 'ROOFTOP ROW', theme: :day, boss: 1, time: 400,
+  { name: 'JOBSITE 1-A', title: 'ROOFTOP ROW', theme: :day, boss: 1, time: 500,
     # roof0 roof7 roof3 night3 dusk6 night1 roof4 roof6 o_cratecap arena
     rows: [
       '........................................................................................................................................................................................................',
@@ -22,7 +22,7 @@ LEVELS = [
       '##############################################################################################################################...#######################################################################',
       '##############################################################################################################################...#######################################################################',
     ] },
-  { name: 'JOBSITE 1-B', title: 'BOILER ROOM', theme: :indoor, boss: 2, time: 400,
+  { name: 'JOBSITE 1-B', title: 'BOILER ROOM', theme: :indoor, boss: 2, time: 500,
     # boil0 i_racks boil1 boil6 i_pillars boil4 boil3 i_corridor boil5 in_arena
     rows: [
       '########################################################################################################################################################################################################',
@@ -36,7 +36,7 @@ LEVELS = [
       'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF............FFFFFFFFFFFFFFFFFFFFFFFF',
       'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF............FFFFFFFFFFFFFFFFFFFFFFFF',
     ] },
-  { name: 'JOBSITE 1-C', title: 'SUNSET STACKS', theme: :dusk, boss: 3, time: 400,
+  { name: 'JOBSITE 1-C', title: 'SUNSET STACKS', theme: :dusk, boss: 3, time: 500,
     # dusk0 o_cratecap night1 dusk1 dusk7 dusk6 roof1 roof6 dusk3 arena
     rows: [
       '........................................................................................................................................................................................................',
@@ -50,7 +50,7 @@ LEVELS = [
       '########################################################################################################################################################################################################',
       '########################################################################################################################################################################################################',
     ] },
-  { name: 'JOBSITE 1-D', title: 'RUSTY YARD', theme: :night, boss: 4, time: 400,
+  { name: 'JOBSITE 1-D', title: 'RUSTY YARD', theme: :night, boss: 4, time: 500,
     # night0 night1 dusk3 roof6 dusk7 night3 dusk1 arena
     rows: [
       '................................................................................................................................................................',
@@ -64,7 +64,7 @@ LEVELS = [
       '################################################################################################################################################################',
       '################################################################################################################################################################',
     ] },
-  { name: 'JOBSITE 2-A', title: 'WATER HAMMER', theme: :day, boss: 5, time: 400,
+  { name: 'JOBSITE 2-A', title: 'WATER HAMMER', theme: :day, boss: 5, time: 500,
     # dusk0 o_arch night3 dusk1 o_bridges dusk5 roof6 roof1 night6 arena
     rows: [
       '........................................................................................................................................................................................................',
@@ -78,7 +78,7 @@ LEVELS = [
       '###################################################################################...#####....############.........####################################################################################',
       '###################################################################################...#####....############.........####################################################################################',
     ] },
-  { name: 'JOBSITE 2-B', title: 'MECHANICAL ROOM', theme: :indoor_dusk, boss: 6, time: 400,
+  { name: 'JOBSITE 2-B', title: 'MECHANICAL ROOM', theme: :indoor_dusk, boss: 6, time: 500,
     # boil0 i_drips boil4 boil8 i_gallery boil2 i_racks boil6 i_steamstairs in_arena
     rows: [
       '########################################################################################################################################################################################################',
@@ -92,7 +92,7 @@ LEVELS = [
       'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF...FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
       'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF...FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
     ] },
-  { name: 'JOBSITE 2-C', title: 'HOT AND HUMID', theme: :dusk, boss: 7, time: 400,
+  { name: 'JOBSITE 2-C', title: 'HOT AND HUMID', theme: :dusk, boss: 7, time: 500,
     # night0 o_crabpipes roof4 o_cratecap dusk1 dusk5 roof7 night7 roof2 arena
     rows: [
       '........................................................................................................................................................................................................',
@@ -106,7 +106,7 @@ LEVELS = [
       '##############################################...##########################################################.........###########################...########...#################..########################',
       '##############################################...##########################################################.........###########################...########...#################..########################',
     ] },
-  { name: 'JOBSITE 2-D', title: 'THE FINAL VALVE', theme: :night, boss: 8, time: 400,
+  { name: 'JOBSITE 2-D', title: 'THE FINAL VALVE', theme: :night, boss: 8, time: 500,
     # roof0 o_vents night7 roof5 roof8 o_crabpipes roof3 arena
     rows: [
       '................................................................................................................................................................',
