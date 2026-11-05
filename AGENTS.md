@@ -27,7 +27,9 @@ doesn't set the theme.
   `node_modules/wasmcart/SPEC.md`, `node_modules/wasmcart/include/`.
 - Ignore the older wasmcart copy in the npx cache
   (`~/.npm/_npx/*/node_modules/wasmcart`, v0.24 / ABI v3).
-- The project is a local git repo (branch `main`) with no remote.
+- The project is a git repo with a GitHub remote, `origin`
+  (`jaymcgavren/super-legally-distinct-pipefitting-bros`). Run `git remote -v`
+  rather than assuming.
 
 ## Setup (from https://wasmcart.org/languages/ruby)
 
@@ -151,7 +153,10 @@ actually copied (`main.wasm`).
   ```sh
   tools/build-web.sh                              # packs the cart, builds build/web/
   tools/publish-web.sh "Web player: <what changed>"   # commits build/web/ onto gh-pages
+  git push origin gh-pages                        # puts it on the web (GitHub Pages)
   ```
+  `publish-web.sh` only makes a local commit. The site doesn't change until
+  `gh-pages` is pushed. Push `main` too when the user asks for it.
 - `gh-pages-old` is a backup of the branch from before 2026-11-04, when
   `gh-pages` still carried the full source. Don't use it.
 
