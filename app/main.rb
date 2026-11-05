@@ -132,10 +132,10 @@ class Game
     true
   end
 
-  def sfx(name)
+  def sfx(name, gain = 1.0)
     return if @played[name]
     @played[name] = true
-    @args.outputs.sounds << "sounds/#{name}.wav"
+    @args.outputs.sounds << { path: "sounds/#{name}.wav", gain: gain }
   end
 
   def music(name, looping = true)
@@ -611,7 +611,7 @@ class Game
   def add_nut
     @nuts += 1
     @score += 50
-    sfx(:nut)
+    sfx(:nut, 0.75)
     return if @nuts < 50
     @nuts -= 50
     one_up(@p.x, @p.y + 90)
