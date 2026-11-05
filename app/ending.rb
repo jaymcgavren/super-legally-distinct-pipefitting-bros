@@ -58,6 +58,7 @@ class Game
     move_y(p, true, false)
     p.facing = @goal[:c] * T > p.x ? 1 : -1
     update_effects
+    update_wrench
     vx = @goal[:c] * T + 32                  # valve centre, world x
     vy = tile_bottom(@goal[:r]) + 2 * T      # valve bottom, world y
 

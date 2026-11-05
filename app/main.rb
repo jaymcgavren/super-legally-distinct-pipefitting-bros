@@ -744,6 +744,7 @@ class Game
       sfx(:tick) if @mode_t % 4 == 0
     end
     update_effects
+    update_wrench
     update_camera
     draw_world(true)
     label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
@@ -873,7 +874,14 @@ class Game
     return unless w
     p = @p
     w.t += 1
-    if !w.data[:back]
+    if (b = w.data[:bounce]) && b > 0
+      # knocked back off the main valve: a short arc before it heads home
+      w.data[:bounce] = b - 1
+      w.vy -= 0.7
+      w.x += w.vx
+      w.y += w.vy
+      return
+    elsif !w.data[:back]
       w.vx -= w.facing * 0.5
       w.data[:back] = true if w.vx * w.facing <= 0
     else
@@ -901,10 +909,15 @@ class Game
       boss_hit(1)
       w.data[:back] = true
     end
-    # a wrench that hits the main valve turns it: level clear
+    # a wrench that hits the main valve turns it: level clear. It bounces
+    # off and flies back to the player while the level ends.
     if @goal && @mode == :play &&
        rect_hit?(w, @goal[:c] * T, tile_bottom(@goal[:r]), T, 3 * T)
-      @wrench = nil
+      w.vx = w.vx > 0 ? -7.0 : 7.0
+      w.vy = 7.0
+      w.data[:back] = true
+      w.data[:bounce] = 14
+      w.t = 0
       sfx(:bump)
       popup(@goal[:c] * T, tile_bottom(@goal[:r]) + 3 * T + 80, 'NICE SHOT')
       start_clear

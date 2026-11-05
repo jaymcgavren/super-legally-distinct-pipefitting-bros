@@ -197,7 +197,11 @@ s.step([:b], 1)
 cleared = false
 40.times { s.step([]); (cleared = true; break) if s.mode == :clear }
 check 'wrench hitting the valve clears the level', cleared && s.p.x < g[:c] * T - 3 * T
-check 'wrench is put away on valve hit', s.iv(:wrench).nil?
+w = s.iv(:wrench)
+check 'wrench bounces off the valve', w && w.vx < 0
+back = false
+120.times { s.step([]); (back = true; break) if s.iv(:wrench).nil? }
+check 'bounced wrench flies back to the player during the clear', back && s.mode == :clear
 s.step([], 700)
 check 'wrench clear advances to 1-B', s.iv(:level) == 1
 
