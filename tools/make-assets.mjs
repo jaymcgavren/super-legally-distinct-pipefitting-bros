@@ -123,7 +123,7 @@ const ITEM_FRAMES = [
   ['........', '..NNN...', '.NN.NN..', '.NN.NN..', '.NN.NN..', '..NNN...', '........', '........'], // 1 nut turn
   ['........', '...N....', '...N....', '...N....', '...N....', '...N....', '........', '........'], // 2 nut edge
   ['........', '..NNN...', '.NN.NN..', '.NN.NN..', '.NN.NN..', '..NNN...', '........', '........'], // 3 nut turn
-  ['.W....W.', '.WW..WW.', '..WWWW..', '...WW...', '...WW...', '...WW...', '...WW...', '...WW...'], // 4 wrench item
+  ['....HH..', '...HW...', '...W..HH', '...HWWWD', '..HWDD..', '.HWD....', 'HWD.....', 'DD......'], // 4 wrench item (diagonal open-end)
   ['..KKKK..', '.K....K.', 'LLLLLLLL', 'LLLLLLLL', 'LLAAALLL', 'LLLLLLLL', 'LLLLLLLL', '........'], // 5 lunchbox
   ['...CC...', '...CC...', '..cccc..', '..CCCC..', '.CCCCCC.', '.cccccc.', 'CCCCCCCC', 'GGGGGGGG'], // 6 cone off
   ['...ll...', '..llll..', '..cccc..', '..CCCC..', '.CCCCCC.', '.cccccc.', 'CCCCCCCC', 'GGGGGGGG'], // 7 cone lit
@@ -134,7 +134,7 @@ const ITEM_FRAMES = [
 save('items.png', strip(ITEM_FRAMES, 8, 16, {
   N: [228, 184, 48], W: [176, 180, 196], K: [80, 80, 88], L: [56, 120, 200], A: [236, 236, 236],
   C: [244, 120, 24], c: [236, 236, 236], G: [80, 80, 88], l: [255, 240, 96],
-  V: [216, 48, 48], P: [160, 160, 168],
+  V: [216, 48, 48], P: [160, 160, 168], H: [236, 236, 244], D: [104, 108, 124],
 }, true));
 // spinning wrench: 7 pre-drawn frames (no runtime rotation). An open-end
 // wrench outline is rasterized at 360/7 degree steps onto an 8x8 art grid
