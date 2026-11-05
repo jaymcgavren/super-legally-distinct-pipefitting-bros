@@ -35,7 +35,6 @@ import { CartHostWeb, BUTTON } from './vendor/wasmcart/web.js';
 
 const CART = 'pipefitting-bros.wasc';
 const SAVE_KEY = 'pipefitting-bros.sav';
-const STEP_MS = 1000 / 60;   // the game counts in 60 Hz ticks, whatever the display's refresh rate
 
 const canvas = document.getElementById('game');
 const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false });
@@ -133,19 +132,13 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) persi
 window.addEventListener('pagehide', persist);
 canvas.focus();
 
-// Fixed 60 Hz steps: a 120/144 Hz display gets no extra ticks, and a slow
-// frame is caught up (a few steps at most, so a long stall can't spiral).
-let acc = 0, last = performance.now();
-function loop(now) {
+// One cart frame per display frame. The game keeps its own 60 Hz pace from
+// the frame time the host passes it (args.gtk.delta_ms), so a 120/144 Hz
+// display doesn't speed it up.
+function loop() {
   requestAnimationFrame(loop);
-  acc += Math.min(now - last, 250); last = now;
-  let steps = 0;
-  while (acc >= STEP_MS && steps < 4) {
-    const f = host.runFrame(readPads());
-    if (f) pushAudio(f.audio);
-    acc -= STEP_MS; steps++;
-  }
-  if (steps === 4) acc = 0;
+  const f = host.runFrame(readPads());
+  if (f) pushAudio(f.audio);
 }
 let started = false;
 function start() {
@@ -153,7 +146,6 @@ function start() {
   started = true;
   document.getElementById('launch').classList.remove('show');
   held.clear(); tapped.clear();   // the press that unlocked sound isn't a game input
-  last = performance.now();
   requestAnimationFrame(loop);
 }
 if (!anode || actx.state === 'running') start();   // no audio at all, or autoplay allowed
