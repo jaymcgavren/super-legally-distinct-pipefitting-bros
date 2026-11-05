@@ -189,7 +189,9 @@ class Game
   end
 
   def update
-    @frame += 1
+    # @frame is the world clock (lifts, vents, blinking lights), so it stops
+    # during the coffee break
+    @frame += 1 unless @mode == :paused
     @mode_t += 1
     @played = {}
     read_input
@@ -474,7 +476,6 @@ class Game
   end
 
   def step_paused
-    vent_sounds
     return unless @in_start_down
     @mode = :play
     sfx(:pause)

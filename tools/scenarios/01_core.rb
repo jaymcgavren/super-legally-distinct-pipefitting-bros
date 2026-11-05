@@ -258,3 +258,15 @@ landed = (0..20).step(2).any? do |jx|
   end
 end
 check "1-A's wrench crate (row #{wc[1]}) can be landed on with a running jump", landed
+
+# --- the coffee break freezes the world clock ---
+s = Sim.new.start(1)
+s.put(s.iv(:vents)[0][:c] - 4); s.step([], 2)
+s.step([:start]); s.step([])
+f0 = s.iv(:frame); n0 = s.sounds.size
+s.step([], 400)
+check 'pause stops the world clock', s.mode == :paused && s.iv(:frame) == f0
+check 'vents stay quiet during the pause', !s.sounds[n0..].include?('sounds/steam.wav')
+s.step([:start]); s.step([])
+check 'lifts carry on smoothly after the pause', s.mode == :play &&
+  s.iv(:lifts).all? { |l| l.data[:dx].abs < 5 && l.data[:dy].abs < 5 }
