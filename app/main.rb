@@ -178,25 +178,45 @@ class Game
     load_level(@level, true)
   end
 
+  # One frame: advance the game, then draw it. update changes state and plays
+  # sounds but draws nothing; draw only draws, so it is safe to skip or repeat.
   def tick
     @o = @args.outputs
+    update
+    draw
+    @args.gtk.debug_score = @score
+    @args.gtk.debug_aux = @p ? @p.x.to_i : 0
+  end
+
+  def update
     @frame += 1
     @mode_t += 1
     @played = {}
     read_input
     case @mode
-    when :title    then tick_title
-    when :intro    then tick_intro
-    when :play     then tick_play
-    when :paused   then tick_paused
-    when :dying    then tick_dying
-    when :clear    then tick_clear
-    when :gameover then tick_end(:gameover)
-    when :win      then tick_end(:win)
-    when :ending   then tick_ending
+    when :title    then step_title
+    when :intro    then step_intro
+    when :play     then step_play
+    when :paused   then step_paused
+    when :dying    then step_dying
+    when :clear    then step_clear
+    when :gameover, :win then step_end
+    when :ending   then step_ending
     end
-    @args.gtk.debug_score = @score
-    @args.gtk.debug_aux = @p ? @p.x.to_i : 0
+  end
+
+  def draw
+    case @mode
+    when :title    then draw_title
+    when :intro    then draw_intro
+    when :play     then draw_play
+    when :paused   then draw_paused
+    when :dying    then draw_world(true)
+    when :clear    then draw_clear
+    when :gameover then draw_end(:gameover)
+    when :win      then draw_end(:win)
+    when :ending   then draw_ending
+    end
   end
 
   # ── level loading ─────────────────────────────────────────────────
@@ -364,12 +384,23 @@ class Game
   end
 
   # ── title ─────────────────────────────────────────────────────────
-  def tick_title
+  def step_title
     @cam = (@mode_t * 1.5) % max_cam
     if @in_left_down || @in_right_down
       @bro = 1 - @bro
       sfx(:tick)
     end
+    if !@rush_armed && feed_code
+      @rush_armed = true
+      sfx(:oneup)
+    end
+    if @in_start_down || @in_a_down
+      sfx(:checkpoint)
+      new_game(@rush_armed)
+    end
+  end
+
+  def draw_title
     draw_world(false)
     rect(0, 0, VW, 720, [0, 0, 0], 120)
     shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, [252, 240, 160])
@@ -388,18 +419,17 @@ class Game
     shadow_label(640, 366, 'BOSS RUSH', 4, [232, 72, 64]) if @rush_armed
     shadow_label(640, 70, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
     shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
-    if !@rush_armed && feed_code
-      @rush_armed = true
-      sfx(:oneup)
-    end
-    if @in_start_down || @in_a_down
-      sfx(:checkpoint)
-      new_game(@rush_armed)
-    end
   end
 
   # ── intro card ────────────────────────────────────────────────────
-  def tick_intro
+  def step_intro
+    return unless @mode_t > 150
+    @mode = :play
+    @mode_t = 0
+    music(:theme)
+  end
+
+  def draw_intro
     @args.outputs.background_color = [0, 0, 0]
     draw_hud
     label(640, 440, @lv[:name], 6, [252, 240, 160])
@@ -407,20 +437,16 @@ class Game
     label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, [232, 72, 64]) if @rush
     spr(BROS[@bro][:path], 560, 210, 64, 80, 0, 0, 8, 20)
     label(680, 270, "x #{@lives}", 5, [255, 255, 255])
-    return unless @mode_t > 150
-    @mode = :play
-    @mode_t = 0
-    music(:theme)
   end
 
   # ── gameplay ──────────────────────────────────────────────────────
-  def tick_play
+  def step_play
     if @in_start_down
       @mode = :paused
       sfx(:pause)
       m = @args.audio[:music]
       m[:paused] = true if m
-      draw_world(true)
+      vent_sounds
       return
     end
     update_timer
@@ -432,22 +458,35 @@ class Game
     update_items
     update_effects
     update_camera
-    sh = @shake > 0 ? ((@frame % 4) < 2 ? 6 : -6) : 0
+    vent_sounds(shake_x)
+  end
+
+  # screen shake while @shake runs: the world jumps 6 px left and right
+  def shake_x
+    @shake > 0 ? ((@frame % 4) < 2 ? 6 : -6) : 0
+  end
+
+  def draw_play
+    sh = shake_x
     @cam += sh
     draw_world(true)
     @cam -= sh
   end
 
-  def tick_paused
-    draw_world(true)
-    rect(0, 0, VW, PLAY_H, [0, 0, 0], 140)
-    label(640, 380, 'COFFEE BREAK', 7, [252, 240, 160])
-    label(640, 300, 'PRESS START', 3, [255, 255, 255])
+  def step_paused
+    vent_sounds
     return unless @in_start_down
     @mode = :play
     sfx(:pause)
     m = @args.audio[:music]
     m[:paused] = false if m
+  end
+
+  def draw_paused
+    draw_world(true)
+    rect(0, 0, VW, PLAY_H, [0, 0, 0], 140)
+    label(640, 380, 'COFFEE BREAK', 7, [252, 240, 160])
+    label(640, 300, 'PRESS START', 3, [255, 255, 255])
   end
 
   def update_timer
@@ -701,7 +740,7 @@ class Game
     music(:death, false)
   end
 
-  def tick_dying
+  def step_dying
     p = @p
     if @mode_t > 30
       p.vy = 15.0 if @mode_t == 31
@@ -709,7 +748,7 @@ class Game
       p.y += p.vy
     end
     update_effects
-    draw_world(true)
+    vent_sounds
     return if @mode_t < 190
     @lives -= 1
     if @lives <= 0
@@ -730,7 +769,7 @@ class Game
     music(:clear, false)
   end
 
-  def tick_clear
+  def step_clear
     p = @p
     p.vy -= GRAV_FALL
     p.vx = 0.0
@@ -746,9 +785,7 @@ class Game
     update_effects
     update_wrench
     update_camera
-    draw_world(true)
-    label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
-    label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_t > 110
+    vent_sounds
     return unless @time <= 0 && @mode_t > 300
     @level += 1
     @checkpoint = nil
@@ -762,7 +799,17 @@ class Game
     end
   end
 
-  def tick_end(kind)
+  def draw_clear
+    draw_world(true)
+    label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
+    label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_t > 110
+  end
+
+  def step_end
+    to_title if @mode_t > 120 && (@in_start_down || @in_a_down)
+  end
+
+  def draw_end(kind)
     @args.outputs.background_color = [0, 0, 0]
     draw_hud
     if kind == :gameover
@@ -775,7 +822,6 @@ class Game
     end
     label(640, 260, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
     label(640, 160, 'PRESS START', 3, [255, 255, 255]) if @mode_t > 120 && (@mode_t / 30) % 2 == 0
-    to_title if @mode_t > 120 && (@in_start_down || @in_a_down)
   end
 
   def save_hiscore
@@ -1186,6 +1232,17 @@ class Game
     end
   end
 
+  # A vent on screen hisses as its plume shoots up. dx is the screen-shake
+  # offset the world is drawn with this frame.
+  def vent_sounds(dx = 0)
+    cam = @cam.to_i + dx
+    @vents.each do |v|
+      next unless (@frame + v[:phase]) % 180 == 130 && v[:h] > 0
+      x = v[:c] * T - cam
+      sfx(:steam) unless x < -T || x > VW
+    end
+  end
+
   def draw_world(entities, hud = true)
     draw_background
     cam = @cam.to_i
@@ -1224,7 +1281,6 @@ class Game
           w = 24 + (i * 3) % 16
           rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, [236, 236, 236], 200 - i * 6)
         end
-        sfx(:steam) if k == 130 && entities
       end
     end
     return unless entities

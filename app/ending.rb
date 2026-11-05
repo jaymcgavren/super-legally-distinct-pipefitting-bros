@@ -50,7 +50,7 @@ class Game
     @end_stars ||= Array.new(70) { |i| [(i * 389 + 41) % VW, (i * 157 + 23) % 760, i % 3] }
   end
 
-  def tick_ending
+  def step_ending
     t = @mode_t
     p = @p
     p.vy -= GRAV_FALL
@@ -133,10 +133,21 @@ class Game
       @fw.reject! { |f| f[:t] > 72 }
     end
 
-    draw_ending
+    # the level's vents still hiss while it is on screen
+    if t < END_BURST
+      vent_sounds(end_shake_x)
+    elsif @lift.to_i < 720
+      vent_sounds
+    end
+    sfx(:hurt) if t == RUSTY_FALL + 6
     if t > END_PROMPT && (@in_start_down || @in_a_down)
       to_title
     end
+  end
+
+  def end_shake_x
+    amp = @end_shake
+    amp > 0 ? ((@frame % 4) < 2 ? amp : -amp).to_i : 0
   end
 
   def end_rand(n)
@@ -153,7 +164,7 @@ class Game
   def draw_ending
     t = @mode_t
     amp = @end_shake
-    shx = amp > 0 ? ((@frame % 4) < 2 ? amp : -amp).to_i : 0
+    shx = end_shake_x
     shy = amp > 0 ? ((@frame % 6) < 3 ? amp : -amp).to_i / 2 : 0
     lift = @lift.to_i
     if t < END_BURST
@@ -198,7 +209,6 @@ class Game
     @fw.each { |f| draw_firework(f) }
     if t >= RUSTY_FALL
       ry = 760 - (t - RUSTY_FALL) * RUSTY_FALL_V
-      sfx(:hurt) if t == RUSTY_FALL + 6
       if ry > -140
         # dazed face, flipped upside-down, wobbling as he drops
         spr('sprites/rusty.png', 576 + ((t / 3) % 2) * 8 - 4, ry, 128, 112, 32, 0, 8, 28,
