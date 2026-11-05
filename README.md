@@ -2,6 +2,8 @@
 
 ![Title screen](docs/title.png)
 
+Play now in your desktop browser! <https://jay.mcgavren.com/super-legally-distinct-pipefitting-bros/>
+
 Definitely not a clone of a more popular 8-bit platformer. Pick your favorite
 Pipefitting Brother, Dez or Ozzie, and run and jump your way to the main shutoff
 valve before your shift runs out. Along the way, collect brass nuts and smash
