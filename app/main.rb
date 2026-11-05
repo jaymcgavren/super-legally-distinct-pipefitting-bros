@@ -1021,15 +1021,18 @@ class Game
     o = @o
     sky = th[:sky]
     o.background_color = sky[0]
+    # outdoors the sky runs to the bottom of the screen, so pits show sky;
+    # indoors the bottom 128 px stay a black alley (see the end)
+    floor = th[:indoor] ? 128 : 0
     if sky.size > 1
       band = 72
       sky.each_with_index do |col, i|
         top = PLAY_H - i * band
-        bottom = i == sky.size - 1 ? 128 : top - band
+        bottom = i == sky.size - 1 ? floor : top - band
         o.solids << [0, bottom, VW, top - bottom, col[0], col[1], col[2]]
       end
     else
-      o.solids << [0, 128, VW, PLAY_H - 128, sky[0][0], sky[0][1], sky[0][2]]
+      o.solids << [0, floor, VW, PLAY_H - floor, sky[0][0], sky[0][1], sky[0][2]]
     end
     if th[:stars]
       40.times do |i|
@@ -1078,8 +1081,8 @@ class Game
         o.solids << [x, 128, w, 12, bd[0], bd[1], bd[2]]
       end
     end
-    # the alley between buildings
-    o.solids << [0, 0, VW, 128, 0, 0, 0]
+    # indoors, the dark below the floor
+    o.solids << [0, 0, VW, 128, 0, 0, 0] if th[:indoor]
   end
 
   # Indoors: a brick back wall over the sky, with occasional windows (holes
