@@ -11,7 +11,7 @@ require_relative 'segments'
 WORLDS = 2
 TITLES = [
   ['ROOFTOP ROW', 'BOILER ROOM', 'SUNSET STACKS', 'RUSTY YARD'],
-  ['WATER TOWER WAY', 'MECHANICAL ROOM', 'HOT AND HUMID', 'THE FINAL VALVE'],
+  ['WATER HAMMER', 'MECHANICAL ROOM', 'HOT AND HUMID', 'THE FINAL VALVE'],
 ]
 THEME = %i[day indoor dusk night]
 # the time of day seen through the windows of each jobsite's B building
