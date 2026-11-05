@@ -10,12 +10,12 @@ check 'partial code does not arm boss rush', !s.iv(:rush_armed) && s.mode == :ti
 enter_code(s, [:right])
 check 'full code arms boss rush on the title', s.iv(:rush_armed) && s.mode == :title
 s.step([:a], 1); s.step([], 2)
-check 'A then starts boss rush', s.iv(:rush) && s.iv(:level) == 3 && s.mode == :intro
+check 'A then starts boss rush', s.iv(:rush) && s.iv(:level) == 0 && s.mode == :intro
 check 'boss rush gives 5 lives', s.iv(:lives) == 5
 
 s = Sim.new; s.step([], 5)
 enter_code(s, Game::RUSH_CODE); s.step([:start], 1); s.step([], 2)
-check 'Start also starts boss rush', s.iv(:rush) && s.iv(:level) == 3
+check 'Start also starts boss rush', s.iv(:rush) && s.iv(:level) == 0
 
 s = Sim.new; s.step([], 5)
 enter_code(s, %i[up up up down down left right left right])
@@ -33,7 +33,7 @@ check 'back on title, boss rush is disarmed', s.mode == :title && !s.iv(:rush_ar
 s = Sim.new; s.step([], 5); enter_code(s); s.step([:start], 1)
 s.step([], 1) until s.mode == :play
 ok = true
-Game::RUSH_LEVELS.each_with_index do |lv, i|
+(0...LEVELS.size).each_with_index do |lv, i|
   ok &&= s.iv(:level) == lv && s.p.powered && s.iv(:boss) && s.p.x > s.iv(:arena_c) * T
   check "rush #{i + 1}: in arena #{lv} with wrench", ok
   break unless ok

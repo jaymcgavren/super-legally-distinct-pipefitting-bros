@@ -4,7 +4,7 @@
 #   seg(name, kind, difficulty, *rows)
 #   kind: :out_start :out :out_goal   (outdoor rooftops)
 #         :in_start  :in  :in_goal    (inside a building; row 0 is ceiling)
-#         :arena                      (boss arena, last segment of a D level)
+#         :arena  :in_arena           (boss arena, last segment of every level)
 #   difficulty: 1 easy .. 3 hard
 SEGMENTS = {}
 def seg(name, kind, diff, *rows)
@@ -701,7 +701,7 @@ seg(:i_liftpit, :in, 3,
     "FFFF............FFFF",
     "FFFF............FFFF")
 
-# ── boss arena (end of every D level) ───────────────────────────────
+# ── boss arenas (end of every level; in_arena for the B buildings) ──
 seg(:arena, :arena, 1,
     "....................",
     "....................",
@@ -713,6 +713,17 @@ seg(:arena, :arena, 1,
     "...........B........",
     "####################",
     "####################")
+seg(:in_arena, :in_arena, 1,
+    "####################",
+    "....................",
+    "....................",
+    "....................",
+    "....................",
+    "...===........===...",
+    "....................",
+    "...........B........",
+    "FFFFFFFFFFFFFFFFFFFF",
+    "FFFFFFFFFFFFFFFFFFFF")
 
 # difficulty for the segments carried over from the original jobsites
 { roof5: 2, roof8: 2, dusk2: 2, dusk4: 2, dusk5: 2, dusk8: 3,

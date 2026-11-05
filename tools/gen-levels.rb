@@ -1,24 +1,21 @@
-# Builds app/levels.rb: 8 jobsites x sections A-D from tools/segments.rb.
-#   A  rooftops by day      B  inside a building (day, sunset or night outside)
-#   C  rooftops at sunset   D  rooftops at night, boss arena at the end
-# Later jobsites draw harder segments, mirror some, and add enemies. Every
-# level is checked with tools/reach.rb; a level that fails is rerolled.
+# Builds app/levels.rb: 2 jobsites x sections A-D from tools/segments.rb.
+#   A  rooftops by day      B  inside a building (day, then sunset outside)
+#   C  rooftops at sunset   D  rooftops at night
+# Every level ends in a boss arena (indoors for B), and Big Rusty learns one
+# more move each level: 1-A is boss 1, 2-D is boss 8. Later jobsites draw
+# harder segments, mirror some, and add enemies. Every level is checked with
+# tools/reach.rb; a level that fails is rerolled.
 #   ruby tools/gen-levels.rb            (all)    ruby tools/gen-levels.rb 5 6
 require_relative 'segments'
 
+WORLDS = 2
 TITLES = [
   ['ROOFTOP ROW', 'BOILER ROOM', 'SUNSET STACKS', 'RUSTY YARD'],
-  ['WATER TOWER WAY', 'MECHANICAL ROOM', 'HOT AND HUMID', 'BACKFLOW'],
-  ['GUTTER RUN', 'THE BASEMENT', 'DOWNSPOUT DRIVE', 'PRESSURE TEST'],
-  ['VENT STACK ALLEY', 'PUMP HOUSE', 'COPPER COUNTRY', 'WATER HAMMER'],
-  ['CRANE ROW', 'CRAWLSPACE', 'SOLDER SUNSET', 'BURST MAIN'],
-  ['HIGH RISE', 'UTILITY CLOSET', 'TOWER TOP', 'DEAD END'],
-  ['STORM DRAIN STREET', 'STEAM PLANT', 'FLOOD WATCH', 'OVERFLOW'],
-  ['LAST CALL', 'THE OLD MILL', 'CITY MAINS', 'THE FINAL VALVE'],
+  ['WATER TOWER WAY', 'MECHANICAL ROOM', 'HOT AND HUMID', 'THE FINAL VALVE'],
 ]
 THEME = %i[day indoor dusk night]
 # the time of day seen through the windows of each jobsite's B building
-INDOOR_TIME = %i[indoor indoor_dusk indoor_night indoor indoor_dusk indoor_night indoor_dusk indoor_night]
+INDOOR_TIME = %i[indoor indoor_dusk]
 OUT = File.expand_path('../app/levels.rb', __dir__)
 
 def pool(kind, world)
@@ -40,13 +37,16 @@ end
 def build(world, sec, seed)
   rng = Random.new(seed)
   indoor = sec == 1
-  boss = sec == 3
+  boss = true
   pre = indoor ? :in : :out
-  n_mid = boss ? 6 : 8
+  # A-C keep the length (and the random draws) they had before every level got
+  # a boss, so their layouts are unchanged up to the arena
+  n_mid = sec == 3 ? 6 : 8
   starts = SEGMENTS.select { |_, s| s[:kind] == :"#{pre}_start" }.keys
   goals = SEGMENTS.select { |_, s| s[:kind] == :"#{pre}_goal" }.keys
-  names = [starts.sample(random: rng)] + pick(rng, pre, world, n_mid) +
-          [boss ? :arena : goals.sample(random: rng)]
+  names = [starts.sample(random: rng)] + pick(rng, pre, world, n_mid)
+  goals.sample(random: rng) if sec != 3
+  names << (indoor ? :in_arena : :arena)
   segs = names.each_with_index.map do |nm, i|
     rows = SEGMENTS[nm][:rows].map(&:dup)
     mid = i > 0 && i < names.size - 1
@@ -83,7 +83,7 @@ def build(world, sec, seed)
     extra -= 1
   end
   { name: "JOBSITE #{world}-#{'ABCD'[sec]}", title: TITLES[world - 1][sec], theme: sec == 1 ? INDOOR_TIME[world - 1] : THEME[sec],
-    boss: boss ? world : nil, time: boss ? 400 : 300, segs: names, rows: rows }
+    boss: (world - 1) * 4 + sec + 1, time: 400, segs: names, rows: rows }
 end
 
 def write(levels)
@@ -115,7 +115,7 @@ if __FILE__ == $0
   only = ARGV.map(&:to_i)
   seeds = {}
   levels = []
-  8.times do |w|
+  WORLDS.times do |w|
     4.times do |sec|
       idx = w * 4 + sec
       seeds[idx] = 1000 + idx * 17

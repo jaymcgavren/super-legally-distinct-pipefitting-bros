@@ -110,7 +110,6 @@ class Game
   # Up Up Down Down Left Right Left Right on the title screen locks in
   # Boss Rush; the next game started is a Boss Rush run.
   RUSH_CODE = %i[up up down down left right left right]
-  RUSH_LEVELS = [3, 7, 11, 15, 19, 23, 27, 31]
 
   # nut chime climbing a major scale, one step per correct code press
   CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12]
@@ -162,7 +161,7 @@ class Game
   def new_game(rush = false)
     @rush = rush
     @score = 0; @nuts = 0; @lives = rush ? 5 : 3
-    @level = rush ? RUSH_LEVELS[0] : 0
+    @level = 0
     @checkpoint = nil
     @powered = rush
     to_intro
@@ -401,7 +400,7 @@ class Game
     draw_hud
     label(640, 440, @lv[:name], 6, [252, 240, 160])
     label(640, 370, @lv[:title], 4, [244, 120, 24])
-    label(640, 560, "BOSS RUSH #{@level / 4 + 1} OF 8", 4, [232, 72, 64]) if @rush
+    label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, [232, 72, 64]) if @rush
     spr(BROS[@bro][:path], 560, 210, 64, 80, 0, 0, 8, 20)
     label(680, 270, "x #{@lives}", 5, [255, 255, 255])
     return unless @mode_t > 150
@@ -746,7 +745,7 @@ class Game
     label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
     label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_t > 110
     return unless @time <= 0 && @mode_t > 300
-    @level += @rush ? 4 : 1
+    @level += 1
     @checkpoint = nil
     if @level >= LEVELS.size
       @mode = :win

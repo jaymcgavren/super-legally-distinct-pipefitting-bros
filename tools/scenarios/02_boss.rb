@@ -1,4 +1,4 @@
-# --- Big Rusty: each D level has the boss, with one more move each time ---
+# --- Big Rusty: every level has the boss, with one more move each time ---
 d_levels = (0...LEVELS.size).select { |i| LEVELS[i][:boss] }
 check 'eight boss levels', d_levels.size == 8
 d_levels.each_with_index do |li, n|

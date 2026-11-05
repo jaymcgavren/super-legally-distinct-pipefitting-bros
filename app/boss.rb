@@ -1,4 +1,4 @@
-# BIG RUSTY -- the boss at the end of every D jobsite. Same boss each time;
+# BIG RUSTY -- the boss at the end of every level. Same boss each time;
 # encounter n knows every move from encounters 1..n, and move n is new.
 BOSS_MOVES = [
   [:hop,    'HOP'],

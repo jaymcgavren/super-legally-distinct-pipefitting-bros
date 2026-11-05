@@ -130,8 +130,16 @@ x0 = s.p.x
 s.step([], 60)
 check 'player rides lift', s.p.riding.equal?(l) || (s.p.x - x0).abs > 20
 
-# --- goal -> clear -> next level ---
+# --- every level ends with the boss; the valve only appears once he is beaten ---
+check 'every level has a boss', LEVELS.all? { |l| l[:boss] }
+check 'eight levels, 1-A to 2-D', LEVELS.map { |l| l[:name][-3..] } == %w[1-A 1-B 1-C 1-D 2-A 2-B 2-C 2-D]
+check 'only 1-B (day) and 2-B (sunset) are indoors',
+      LEVELS.map { |l| l[:theme] } == %i[day indoor dusk night day indoor_dusk dusk night]
 s = Sim.new.start(0)
+check 'no valve until the boss is beaten', s.iv(:goal).nil?
+
+# --- goal -> clear -> next level ---
+s = Sim.new.start(0).beat_boss
 g = s.iv(:goal)
 s.put(g[:c] - 3)
 s.step([:right], 120)
@@ -148,12 +156,7 @@ s.step([], 130); s.step([:start])
 check 'back to title', s.mode == :title
 
 # --- win after last level ---
-s = Sim.new.start(LEVELS.size - 1)
-if s.iv(:boss)
-  s.put(s.iv(:arena_c) + 3); s.step([], 2)
-  s.step([], 1) while s.iv(:warning) > 0
-  s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
-end
+s = Sim.new.start(LEVELS.size - 1).beat_boss
 g = s.iv(:goal)
 s.put(g[:c] - 3); s.step([:right], 120)
 check 'last level plays the ending', s.mode == :ending
@@ -165,7 +168,7 @@ s.g.send(:add_nut)
 check '50 nuts gives 1UP', s.iv(:lives) == l0 + 1 && s.iv(:nuts) == 0
 
 # --- a thrown wrench that hits the main valve clears the level ---
-s = Sim.new.start(0)
+s = Sim.new.start(0).beat_boss
 g = s.iv(:goal)
 s.put(g[:c] - 5); s.p.powered = true; s.p.facing = 1
 s.iv(:enemies).clear
@@ -197,9 +200,16 @@ s.step([:right, :b, :a], 1)
 60.times { s.step([:right, :b, :a]); peak = [peak, s.p.y].max; break if s.p.vy < 0 }
 check "running jump from the 1-B pit lift's highest point peaks below the ceiling (#{peak.to_i} + #{PLAYER_H} < #{ceil_bottom})",
       peak + PLAYER_H < ceil_bottom && peak > top + Game::JUMP_RISE * 0.9
-# lifts elsewhere keep the full swing: a lift over floor indoors, and outdoor lifts
-s = Sim.new.start(lv_of['JOBSITE 4-B'])
-check '4-B lift over the floor keeps its full swing',
-      s.iv(:lifts).any? { |lf| (lf.data[:bx] / T).to_i == 106 && lf.data[:amp] == 2 * T }
-s = Sim.new.start(lv_of['JOBSITE 3-A'])
-check 'outdoor lifts keep their full swing', s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * T }
+# lifts elsewhere keep the full swing: a lift over floor indoors (no level has
+# one, so try it in a copy of 1-B), and outdoor lifts
+rows = LEVELS[lv_of['JOBSITE 1-B']][:rows].map(&:dup)
+fc = (20...150).find { |c| (1..7).all? { |r| rows[r][c, 2] == '..' } && rows[8][c, 2] == 'FF' }
+rows[6][fc] = 'L'
+LEVELS << LEVELS[lv_of['JOBSITE 1-B']].merge(rows: rows)
+s = Sim.new.start(LEVELS.size - 1)
+LEVELS.pop
+check 'indoor lift over the floor keeps its full swing',
+      s.iv(:lifts).any? { |lf| (lf.data[:bx] / T).to_i == fc && lf.data[:amp] == 2 * T }
+out = LEVELS.index { |l| !THEMES[l[:theme]][:indoor] && l[:rows].any? { |r| r =~ /[LH]/ } }
+s = Sim.new.start(out)
+check 'outdoor lifts keep their full swing', !s.iv(:lifts).empty? && s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * T }

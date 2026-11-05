@@ -86,6 +86,14 @@ class Sim
     self
   end
 
+  # walk into the arena, skip the warning, knock Rusty out, wait for the valve
+  def beat_boss
+    put(iv(:arena_c) + 3); step([], 2)
+    step([], 1) while iv(:warning) > 0
+    iv(:boss).data[:inv] = 0; @g.send(:boss_hit, 99); step([], 130)
+    self
+  end
+
   # teleport player to tile column (standing on the ground row 8)
   def put(col, row = 7)
     p.x = col * T + 12.0; p.y = @g.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
