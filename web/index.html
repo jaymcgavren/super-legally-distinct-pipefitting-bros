@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Super Legally Distinct Pipefitting Brothers</title>
+<link rel="icon" href="data:,">
+<script>
+  // audio needs a secure page (AudioWorklet), so move plain-http visitors to https
+  if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) location.replace('https:' + location.href.slice(5));
+</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  /* the 16:9 game, as large as the window allows, letterboxed in black */
+  canvas { position: fixed; inset: 0; margin: auto; display: block; outline: none;
+    width: min(100vw, 177.7778vh); height: min(56.25vw, 100vh);
+    image-rendering: pixelated; touch-action: none; }
+  /* shown once the cart has loaded, until a key press lets the browser play sound */
+  #launch { position: fixed; left: 0; right: 0; top: 62%; text-align: center; display: none;
+    color: #fff; font: bold clamp(16px, 2.6vw, 30px)/1.2 ui-monospace, Menlo, Consolas, monospace;
+    letter-spacing: .12em; pointer-events: none; animation: blink 1s steps(2, start) infinite; }
+  #launch.show { display: block; }
+  @keyframes blink { to { visibility: hidden; } }
+</style>
+<!-- wasmcart/web imports fflate by bare specifier (wasmcart README, "Browser note") -->
+<script type="importmap">
+{ "imports": { "fflate": "./vendor/fflate/browser.js" } }
+</script>
+</head>
+<body>
+<canvas id="game" width="1280" height="720" tabindex="0"></canvas>
+<div id="launch">PRESS ANY KEY TO LAUNCH</div>
+<script type="module">
+import { CartHostWeb, BUTTON } from './vendor/wasmcart/web.js';
+
+const CART = 'pipefitting-bros.wasc';
+const SAVE_KEY = 'pipefitting-bros.sav';
+const STEP_MS = 1000 / 60;   // the game counts in 60 Hz ticks, whatever the display's refresh rate
+
+const canvas = document.getElementById('game');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false });
+
+// ---- audio: the cart's stereo float samples, queued into an AudioWorklet ----
+const WORKLET = `class Out extends AudioWorkletProcessor {
+  constructor() { super(); this.cap = sampleRate * 2 | 0; this.b = new Float32Array(this.cap * 2); this.r = 0; this.w = 0; this.n = 0;
+    this.port.onmessage = (e) => { const d = e.data;
+      for (let i = 0; i < d.length; i += 2) { if (this.n >= this.cap) { this.r = (this.r + 1) % this.cap; this.n--; }
+        this.b[this.w * 2] = d[i]; this.b[this.w * 2 + 1] = d[i + 1]; this.w = (this.w + 1) % this.cap; this.n++; }
+      const lim = sampleRate * 0.12 | 0; while (this.n > lim) { this.r = (this.r + 1) % this.cap; this.n--; } }; }
+  process(_, out) { const L = out[0][0], R = out[0][1] || L;
+    for (let i = 0; i < L.length; i++) { if (this.n > 0) { L[i] = this.b[this.r * 2]; R[i] = this.b[this.r * 2 + 1]; this.r = (this.r + 1) % this.cap; this.n--; } else L[i] = R[i] = 0; }
+    return true; } }
+registerProcessor('cart-out', Out);`;
+let actx = null, anode = null;
+async function initAudio() {
+  try {
+    actx = new AudioContext({ latencyHint: 'interactive' });
+    await actx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+    anode = new AudioWorkletNode(actx, 'cart-out', { outputChannelCount: [2] });
+    anode.connect(actx.destination);
+  } catch (e) { console.warn('no audio:', e); anode = null; }
+}
+function pushAudio(a) {
+  if (!a || !anode || actx.state !== 'running') return;
+  const f = new Float32Array(a.length);
+  if (a instanceof Int16Array) for (let i = 0; i < a.length; i++) f[i] = a[i] / 32768; else f.set(a);
+  anode.port.postMessage(f, [f.buffer]);
+}
+// Browsers keep audio off until the player clicks, taps or presses a key
+// (gamepad buttons don't count), so the game doesn't start until then.
+const unlock = () => { if (actx && actx.state !== 'running') actx.resume().catch(() => {}); };
+for (const ev of ['keydown', 'pointerdown', 'touchstart']) window.addEventListener(ev, unlock, { capture: true, passive: true });
+
+// ---- input: keyboard and gamepads both play pad 1 (same keys as `npx wasmcart`) ----
+const KEYS = {
+  ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
+  KeyW: 'UP', KeyS: 'DOWN', KeyA: 'LEFT', KeyD: 'RIGHT',
+  KeyX: 'A', Space: 'A', KeyZ: 'B', Enter: 'START', NumpadEnter: 'START', Tab: 'SELECT',
+  BracketLeft: 'L', BracketRight: 'R',
+};
+const held = new Set();
+const tapped = new Set();   // pressed since the last tick, so a quick tap is never missed
+window.addEventListener('keydown', (e) => {
+  const b = KEYS[e.code]; if (!b || e.metaKey || e.ctrlKey || e.altKey) return;
+  e.preventDefault(); held.add(b); tapped.add(b);
+});
+window.addEventListener('keyup', (e) => { const b = KEYS[e.code]; if (b) held.delete(b); });
+window.addEventListener('blur', () => held.clear());
+canvas.addEventListener('pointerdown', () => canvas.focus());
+
+// W3C standard gamepad mapping, button index -> wasmcart button
+const PAD_BTNS = ['A', 'B', 'X', 'Y', 'L', 'R', null, null, 'SELECT', 'START', 'L3', 'R3', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'GUIDE'];
+const i16 = (v) => Math.round(Math.max(-1, Math.min(1, v || 0)) * 32767);
+function readPads() {
+  let buttons = 0, lx = 0, ly = 0, lt = 0, rt = 0;
+  for (const b of held) buttons |= BUTTON[b];
+  for (const b of tapped) buttons |= BUTTON[b];
+  tapped.clear();
+  let gps = []; try { gps = navigator.getGamepads ? navigator.getGamepads() : []; } catch {}
+  for (const gp of gps) {
+    if (!gp || !gp.connected) continue;
+    gp.buttons.forEach((b, i) => { if (b.pressed && PAD_BTNS[i]) buttons |= BUTTON[PAD_BTNS[i]]; });
+    if (Math.abs(gp.axes[0] || 0) > Math.abs(lx)) lx = gp.axes[0];
+    if (Math.abs(gp.axes[1] || 0) > Math.abs(ly)) ly = gp.axes[1];
+    lt = Math.max(lt, gp.buttons[6]?.value || 0); rt = Math.max(rt, gp.buttons[7]?.value || 0);
+  }
+  return [{ connected: true, buttons, leftX: i16(lx), leftY: i16(ly), rightX: 0, rightY: 0,
+    leftTrigger: i16(lt), rightTrigger: i16(rt) }];
+}
+
+// ---- save data (high score) in localStorage ----
+function loadSave() {
+  try { const s = localStorage.getItem(SAVE_KEY); if (s) return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); } catch {}
+  return undefined;
+}
+let lastSave = '';
+function persist() {
+  try {
+    const b = host.getSaveData(); if (!b || !b.length) return;
+    let s = ''; for (const x of b) s += String.fromCharCode(x);
+    s = btoa(s); if (s !== lastSave) { localStorage.setItem(SAVE_KEY, s); lastSave = s; }
+  } catch {}
+}
+
+// ---- run ----
+await initAudio();
+const host = new CartHostWeb();
+await host.load(CART, { glBackend: gl, saveData: loadSave(), audioSampleRate: actx ? actx.sampleRate : 48000,
+  preferredWidth: 1280, preferredHeight: 720 });
+try { host.autoWireLifecycle(window); } catch {}
+setInterval(persist, 5000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+window.addEventListener('pagehide', persist);
+canvas.focus();
+
+// Fixed 60 Hz steps: a 120/144 Hz display gets no extra ticks, and a slow
+// frame is caught up (a few steps at most, so a long stall can't spiral).
+let acc = 0, last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  acc += Math.min(now - last, 250); last = now;
+  let steps = 0;
+  while (acc >= STEP_MS && steps < 4) {
+    const f = host.runFrame(readPads());
+    if (f) pushAudio(f.audio);
+    acc -= STEP_MS; steps++;
+  }
+  if (steps === 4) acc = 0;
+}
+let started = false;
+function start() {
+  if (started) return;
+  started = true;
+  document.getElementById('launch').classList.remove('show');
+  held.clear(); tapped.clear();   // the press that unlocked sound isn't a game input
+  last = performance.now();
+  requestAnimationFrame(loop);
+}
+if (!anode || actx.state === 'running') start();   // no audio at all, or autoplay allowed
+else {
+  document.getElementById('launch').classList.add('show');
+  actx.addEventListener('statechange', () => { if (actx.state === 'running') start(); });
+  // try a gamepad press too, in case a browser does count it as a gesture
+  (function waitPad() {
+    if (started) return;
+    let gps = []; try { gps = navigator.getGamepads ? navigator.getGamepads() : []; } catch {}
+    if (gps.some((gp) => gp && gp.buttons.some((b) => b.pressed))) unlock();
+    requestAnimationFrame(waitPad);
+  })();
+}
+</script>
+</body>
+</html>

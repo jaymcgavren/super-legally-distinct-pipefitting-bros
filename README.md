@@ -43,7 +43,8 @@ app/levels.rb      level maps (ASCII; the legend is at the top of the file)
 app/sprites/       generated PNGs
 app/sounds/        generated WAVs
 main.wasm          prebuilt wasmcart-mruby runtime (vendored)
-tools/             asset generator and test harness
+web/index.html     the web player page (GitHub Pages)
+tools/             asset generator, test harness, web build
 ```
 
 ## Tools
@@ -61,6 +62,12 @@ test gameplay without opening a window.
   reach.
 - `ruby tools/bot.rb` sends a simple bot through each level and reports where
   it gets stuck or dies.
+- `tools/build-web.sh` packs the cart and builds the web player in
+  `build/web/`. Serve that folder to try it, e.g.
+  `python3 -m http.server -d build/web`.
+- `tools/publish-web.sh "message"` commits `build/web/` as the next commit on
+  the `gh-pages` branch without checking it out. That branch holds only the
+  built web player; all source lives on `main`.
 - `tools/mockup.rb` is the static scene used to plan the look. It isn't part
   of the game.
 

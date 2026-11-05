@@ -16,3 +16,6 @@ wasmcart-mruby/
 
 # Scratch screenshots from headless test runs
 shots/
+
+# Web player build output (tools/build-web.sh), published to gh-pages
+build/
