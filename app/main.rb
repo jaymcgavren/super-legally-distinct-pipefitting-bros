@@ -141,7 +141,7 @@ class Game
 
   def music(name, looping = true)
     @args.audio.delete(:music)
-    @args.audio[:music] = { input: "sounds/#{name}.wav", gain: 0.5, looping: looping }
+    @args.audio[:music] = { input: "sounds/#{name}.wav", gain: 0.375, looping: looping }
   end
 
   def music_stop
