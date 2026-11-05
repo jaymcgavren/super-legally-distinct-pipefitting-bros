@@ -249,7 +249,7 @@ class Game
       @enemies.each { |e| knock(e, 1) if e.data[:minion] && e.state == :walk }
       add_score(5000, b.x + 30, b.y + 170)
       music_stop
-      sfx(:bossdie)
+      sfx(:bossdie, 0.75)
     end
     true
   end
