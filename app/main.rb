@@ -16,7 +16,11 @@ PLAY_H  = 640
 WALK_MAX  = 4.2
 RUN_MAX   = 6.8
 PLAYER_H  = 72
-JUMP_V    = 19.5
+# Two jump heights: the full one only at (almost) top running speed, a lower
+# one at any other speed, standing and walking included
+JUMP_V     = 19.0           # ~4.2 tiles held
+JUMP_V_RUN = 21.4           # ~5.4 tiles held
+RUN_JUMP_SPEED = RUN_MAX * 0.9
 GRAV_HOLD = 0.65
 GRAV_CUT  = 1.6
 GRAV_FALL = 1.0
@@ -465,7 +469,7 @@ class Game
   # far, so a full running jump off it never hits the ceiling: indoors the
   # standard +/-2 tile swing put the lift so close to the roof that jumps
   # across the pit got cut short.
-  JUMP_RISE = (JUMP_V + RUN_MAX * 0.28)**2 / (2 * GRAV_HOLD)
+  JUMP_RISE = JUMP_V_RUN**2 / (2 * GRAV_HOLD)
   def lower_pit_lift(l, c, r)
     cols = [c, c + 1]
     return unless cols.all? { |cc| (r + 1...ROWS).none? { |rr| SOLID[cell(cc, rr)] } }
@@ -526,7 +530,7 @@ class Game
     p.buffer = @in_a_down ? 7 : p.buffer - 1
     p.coyote = ground ? 6 : p.coyote - 1
     if p.buffer > 0 && p.coyote > 0
-      p.vy = JUMP_V + p.vx.abs * 0.28
+      p.vy = p.vx.abs >= RUN_JUMP_SPEED ? JUMP_V_RUN : JUMP_V
       p.buffer = 0; p.coyote = 0; p.jumping = true
       p.riding = nil
       sfx(:jump)

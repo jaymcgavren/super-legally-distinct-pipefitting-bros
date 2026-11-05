@@ -21,6 +21,27 @@ puts "  full jump #{full.round} px (#{(full / T).round(2)} tiles), tap #{tap.rou
 check 'full jump clears 3+ tiles', full > 3 * T
 check 'tap jump is much lower', tap < full * 0.6
 
+# --- full height only at (almost) top running speed ---
+# held-jump peak from open floor (everything above cleared) at a given speed
+held_peak = lambda do |vx, keys|
+  s = Sim.new.start(0)
+  grid = s.iv(:grid)
+  (0..7).each { |r| (0...60).each { |c| grid[r][c] = '.' } }
+  s.iv(:enemies).clear
+  s.put(4); s.p.vx = vx
+  y0 = s.p.y; pk = y0
+  s.step(keys + [:a], 1); 50.times { s.step(keys + [:a]); pk = [pk, s.p.y].max }
+  pk - y0
+end
+stand = held_peak.(0.0, [])
+walk  = held_peak.(WALK_MAX, [:right])
+part  = held_peak.(RUN_MAX * 0.8, %i[right b])
+run   = held_peak.(RUN_MAX, %i[right b])
+puts "  held jump: standing #{stand.round}, walking #{walk.round}, 80% run #{part.round}, full run #{run.round} px"
+check 'standing, walking and part-speed jumps share the lower max height', [walk, part].all? { |h| (h - stand).abs < 2 }
+check 'lower max still clears 4 tiles', stand > 4 * T
+check 'full-speed run jumps clearly higher (1+ tile)', run > stand + T
+
 # --- run speed ---
 s.put(1); s.step(%i[right b], 60)
 check 'run reaches RUN_MAX', (s.p.vx - RUN_MAX).abs < 0.01
@@ -213,3 +234,23 @@ check 'indoor lift over the floor keeps its full swing',
 out = LEVELS.index { |l| !THEMES[l[:theme]][:indoor] && l[:rows].any? { |r| r =~ /[LH]/ } }
 s = Sim.new.start(out)
 check 'outdoor lifts keep their full swing', !s.iv(:lifts).empty? && s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * T }
+
+# --- a full-speed running jump can land on top of 1-A's wrench crate ---
+wc = LEVELS[0][:rows].each_with_index.map { |r, i| [r.index('W'), i] }.find(&:first)
+landed = (0..20).step(2).any? do |jx|
+  [10, 20, 30].any? do |coast|
+    s = Sim.new.start(0); s.iv(:enemies).clear
+    s.put(wc[0] - 14); s.p.vx = RUN_MAX
+    s.step(%i[right b], 1) until s.p.x >= (wc[0] - 6) * T + jx * 8
+    s.step(%i[right b a], 1)
+    hit = false
+    60.times do |f|
+      s.step(f < coast ? %i[right b a] : %i[b a])
+      next unless s.p.on_ground
+      hit = (s.p.y - s.g.tile_top(wc[1])).abs < 1
+      break
+    end
+    hit
+  end
+end
+check "1-A's wrench crate (row #{wc[1]}) can be landed on with a running jump", landed
