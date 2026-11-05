@@ -24,8 +24,10 @@ SOFTWARE.
 
 Third-party components
 
-main.wasm is the prebuilt runtime from https://github.com/wasmcart/wasmcart-mruby
-(build/main.wasm at commit 57bb06e, 2026-10-02), distributed under the license below.
+main.wasm is the runtime from https://github.com/wasmcart/wasmcart-mruby (commit
+57bb06e, 2026-10-02), rebuilt with two local changes: runtime/wasmcart.h updated
+to wasmcart v0.37.0, and args.gtk.delta_ms / time_ms exposed to Ruby. It is
+distributed under the license below.
 
 MIT License
 

@@ -24,8 +24,9 @@ class Outs
 end
 
 class Gtk
-  attr_accessor :debug_score, :debug_aux
-  def initialize; @s = {}; end
+  # delta_ms: the host frame time handed to the game (60 Hz unless a test sets it)
+  attr_accessor :debug_score, :debug_aux, :delta_ms
+  def initialize; @s = {}; @delta_ms = 1000.0 / 60; end
   def save_u32(i, v) = @s[i] = v
   def load_u32(i) = @s[i] || 0
 end

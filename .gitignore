@@ -2,7 +2,7 @@
 node_modules/
 
 # Upstream runtime checkout (github.com/wasmcart/wasmcart-mruby).
-# main.wasm is vendored from its build/ at commit 57bb06e; see LICENSE.txt.
+# main.wasm is built from it (commit 57bb06e plus local changes); see LICENSE.txt.
 wasmcart-mruby/
 
 # Build output from pack.sh

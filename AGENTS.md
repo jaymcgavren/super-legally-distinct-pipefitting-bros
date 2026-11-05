@@ -14,10 +14,39 @@ doesn't set the theme.
 
 - **Language/runtime: wasmcart-mruby** (user's choice). It's a prebuilt mruby
   runtime cart with a DragonRuby-style API. No compiler needed.
-- **Don't install a compiler** (no wasi-sdk, Emscripten, clang targets, brew).
-  The romdev MCP server forbids it, and mruby makes it unnecessary.
+- **Don't install other compilers** (no wasi-sdk, clang targets, etc.). The
+  one exception: on 2026-11-05 the user approved **Emscripten from Homebrew**
+  (`brew install emscripten`, 6.0.13), only to rebuild the wasmcart-mruby
+  runtime. The romdev MCP server's no-compiler rule doesn't override that.
 - **Don't hand-write WAT/C carts.** That was the fallback before mruby was
   chosen.
+
+## The runtime is a patched build (2026-11-05)
+
+`main.wasm` is NOT the stock wasmcart-mruby build. Don't overwrite it with
+upstream's `build/main.wasm`. It is 57bb06e plus two changes, which live
+uncommitted in the ignored `wasmcart-mruby/` clone:
+
+1. `runtime/wasmcart.h` copied from wasmcart v0.37.0 (still ABI v4).
+2. `args.gtk.delta_ms` / `args.gtk.time_ms`: the host frame clock, as Floats
+   in ms (`WC.delta_ms`/`WC.time_ms` in `runtime/runtime.c`, accessors in
+   `runtime/prelude.rb`). The user prepared a patch for this to share with
+   Luis (wasmcart's author); it isn't upstream as of 2026-11-05.
+
+The game uses `delta_ms` for fixed 60 Hz updates (`Game#tick`), so it runs at
+the same speed on any display. On a runtime without it, it falls back to one
+update per frame.
+
+Rebuilding (`wasmcart-mruby/runtime/build.sh`) on this Mac needs:
+- `WASMCART_REPO=$PWD/../node_modules/wasmcart` (for headers and the packer).
+- `PKG_CONFIG_LIBDIR=/nonexistent`. Otherwise Homebrew's `oniguruma` is found
+  and linked instead of a wasm build, and the link fails.
+- On a fresh mruby build, delete the `ar x` extraction block from
+  `runtime/vendor/mruby/build/repos/emscripten/mruby-onig-regexp/mrbgem.rake`.
+  build.sh's own patch for it no longer matches the gem, and macOS `ar`
+  corrupts the wasm objects ("section too large").
+
+Then `cp wasmcart-mruby/build/main.wasm main.wasm`.
 
 ## Environment (as of 2026-11-03)
 

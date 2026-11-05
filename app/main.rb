@@ -91,6 +91,17 @@ class Game
   end
 
   # ── input / audio helpers ─────────────────────────────────────────
+  PRESS_KEYS = %i[a b x start up down left right]
+
+  # Called every host frame. A press is held in @pressed until an update
+  # reads it, so a press on a frame with no update isn't lost and a frame
+  # with several updates doesn't see it twice.
+  def poll_input
+    d = @args.inputs.keyboard.key_down
+    @pressed ||= {}
+    PRESS_KEYS.each { |k| @pressed[k] = true if d.send(k) }
+  end
+
   def read_input
     kb = @args.inputs.keyboard
     ax = kb.left_analog_x_perc || 0
@@ -98,17 +109,18 @@ class Game
     @in_right = kb.right || ax > 0.5
     @in_a     = kb.a
     @in_b     = kb.b || kb.x
-    d = kb.key_down
-    @in_a_down = d.a
-    @in_b_down = d.b || d.x
-    @in_start_down = d.start
-    @in_left_down = d.left
-    @in_right_down = d.right
-    @in_code = if d.up then :up
-               elsif d.down then :down
-               elsif d.left then :left
-               elsif d.right then :right
+    d = @pressed
+    @in_a_down = d[:a]
+    @in_b_down = d[:b] || d[:x]
+    @in_start_down = d[:start]
+    @in_left_down = d[:left]
+    @in_right_down = d[:right]
+    @in_code = if d[:up] then :up
+               elsif d[:down] then :down
+               elsif d[:left] then :left
+               elsif d[:right] then :right
                end
+    d.clear
   end
 
   # Up Up Down Down Left Right Left Right on the title screen locks in
@@ -178,14 +190,41 @@ class Game
     load_level(@level, true)
   end
 
-  # One frame: advance the game, then draw it. update changes state and plays
-  # sounds but draws nothing; draw only draws, so it is safe to skip or repeat.
+  # The game runs in fixed 60 Hz steps whatever the display's refresh rate.
+  STEP_MS = 1000.0 / 60
+  MAX_STEPS = 4      # catch-up limit per frame, so a long stall can't spiral
+
+  # One host frame: run as many 60 Hz updates as the elapsed time calls for
+  # (none on some frames of a 120 Hz display, two after a slow frame), then
+  # draw once. update changes state and plays sounds but draws nothing; draw
+  # only draws, so it is safe to skip or repeat.
   def tick
     @o = @args.outputs
-    update
+    @played = {}
+    poll_input
+    @step_acc = (@step_acc || 0.0) + frame_ms
+    n = 0
+    while @step_acc >= STEP_MS && n < MAX_STEPS
+      update
+      @step_acc -= STEP_MS
+      n += 1
+    end
+    @step_acc = 0.0 if @step_acc >= STEP_MS   # too far behind: drop the backlog
     draw
     @args.gtk.debug_score = @score
     @args.gtk.debug_aux = @p ? @p.x.to_i : 0
+  end
+
+  # Milliseconds since the last frame, from the host. A frame within 1 ms of
+  # 60 Hz counts as exactly one step, so vsync jitter on a 60 Hz display
+  # doesn't turn into the odd skipped or doubled update. A runtime without
+  # args.gtk.delta_ms (stock wasmcart-mruby) gets one step per frame.
+  def frame_ms
+    gtk = @args.gtk
+    return STEP_MS unless gtk.respond_to?(:delta_ms)
+    ms = gtk.delta_ms.to_f
+    return STEP_MS if (ms - STEP_MS).abs < 1.0
+    [[ms, 0.0].max, 250.0].min
   end
 
   def update
@@ -193,7 +232,6 @@ class Game
     # during the coffee break
     @frame += 1 unless @mode == :paused
     @mode_t += 1
-    @played = {}
     read_input
     case @mode
     when :title    then step_title
