@@ -1260,7 +1260,7 @@ class Game
     x = p.x.to_i - cam - 12
     if p.powered && f != 6 && @wrench.nil?
       wx = p.facing > 0 ? x - 6 : x + 22
-      spr('sprites/wrench.png', wx, p.y.to_i + 22, 40, 40, 8, 0, 8, 16, p.facing < 0)
+      spr('sprites/wrench.png', wx, p.y.to_i + 22, 40, 40, 56, 0, 8, 16, p.facing > 0)
     end
     spr(BROS[@bro][:path], x, p.y.to_i, 64, 80, f * 8, 0, 8, 20, flip)
   end

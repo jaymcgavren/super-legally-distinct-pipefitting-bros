@@ -165,7 +165,9 @@ function wrenchFrame(deg) {
   return rows;
 }
 const WRENCH_FRAMES = [0, 1, 2, 3, 4, 5, 6].map((i) => wrenchFrame(i * 360 / 7));
-save('wrench.png', strip(WRENCH_FRAMES, 8, 16, { W: [196, 200, 212], H: [236, 236, 244] }, true));
+// frame 7: the wrench slung on the player's back, drawn like the pickup
+const WRENCH_BACK = ['....HH..', '...HW...', '...W..HH', '...HWWWD', '..HWDD..', '.HWD....', 'HWD.....', 'DD......'];
+save('wrench.png', strip([...WRENCH_FRAMES, WRENCH_BACK], 8, 16, { W: [196, 200, 212], H: [236, 236, 244], D: [104, 108, 124] }, true));
 if (process.env.SHOW_WRENCH) WRENCH_FRAMES.forEach((f, i) => console.log(`frame ${i}\n${f.join('\n')}`));
 // ── Big Rusty (boss): 8x14 art, rows doubled -> 8x28 frames, drawn at
 // double width (a 2600 NUSIZ quad-ish player) by the game ────────────
