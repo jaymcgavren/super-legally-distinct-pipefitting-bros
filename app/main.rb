@@ -1045,11 +1045,7 @@ class Game
         o.solids << [1040 - w * 4, 560 - dy * 8, w * 8, 8, 236, 232, 196]
       end
     end
-    if th[:sun]
-      [[8, 0], [14, 1], [18, 2], [20, 3], [20, 4], [20, 5]].each do |w, dl|
-        o.solids << [900 - w * 4, 300 - dl * 16, w * 8, 16, 252, 224, 104]
-      end
-    end
+    SUN_ROWS.each { |r| o.solids << r } if th[:sun]
     cc = th[:cloud]
     [[100, 560], [620, 600], [1050, 520], [1500, 580]].each do |cx, cy|
       x = (((cx - @cam * 0.25) % 1800) - 260).to_i
@@ -1074,6 +1070,30 @@ class Game
     end
     # indoors, the dark below the floor
     o.solids << [0, 0, VW, 128, 0, 0, 0] if th[:indoor]
+  end
+
+  # The sunset sun, vaporwave style: a whole disc in 8 px rows, yellow at the
+  # top through orange to magenta, with slits across the lower half that get
+  # closer together toward the bottom. Built once as solids.
+  SUN_GAPS = [3, 6, 9, 11, 13, 15, 17, 19]   # 8 px rows below the centre left out
+  SUN_RAMP = [[255, 236, 112], [255, 176, 72], [248, 88, 136], [216, 32, 168]]
+  SUN_ROWS = begin
+    cx = 900; cy = 340; r = 168
+    rows = []
+    (2 * r / 8).times do |n|
+      y = cy - r + n * 8
+      dy = y + 4 - cy
+      next if dy < 0 && SUN_GAPS.include?(-dy / 8)
+      hw = (Math.sqrt([r * r - dy * dy, 0].max) / 8).floor * 8
+      next if hw <= 0
+      t = ((1 - (dy + r) / (2.0 * r)) * 8).floor / 7.0
+      sc = t * (SUN_RAMP.size - 1)
+      i = [sc.floor, SUN_RAMP.size - 2].min
+      a = SUN_RAMP[i]; b = SUN_RAMP[i + 1]; k = sc - i
+      col = (0..2).map { |j| (a[j] + (b[j] - a[j]) * k).round }
+      rows << [cx - hw, y, hw * 2, 8, col[0], col[1], col[2]]
+    end
+    rows
   end
 
   # Indoors: a brick back wall over the sky, with occasional windows (holes
