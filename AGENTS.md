@@ -141,6 +141,20 @@ npx wasmcart pack --wasm main.wasm --assets app --name <game> \
 The site's example says `--wasm cart.wasm`. Point it at the runtime you
 actually copied (`main.wasm`).
 
+## Branches and the web player
+
+- All work (game, tools, web page source) is committed on **`main`**.
+- **`gh-pages`** holds only the built web player (`index.html`, `.nojekyll`,
+  the `.wasc`, `vendor/`). Never commit to it directly, check it out, or merge
+  `main` into it.
+- The page source is `web/index.html`. To update the site after a change:
+  ```sh
+  tools/build-web.sh                              # packs the cart, builds build/web/
+  tools/publish-web.sh "Web player: <what changed>"   # commits build/web/ onto gh-pages
+  ```
+- `gh-pages-old` is a backup of the branch from before 2026-11-04, when
+  `gh-pages` still carried the full source. Don't use it.
+
 ## Working style
 
 - Get the template running unchanged before editing anything.
