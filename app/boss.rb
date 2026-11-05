@@ -12,6 +12,7 @@ BOSS_MOVES = [
 ]
 BOLT_WARN = 64   # frames a bolt's shadow shows before it drops (was 40)
 WARN_LEN = 160   # klaxon + WARNING card before each fight
+WARN_AHEAD = 12  # the warning goes off this many tiles before the arena gate
 BOSS_W = 112
 BOSS_H = 104
 
@@ -36,6 +37,8 @@ class Game
     @shake = 0
     @banner = 0
     @warning = 0
+    @boss_warned = false   # the klaxon has gone off (on the approach)
+    @fight_on = false      # warning over and the player is shut in: Rusty moves
   end
 
   # call every play tick when this level has a boss
@@ -43,18 +46,25 @@ class Game
     b = @boss
     return unless b
     p = @p
-    unless @boss_on
-      return unless p.x > (@arena_c + 2) * T
-      @boss_on = true
+    # the warning goes off on the approach, while the player can still look
+    # before stepping in; the gate shuts once they are inside the arena
+    unless @boss_warned
+      return unless p.x > (@arena_c - WARN_AHEAD) * T
+      @boss_warned = true
       @warning = WARN_LEN
-      8.times { |r| @grid[r][@arena_c] = '#' }   # the gate slams shut
-      sfx(:bump)
       sfx(:klaxon)
       music_stop
     end
-    if @warning > 0
-      @warning -= 1
+    @warning -= 1 if @warning > 0
+    unless @boss_on
+      return unless p.x > (@arena_c + 2) * T
+      @boss_on = true
+      8.times { |r| @grid[r][@arena_c] = '#' }   # the gate slams shut
+      sfx(:bump)
+    end
+    unless @fight_on
       return if @warning > 0
+      @fight_on = true
       @banner = 180
       music(:boss)
     end
@@ -354,8 +364,9 @@ class Game
 
   def draw_boss_hud
     b = @boss
-    return unless b && @boss_on && b.state != :dead
+    return unless b && b.state != :dead
     return draw_warning if @warning > 0
+    return unless @boss_on
     d = b.data
     label(640, 628, 'BIG RUSTY', 3, [252, 240, 160], true)
     w = 16 * d[:max]

@@ -157,3 +157,21 @@ end
   s.step([], 1)
   check "Rusty still hurts the player (#{name})", !s.p.powered && b.data[:hp] == hp
 end
+
+# --- the warning goes off on the approach, before the gate shuts ---
+s = Sim.new.start(0)
+ac = s.iv(:arena_c)
+s.put(ac - WARN_AHEAD - 3); s.step([], 2)
+check 'no warning further back', s.iv(:warning) == 0 && !s.sounds.include?('sounds/klaxon.wav')
+s.put(ac - WARN_AHEAD + 1); s.step([], 2)
+check 'warning goes off on the approach', s.iv(:warning) > 0 && s.sounds.include?('sounds/klaxon.wav')
+check 'gate still open during the approach warning', !s.iv(:boss_on) && s.g.cell(ac, 6) != '#'
+s.step([], 1) while s.iv(:warning) > 0
+s.step([], 60)
+check 'no fight until the player steps in', !s.iv(:boss_on) && s.iv(:boss).state == :wait && s.args.audio[:music].nil?
+klaxons = s.sounds.count('sounds/klaxon.wav')
+s.put(ac + 3); s.step([], 2)
+check 'stepping in shuts the gate and starts the fight at once',
+      s.iv(:boss_on) && s.g.cell(ac, 6) == '#' && s.iv(:banner) > 0 &&
+      s.args.audio[:music] && s.args.audio[:music][:input] == 'sounds/boss.wav'
+check 'klaxon does not go off a second time', s.sounds.count('sounds/klaxon.wav') == klaxons
