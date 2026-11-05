@@ -135,7 +135,8 @@ class Game
   def sfx(name, gain = 1.0)
     return if @played[name]
     @played[name] = true
-    @args.outputs.sounds << { path: "sounds/#{name}.wav", gain: gain }
+    path = "sounds/#{name}.wav"
+    @args.outputs.sounds << (gain == 1.0 ? path : { path: path, gain: gain })
   end
 
   def music(name, looping = true)
@@ -447,6 +448,7 @@ class Game
   end
 
   def update_timer
+    return if @boss && @boss.state == :dead   # the clock stops once the boss falls
     @time_acc += 1
     return if @time_acc < TICK_LEN
     @time_acc = 0

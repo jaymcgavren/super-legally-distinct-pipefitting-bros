@@ -41,7 +41,9 @@ d_levels.each_with_index do |li, n|
   end
   check "#{LEVELS[li][:name]} boss can be defeated", b.state == :dead
   s.p.x = (ac + 8) * T; s.p.y = s.g.tile_bottom(7).to_f; s.p.vy = 0
+  t0 = s.iv(:time)
   s.step([], 130)
+  check "#{LEVELS[li][:name]} timer stops once the boss is beaten", s.iv(:time) == t0
   check "#{LEVELS[li][:name]} goal appears after the boss", !s.iv(:goal).nil?
   if n == 7
     check 'final boss got angry', b.data[:angry]
