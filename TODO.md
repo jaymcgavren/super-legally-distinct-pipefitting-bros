@@ -141,11 +141,11 @@ refactor step will break some of them. Update them in the same commit.
 ### 2. Extract collaborators out of Game
 Each as its own file under `app/`, required from main.rb. Game keeps thin
 delegating methods at first if that keeps the diff small, then callers move.
-- [ ] `Screen` (app/screen.rb): `sprite`, `rect`, `label`, `shadow_label`;
-      holds the current outputs (today `@o`, switched to a render target by the
-      ending). Use keyword args for the long `spr` signature:
-      `sprite(path, x, y, w:, h:, frame:, flip: false, alpha: 255, angle: 0, flip_v: false)`.
-      (`spr` already takes the frame as one array, `source`.)
+- [x] `Screen` (app/screen.rb): `sprite`, `tile`, `rect`, `label`,
+      `shadow_label`, `draw_into(target) { }`; holds the current outputs.
+      Keyword args only for the optional sprite settings:
+      `sprite(path, x, y, w, h, frame, flip: false, alpha: 255, angle: 0, flip_v: false)`
+      (w/h/frame positional: see the perf note in the log).
 - [ ] `Sound` (app/sound.rb): `sfx`, `music`, `stop_music`; owns the
       once-per-frame dedupe (`@played`).
 - [ ] `Controls` (app/controls.rb): replaces `poll_input`/`read_input` and the
@@ -370,3 +370,19 @@ paths, anything the next session needs.)
   `x -= 1 if x > 0` countdowns stay as they are. Endless defs. Tests ALL PASS
   (185), shots ALL SAME, 2-B bench within noise of the previous commit.
   Next: step 2, `Screen`.
+- 2026-11-19: step 2, `Screen` (app/screen.rb). Game holds `@screen`; every
+  draw call is `@screen.sprite/tile/rect/label/shadow_label`, the raw
+  outputs are `@screen.outputs`, and the ending draws the level into its
+  render target with `@screen.draw_into(target) { draw_world(true, false) }`
+  instead of swapping `@outputs` by hand. Optional sprite settings are
+  keywords (`flip: true`, `alpha:`, `flip_v:`), so call sites name what
+  they change instead of passing `false, 255, 0, true`.
+  PERF NOTE: in mruby, keyword parameters slow every call to the method,
+  even calls that pass none. All-keyword `sprite(path, x, y, w:, h:, frame:)`
+  made the 2-B fight 1.16 vs 0.90 ms/frame (+28%); keywords for the optional
+  settings only still made level 1 ~8% slower (0.99 vs 0.90), because it
+  draws hundreds of tiles a frame. Fix: `Screen#tile(path, x, y, frame)`,
+  positional, for the TILE-sized, unflipped case (21 calls, all of
+  draw_tiles). Now level 1 0.90-0.92 vs 0.90-0.93 at HEAD, 2-B 0.90-0.91
+  vs 0.91. Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged.
+  Scenario 04 sets `s.iv(:screen).outputs` instead of `@outputs`.

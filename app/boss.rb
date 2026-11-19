@@ -331,9 +331,9 @@ class Game
       when :wave
         3.times do |i|
           h = 36 - i * 10 + ((shot[:t] / 3 + i) % 2) * 6
-          rect(x + i * 12 - (shot[:vx] > 0 ? 0 : 12), 128, 16, h, STEAM, 220 - i * 50)
+          @screen.rect(x + i * 12 - (shot[:vx] > 0 ? 0 : 12), 128, 16, h, STEAM, 220 - i * 50)
         end
-      when :glob then spr('sprites/shots.png', x, shot[:y].to_i, 32, 32, FRAMES[:glob])
+      when :glob then @screen.sprite('sprites/shots.png', x, shot[:y].to_i, 32, 32, FRAMES[:glob])
       when :bolt
         if shot[:t] < BOLT_WARNING
           # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
@@ -341,12 +341,12 @@ class Game
           flash = (k / 4).even?
           w = 32 + (k * 48 / BOLT_WARNING)
           cx = x + 16
-          rect(cx - 16, 128, 32, 592, WARNING_RED, flash ? 80 : 45) if k > 0
-          rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? WARNING_YELLOW : WARNING_RED, 255)
-          rect(cx - w / 2, 130, w, 14, BLACK, 235)
-          label(cx, 236, '!', 6, flash ? WARNING_YELLOW : WARNING_RED, true) if k > 0
+          @screen.rect(cx - 16, 128, 32, 592, WARNING_RED, flash ? 80 : 45) if k > 0
+          @screen.rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? WARNING_YELLOW : WARNING_RED, 255)
+          @screen.rect(cx - w / 2, 130, w, 14, BLACK, 235)
+          @screen.label(cx, 236, '!', 6, flash ? WARNING_YELLOW : WARNING_RED, true) if k > 0
         else
-          spr('sprites/shots.png', x - 8, shot[:y].to_i, 48, 48, FRAMES[:bolt])
+          @screen.sprite('sprites/shots.png', x - 8, shot[:y].to_i, 48, 48, FRAMES[:bolt])
         end
       end
     end
@@ -363,9 +363,9 @@ class Game
     x = boss.x.to_i - camera_x - 8
     shake = boss.state == :charge && boss.t < 45 ? ((boss.t / 2) % 2) * 8 - 4 : 0
     alpha = 255
-    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, source, boss.facing > 0, alpha, 0, boss.dead?)
+    @screen.sprite('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, source, flip: boss.facing > 0, alpha: alpha, flip_v: boss.dead?)
     if boss_spiky? || (data[:warn_spiky] > 0 && (data[:warn_spiky] / 4).even?)
-      spr('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, FRAMES[:rusty_crown], false)
+      @screen.sprite('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
     end
   end
 
@@ -375,28 +375,28 @@ class Game
     return draw_warning if @warning > 0
     return unless @boss_on
     data = boss.data
-    label(640, 628, 'BIG RUSTY', 3, PALE_YELLOW, true)
+    @screen.label(640, 628, 'BIG RUSTY', 3, PALE_YELLOW, true)
     w = 16 * data[:max]
     left = 640 - w / 2
-    rect(left - 4, 588, w + 8, 20, NEAR_BLACK)
+    @screen.rect(left - 4, 588, w + 8, 20, NEAR_BLACK)
     data[:max].times do |i|
       col = i < data[:hp] ? (data[:angry] ? ORANGE : [216, 48, 48]) : DARK_GRAY
-      rect(left + i * 16 + 2, 592, 12, 12, col)
+      @screen.rect(left + i * 16 + 2, 592, 12, 12, col)
     end
     return unless @banner > 0
     n = boss_level
-    label(640, 470, n == 1 ? 'BIG RUSTY BLOCKS MAIN!!!' : 'BIG RUSTY RETURN!!!', 5, PALE_YELLOW, true)
-    label(640, 410, "NEW MOVE: #{BOSS_MOVES[n - 1][1]}", 4, ORANGE, true)
+    @screen.label(640, 470, n == 1 ? 'BIG RUSTY BLOCKS MAIN!!!' : 'BIG RUSTY RETURN!!!', 5, PALE_YELLOW, true)
+    @screen.label(640, 410, "NEW MOVE: #{BOSS_MOVES[n - 1][1]}", 4, ORANGE, true)
   end
 
   # three red pulses in time with the klaxon wails
   def draw_warning
     k = (WARN_LENGTH - @warning) % 48
     on = k < 36
-    rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, [200, 0, 0], 70 - k * 2) if on
+    @screen.rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, [200, 0, 0], 70 - k * 2) if on
     return unless on || @warning < 16
-    rect(0, 340, VIEW_WIDTH, 240, BLACK, 150)
-    label(640, 560, 'WARNING', 16, WARNING_RED, true)
-    label(640, 412, 'HUGE ENEMY APPROACH', 5, GOLD, true)
+    @screen.rect(0, 340, VIEW_WIDTH, 240, BLACK, 150)
+    @screen.label(640, 560, 'WARNING', 16, WARNING_RED, true)
+    @screen.label(640, 412, 'HUGE ENEMY APPROACH', 5, GOLD, true)
   end
 end

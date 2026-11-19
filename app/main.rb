@@ -7,6 +7,7 @@
 # Start (enter) pause.
 
 require 'app/levels.rb'
+require 'app/screen.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -164,6 +165,7 @@ class Game
 
   def initialize(args)
     @args = args
+    @screen = Screen.new(args.outputs)
     @high_score = args.gtk.load_u32(0) || 0
     @bro = 0
     @frame = 0
@@ -285,7 +287,7 @@ class Game
   # draw once. update changes state and plays sounds but draws nothing; draw
   # only draws, so it is safe to skip or repeat.
   def tick
-    @outputs = @args.outputs
+    @screen.outputs = @args.outputs
     @played = {}
     poll_input
     @step_accumulator = (@step_accumulator || 0.0) + frame_ms
@@ -568,23 +570,23 @@ class Game
 
   def draw_title
     draw_world(false)
-    rect(0, 0, VIEW_WIDTH, 720, BLACK, 120)
-    shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, PALE_YELLOW)
-    shadow_label(640, 580, 'PIPEFITTING', 12, ORANGE)
-    shadow_label(640, 470, 'BROTHERS', 12, GOLD)
+    @screen.rect(0, 0, VIEW_WIDTH, 720, BLACK, 120)
+    @screen.shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, PALE_YELLOW)
+    @screen.shadow_label(640, 580, 'PIPEFITTING', 12, ORANGE)
+    @screen.shadow_label(640, 470, 'BROTHERS', 12, GOLD)
     2.times do |i|
       x = 480 + i * 320
       selected = i == @bro
-      rect(x - 56, 196, 112, 120, selected ? PALE_YELLOW : DARK_GRAY)
-      rect(x - 48, 204, 96, 104, [20, 20, 40])
+      @screen.rect(x - 56, 196, 112, 120, selected ? PALE_YELLOW : DARK_GRAY)
+      @screen.rect(x - 48, 204, 96, 104, [20, 20, 40])
       source = selected ? frame(:bro_run, (@mode_frames / 8) % 3) : FRAMES[:bro_stand]
-      spr(BROS[i][:path], x - 32, 216, 64, 80, source, i == 1)
-      shadow_label(x, 180, BROS[i][:name], 4, selected ? PALE_YELLOW : [140, 140, 140])
+      @screen.sprite(BROS[i][:path], x - 32, 216, 64, 80, source, flip: i == 1)
+      @screen.shadow_label(x, 180, BROS[i][:name], 4, selected ? PALE_YELLOW : [140, 140, 140])
     end
-    shadow_label(640, 120, 'PRESS START', 4, WHITE) if (@mode_frames / 30) % 2 == 0
-    shadow_label(640, 366, 'BOSS RUSH', 4, ALERT_RED) if @rush_armed
-    shadow_label(640, 70, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
-    shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
+    @screen.shadow_label(640, 120, 'PRESS START', 4, WHITE) if (@mode_frames / 30) % 2 == 0
+    @screen.shadow_label(640, 366, 'BOSS RUSH', 4, ALERT_RED) if @rush_armed
+    @screen.shadow_label(640, 70, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
+    @screen.shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
   end
 
   # ── intro card ────────────────────────────────────────────────────
@@ -598,11 +600,11 @@ class Game
   def draw_intro
     @args.outputs.background_color = BLACK
     draw_hud
-    label(640, 440, @level_data[:name], 6, PALE_YELLOW)
-    label(640, 370, @level_data[:title], 4, ORANGE)
-    label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
-    spr(BROS[@bro][:path], 560, 210, 64, 80, FRAMES[:bro_stand])
-    label(680, 270, "x #{@lives}", 5, WHITE)
+    @screen.label(640, 440, @level_data[:name], 6, PALE_YELLOW)
+    @screen.label(640, 370, @level_data[:title], 4, ORANGE)
+    @screen.label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
+    @screen.sprite(BROS[@bro][:path], 560, 210, 64, 80, FRAMES[:bro_stand])
+    @screen.label(680, 270, "x #{@lives}", 5, WHITE)
   end
 
   # ── gameplay ──────────────────────────────────────────────────────
@@ -649,9 +651,9 @@ class Game
 
   def draw_paused
     draw_world(true)
-    rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, BLACK, 140)
-    label(640, 380, 'COFFEE BREAK', 7, PALE_YELLOW)
-    label(640, 300, 'PRESS START', 3, WHITE)
+    @screen.rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, BLACK, 140)
+    @screen.label(640, 380, 'COFFEE BREAK', 7, PALE_YELLOW)
+    @screen.label(640, 300, 'PRESS START', 3, WHITE)
   end
 
   def update_timer
@@ -975,8 +977,8 @@ class Game
 
   def draw_clear
     draw_world(true)
-    label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, PALE_YELLOW, true)
-    label(640, 420, 'TIME BONUS', 3, WHITE, true) if @mode_frames > 110
+    @screen.label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, PALE_YELLOW, true)
+    @screen.label(640, 420, 'TIME BONUS', 3, WHITE, true) if @mode_frames > 110
   end
 
   def step_end
@@ -987,15 +989,15 @@ class Game
     @args.outputs.background_color = BLACK
     draw_hud
     if kind == :gameover
-      label(640, 440, 'GAME OVER', 8, ALERT_RED)
-      label(640, 350, 'YOU ARE FIRED', 4, WHITE)
+      @screen.label(640, 440, 'GAME OVER', 8, ALERT_RED)
+      @screen.label(640, 350, 'YOU ARE FIRED', 4, WHITE)
     else
-      label(640, 500, @rush ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, PALE_YELLOW)
-      label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, ORANGE)
-      label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, WHITE)
+      @screen.label(640, 500, @rush ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, PALE_YELLOW)
+      @screen.label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, ORANGE)
+      @screen.label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, WHITE)
     end
-    label(640, 260, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
-    label(640, 160, 'PRESS START', 3, WHITE) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
+    @screen.label(640, 260, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
+    @screen.label(640, 160, 'PRESS START', 3, WHITE) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
   end
 
   def save_hiscore
@@ -1240,32 +1242,9 @@ class Game
     [base[0] + index * base[2], base[1], base[2], base[3]]
   end
 
-  # `source` is a sprite-sheet frame: FRAMES[name] or frame(name, index)
-  def spr(path, x, y, w, h, source, flip = false, alpha = 255, angle = 0, flipv = false)
-    @outputs.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: source[0], source_y: source[1],
-                               source_w: source[2], source_h: source[3], flip_horizontally: flip, flip_vertically: flipv,
-                               a: alpha, angle: angle }
-  end
-
-  def rect(x, y, w, h, color, alpha = 255)
-    @outputs.sprites << { x: x, y: y, w: w, h: h, path: 'sprites/px.png',
-                               r: color[0], g: color[1], b: color[2], a: alpha }
-  end
-
-  def label(x, y, text, size, color, shadow = false)
-    if shadow
-      @outputs.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
-    end
-    @outputs.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: color[0], g: color[1], b: color[2] }
-  end
-
-  def shadow_label(x, y, text, size, color)
-    label(x, y, text, size, color, true)
-  end
-
   def draw_background
     theme = @theme
-    outputs = @outputs
+    outputs = @screen.outputs
     sky = theme[:sky]
     outputs.background_color = sky[0]
     # outdoors the sky runs to the bottom of the screen, so pits show sky;
@@ -1366,7 +1345,7 @@ class Game
       x = c * TILE - camera_x
       8.times do |r|
         next if window && WINDOW_ROWS.include?(r)
-        spr(tiles, x, tile_bottom(r), TILE, TILE, FRAMES[:back_wall])
+        @screen.tile(tiles, x, tile_bottom(r), FRAMES[:back_wall])
       end
     end
     wood = [140, 88, 44]
@@ -1377,13 +1356,13 @@ class Game
       bottom = tile_bottom(WINDOW_ROWS.last)
       top = tile_top(WINDOW_ROWS.first)
       w = 2 * TILE
-      rect(x, bottom, w, 8, sill)                 # sill
-      rect(x - 8, bottom - 8, w + 16, 8, wood)
-      rect(x, top - 8, w, 8, wood)             # head
-      rect(x, bottom, 8, top - bottom, wood)         # jambs
-      rect(x + w - 8, bottom, 8, top - bottom, wood)
-      rect(x + TILE - 4, bottom, 8, top - bottom, wood) # mullion
-      rect(x, (bottom + top) / 2 - 4, w, 8, wood) # transom bar
+      @screen.rect(x, bottom, w, 8, sill)                 # sill
+      @screen.rect(x - 8, bottom - 8, w + 16, 8, wood)
+      @screen.rect(x, top - 8, w, 8, wood)             # head
+      @screen.rect(x, bottom, 8, top - bottom, wood)         # jambs
+      @screen.rect(x + w - 8, bottom, 8, top - bottom, wood)
+      @screen.rect(x + TILE - 4, bottom, 8, top - bottom, wood) # mullion
+      @screen.rect(x, (bottom + top) / 2 - 4, w, 8, wood) # transom bar
     end
   end
 
@@ -1404,24 +1383,24 @@ class Game
         bump = @bumps[r * 10000 + c]
         bumped_y = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
         case tile
-        when '#' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[r == 0 || SOLID[cell(c, r - 1)] ? :brick : :brick_top])
-        when 'F' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[cell(c, r - 1) == 'F' ? :subfloor : :wood_floor])
-        when '=' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:girder])
-        when 'C', 'W', 'M' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:crate])
-        when 'U' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:crate_used])
+        when '#' then @screen.tile(tiles, x, bumped_y, FRAMES[r == 0 || SOLID[cell(c, r - 1)] ? :brick : :brick_top])
+        when 'F' then @screen.tile(tiles, x, bumped_y, FRAMES[cell(c, r - 1) == 'F' ? :subfloor : :wood_floor])
+        when '=' then @screen.tile(tiles, x, bumped_y, FRAMES[:girder])
+        when 'C', 'W', 'M' then @screen.tile(tiles, x, bumped_y, FRAMES[:crate])
+        when 'U' then @screen.tile(tiles, x, bumped_y, FRAMES[:crate_used])
         when '-'
           # extend a stand up behind the pipe so it meets the pipe's underside
-          spr(tiles, x, y, TILE, TILE, FRAMES[:pipe_stand]) if cell(c, r + 1) == '|'
+          @screen.tile(tiles, x, y, FRAMES[:pipe_stand]) if cell(c, r + 1) == '|'
           if cell(c + 1, r) != '-'
-            spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange], true)
+            @screen.sprite(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange], flip: true)
           elsif cell(c - 1, r) != '-' || c % 4 == 0
-            spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange])
+            @screen.tile(tiles, x, bumped_y, FRAMES[:pipe_flange])
           else
-            spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe])
+            @screen.tile(tiles, x, bumped_y, FRAMES[:pipe])
           end
-        when '|' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_stand])
-        when 'S' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:vent])
-        when 'o' then spr('sprites/items.png', x, bumped_y, TILE, TILE, frame(:nut, nut_f))
+        when '|' then @screen.tile(tiles, x, bumped_y, FRAMES[:pipe_stand])
+        when 'S' then @screen.tile(tiles, x, bumped_y, FRAMES[:vent])
+        when 'o' then @screen.tile('sprites/items.png', x, bumped_y, frame(:nut, nut_f))
         end
       end
     end
@@ -1444,22 +1423,22 @@ class Game
     draw_tiles
     @lifts.each do |lift|
       x = lift.x.to_i - camera_x
-      spr(@theme[:tiles], x, lift.y.to_i - 48, TILE, TILE, FRAMES[:lift])
-      spr(@theme[:tiles], x + TILE, lift.y.to_i - 48, TILE, TILE, FRAMES[:lift])
+      @screen.tile(@theme[:tiles], x, lift.y.to_i - 48, FRAMES[:lift])
+      @screen.tile(@theme[:tiles], x + TILE, lift.y.to_i - 48, FRAMES[:lift])
     end
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
-      spr('sprites/items.png', cone[:c] * TILE - camera_x, tile_bottom(cone[:r]), TILE, TILE, FRAMES[lit ? :cone_lit : :cone_off])
+      @screen.tile('sprites/items.png', cone[:c] * TILE - camera_x, tile_bottom(cone[:r]), FRAMES[lit ? :cone_lit : :cone_off])
     end
     if @goal
       goal_x = @goal[:c] * TILE - camera_x
       goal_y = tile_bottom(@goal[:r])
-      spr(@theme[:tiles], goal_x, goal_y, TILE, TILE, FRAMES[:standpipe])
-      spr(@theme[:tiles], goal_x, goal_y + TILE, TILE, TILE, FRAMES[:standpipe])
+      @screen.tile(@theme[:tiles], goal_x, goal_y, FRAMES[:standpipe])
+      @screen.tile(@theme[:tiles], goal_x, goal_y + TILE, FRAMES[:standpipe])
       unless @goal[:gone]
         f = (@goal[:turn] / 5) % 3
-        spr('sprites/items.png', goal_x, goal_y + 2 * TILE, TILE, TILE, frame(:valve, f))
-        label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, WHITE, true)
+        @screen.tile('sprites/items.png', goal_x, goal_y + 2 * TILE, frame(:valve, f))
+        @screen.label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, WHITE, true)
       end
     end
     @vents.each do |vent|
@@ -1469,12 +1448,12 @@ class Game
       next if x < -TILE || x > VIEW_WIDTH
       base = tile_top(vent[:r])
       if k < 130
-        rect(x + 24, base + (k % 10) * 2, 16, 8, STEAM, 180) if (k / 5).even?
+        @screen.rect(x + 24, base + (k % 10) * 2, 16, 8, STEAM, 180) if (k / 5).even?
       else
         (vent[:h] / 16).times do |i|
           wob = ((i + @frame / 3) % 3 - 1) * 8
           w = 24 + (i * 3) % 16
-          rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, STEAM, 200 - i * 6)
+          @screen.rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, STEAM, 200 - i * 6)
         end
       end
     end
@@ -1482,11 +1461,11 @@ class Game
     @items.each do |item|
       x = item.x.to_i - camera_x
       case item.kind
-      when :popnut then spr('sprites/items.png', x, item.y.to_i, TILE, TILE, frame(:nut, (item.t / 3) % 4))
+      when :popnut then @screen.tile('sprites/items.png', x, item.y.to_i, frame(:nut, (item.t / 3) % 4))
       when :wrench_item
         bob = item.data[:rise] > 0 ? 0 : ((@frame / 12) % 2) * 4
-        spr('sprites/items.png', x - 4, item.y.to_i + bob, TILE, TILE, FRAMES[:wrench_item])
-      when :lunch then spr('sprites/items.png', x - 4, item.y.to_i, TILE, TILE, FRAMES[:lunchbox])
+        @screen.tile('sprites/items.png', x - 4, item.y.to_i + bob, FRAMES[:wrench_item])
+      when :lunch then @screen.tile('sprites/items.png', x - 4, item.y.to_i, FRAMES[:lunchbox])
       end
     end
     @enemies.each do |enemy|
@@ -1494,11 +1473,11 @@ class Game
       next if x < -TILE || x > VIEW_WIDTH + TILE
       if enemy.kind == :blob
         source = enemy.state == :flat ? FRAMES[:blob_flat] : frame(:blob, (enemy.t / 10) % 2)
-        spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, source, enemy.vx > 0, 255, 0, enemy.dead?)
+        @screen.sprite('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, source, flip: enemy.vx > 0, flip_v: enemy.dead?)
       else
         source = enemy.data[:spin] ? frame(:crab_spin, (enemy.t / 4) % 2) : frame(:crab, (enemy.t / 12) % 2)
         alpha = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
-        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, source, false, alpha, 0, enemy.dead?)
+        @screen.sprite('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, source, alpha: alpha, flip_v: enemy.dead?)
       end
     end
     draw_boss(camera_x) if @boss
@@ -1508,13 +1487,13 @@ class Game
       wrench = @wrench
       # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
       f = (wrench.t / 2) % 7
-      spr('sprites/wrench.png', wrench.x.to_i - camera_x - 4, wrench.y.to_i - 14, 48, 48, frame(:wrench_spin, f), wrench.facing < 0)
+      @screen.sprite('sprites/wrench.png', wrench.x.to_i - camera_x - 4, wrench.y.to_i - 14, 48, 48, frame(:wrench_spin, f), flip: wrench.facing < 0)
     end
     @particles.each do |particle|
-      rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
+      @screen.rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
     end
     @popups.each do |popup|
-      label(popup[0].to_i - camera_x + 20, popup[1].to_i, popup[2], 3, WHITE, true)
+      @screen.label(popup[0].to_i - camera_x + 20, popup[1].to_i, popup[2], 3, WHITE, true)
     end
     draw_hud if hud
   end
@@ -1536,16 +1515,16 @@ class Game
     x = player.x.to_i - camera_x - 12
     if player.powered && pose != :bro_die && @wrench.nil?
       wrench_x = player.facing > 0 ? x - 6 : x + 22
-      spr('sprites/wrench.png', wrench_x, player.y.to_i + 22, 40, 40, FRAMES[:wrench_back], player.facing > 0)
+      @screen.sprite('sprites/wrench.png', wrench_x, player.y.to_i + 22, 40, 40, FRAMES[:wrench_back], flip: player.facing > 0)
     end
-    spr(BROS[@bro][:path], x, player.y.to_i, 64, 80, frame(pose, run_frame), flip)
+    @screen.sprite(BROS[@bro][:path], x, player.y.to_i, 64, 80, frame(pose, run_frame), flip: flip)
   end
 
   def draw_hud
-    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, NEAR_BLACK)
-    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, DARK_GRAY)
+    @screen.rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, NEAR_BLACK)
+    @screen.rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, DARK_GRAY)
     color = GOLD
-    labels = @outputs.labels
+    labels = @screen.outputs.labels
     labels << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: color[0], g: color[1], b: color[2] }
     labels << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     labels << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }

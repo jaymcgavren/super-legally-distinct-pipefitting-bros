@@ -184,10 +184,8 @@ class Game
         target = @args.outputs[:world]
         target.w = VIEW_WIDTH
         target.h = 720
-        @outputs = target
-        draw_world(true, false)
-        @outputs = @args.outputs
-        @outputs.sprites << { x: shake_x, y: shake_y - rise, w: VIEW_WIDTH, h: 720, path: :world }
+        @screen.draw_into(target) { draw_world(true, false) }
+        @screen.outputs.sprites << { x: shake_x, y: shake_y - rise, w: VIEW_WIDTH, h: 720, path: :world }
       end
     end
     camera_x = @camera_x.to_i
@@ -196,52 +194,51 @@ class Game
       y = steam_puff[1].to_i - rise + shake_y
       next if y < -80 || y > 760
       size = steam_puff[5]
-      rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff[4] * 5, 200].min)
+      @screen.rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff[4] * 5, 200].min)
     end
     if @flying_valve
       x = @flying_valve[:x].to_i - camera_x + shake_x
       y = @flying_valve[:y].to_i - rise + shake_y
       if y < 760
         f = elapsed % 3
-        spr('sprites/items.png', x, y, TILE, TILE, frame(:valve, f))
+        @screen.tile('sprites/items.png', x, y, frame(:valve, f))
       end
     end
     if @twinkle && @twinkle[:t] < 40
       k = @twinkle[:t]
       flare = k < 20 ? k * 2 : (40 - k) * 2
       x = @twinkle[:x] - camera_x
-      rect(x - flare, 690, flare * 2 + 8, 8, TWINKLE)
-      rect(x, 690 - flare, 8, flare * 2 + 8, TWINKLE)
+      @screen.rect(x - flare, 690, flare * 2 + 8, 8, TWINKLE)
+      @screen.rect(x, 690 - flare, 8, flare * 2 + 8, TWINKLE)
     end
     @fireworks.each { |f| draw_firework(f) }
     if elapsed >= RUSTY_FALL
       rusty_y = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
       if rusty_y > -140
         # dazed face, flipped upside-down, wobbling as he drops
-        spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt],
-            (elapsed / 6).even?, 255, 0, true)
+        @screen.sprite('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt], flip: (elapsed / 6).even?, flip_v: true)
       end
     end
     if elapsed >= END_THANKS
-      label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, PALE_YELLOW, true)
+      @screen.label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, PALE_YELLOW, true)
     elsif elapsed >= END_CREDITS
       CREDITS.each_with_index do |c, i|
         next if elapsed < END_CREDITS + i * CREDIT_GAP
-        label(640, 500 - i * 110, c, 5, WHITE, true)
+        @screen.label(640, 500 - i * 110, c, 5, WHITE, true)
       end
     elsif elapsed >= END_TEXT
-      label(640, 470, 'CONGRATULATION!', 12, PALE_YELLOW, true)
-      label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
+      @screen.label(640, 470, 'CONGRATULATION!', 12, PALE_YELLOW, true)
+      @screen.label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
     end
     if elapsed > END_PROMPT
-      label(640, 200, "FINAL SCORE #{pad6(@score)}", 4, WHITE, true)
-      label(640, 130, 'PRESS START', 3, WHITE, true) if (@mode_frames / 30) % 2 == 0
+      @screen.label(640, 200, "FINAL SCORE #{pad6(@score)}", 4, WHITE, true)
+      @screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (@mode_frames / 30) % 2 == 0
     end
   end
 
   # the night sky deepening into space, stars streaking past as the camera rises
   def draw_space
-    outputs = @outputs
+    outputs = @screen.outputs
     k = [@rise / 4000.0, 1.0].min
     outputs.background_color = [(8 - 6 * k).to_i, (12 - 10 * k).to_i, (48 - 36 * k).to_i]
     speed = @rise_speed
@@ -261,7 +258,7 @@ class Game
     alpha = 150 - k * 2
     return if alpha <= 0
     if k < 5
-      rect(f[:x] - 80, f[:y] - 80, 160, 160, WHITE, 200 - k * 30)
+      @screen.rect(f[:x] - 80, f[:y] - 80, 160, 160, WHITE, 200 - k * 30)
     end
     droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |radius_factor, offset, size|
@@ -270,7 +267,7 @@ class Game
         angle = i * 0.5236 + offset
         x = ((f[:x] + Math.cos(angle) * r) / 16).to_i * 16
         y = ((f[:y] + Math.sin(angle) * r - droop) / 16).to_i * 16
-        rect(x - size / 2, y - size / 2, size, size, col, alpha)
+        @screen.rect(x - size / 2, y - size / 2, size, size, col, alpha)
       end
     end
   end

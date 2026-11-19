@@ -83,7 +83,7 @@ check 'boss rush ends with the same ending', s.mode == :ending
 # firework stars fall under gravity: the burst's centre of mass sinks, accelerating
 s = Sim.new.start(0)
 mean_y = lambda do |k|
-  s.args.outputs.clear; s.g.instance_variable_set(:@outputs, s.args.outputs)
+  s.args.outputs.clear; s.iv(:screen).outputs = s.args.outputs
   s.g.send(:draw_firework, { x: 640, y: 400, col: [255, 0, 0], t: k })
   ys = s.args.outputs.sprites.map { |r| r[:y] + r[:h] / 2.0 }
   ys.sum / ys.size
