@@ -73,7 +73,7 @@ class Game
     data = boss.data
     data[:inv] -= 1 if data[:inv] > 0
     boss.t += 1
-    if boss.state == :dead
+    if boss.dead?
       boss.vy -= 0.6
       boss.y += boss.vy
       if boss.t == 120
@@ -230,18 +230,19 @@ class Game
     BOSS_MOVES.each_with_index { |entry, i| known << entry[0] if i < boss_level && entry[0] != :enrage }
     newest = known[-1]
     move = boss_rand(10) < 4 ? newest : known[boss_rand(known.size)]
-    move = :hop if move == :summon && @enemies.count { |enemy| enemy.data[:minion] && enemy.state == :walk } >= 2
-    move = :hop if move == :spikes && boss.data[:spiky] > 0
+    move = :hop if move == :summon && @enemies.count { |enemy| enemy.data[:minion] && enemy.walking? } >= 2
+    move = :hop if move == :spikes && boss_spiky?
     boss.state = move
     boss.t = 0
   end
 
   def boss_spiky? = @boss.data[:spiky] > 0
+  def boss_invulnerable? = @boss.data[:inv] > 0
 
   def boss_hit(damage)
     boss = @boss
     data = boss.data
-    return false if data[:inv] > 0 || boss.state == :dead
+    return false if boss_invulnerable? || boss.dead?
     data[:hp] -= damage
     data[:inv] = 45
     sfx(:bosshit)
@@ -251,7 +252,7 @@ class Game
       boss.t = 0
       boss.vy = 14.0
       @shots = []
-      @enemies.each { |enemy| knock(enemy, 1) if enemy.data[:minion] && enemy.state == :walk }
+      @enemies.each { |enemy| knock(enemy, 1) if enemy.data[:minion] && enemy.walking? }
       add_score(5000, boss.x + 30, boss.y + 170)
       music_stop
       sfx(:bossdie, 0.75)
@@ -262,7 +263,7 @@ class Game
   def boss_vs_player
     boss = @boss
     player = @player
-    return if boss.state == :dead || @mode != :play
+    return if boss.dead? || !playing?
     return unless overlap?(player, boss)
     # a stomp is the player coming down onto him *relative to his motion*, so
     # Rusty hopping up into your feet counts too
@@ -311,7 +312,7 @@ class Game
         end
       end
       next if shot[:dead] || (shot[:k] == :bolt && shot[:t] < BOLT_WARNING)
-      hurt if @mode == :play && rect_hit?(player, shot[:x] + 4, shot[:y], shot[:w] - 8, shot[:h] - 4)
+      hurt if playing? && rect_hit?(player, shot[:x] + 4, shot[:y], shot[:w] - 8, shot[:h] - 4)
       if @wrench && shot[:k] == :glob && overlap?(@wrench, Actor.new(:x, shot[:x], shot[:y], shot[:w], shot[:h]))
         shot[:dead] = true
         puff(shot[:x] + 16, shot[:y] + 16)
@@ -349,7 +350,7 @@ class Game
         end
       end
     end
-    return if data[:inv] > 0 && (data[:inv] / 3).even? && boss.state != :dead
+    return if boss_invulnerable? && (data[:inv] / 3).even? && !boss.dead?
     source = case boss.state
              when :dead, :stunned then FRAMES[:rusty_hurt]
              when :pound then FRAMES[boss.t < 20 ? :rusty_crouch : :rusty_air]
@@ -358,19 +359,19 @@ class Game
              when :charge then FRAMES[boss.t < 45 ? :rusty_crouch : :rusty_angry]
              else data[:angry] ? FRAMES[:rusty_angry] : frame(:rusty_walk, (boss.t / 12) % 2)
              end
-    source = FRAMES[:rusty_hurt] if data[:inv] > 0 && boss.state != :dead
+    source = FRAMES[:rusty_hurt] if boss_invulnerable? && !boss.dead?
     x = boss.x.to_i - camera_x - 8
     shake = boss.state == :charge && boss.t < 45 ? ((boss.t / 2) % 2) * 8 - 4 : 0
     alpha = 255
-    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, source, boss.facing > 0, alpha, 0, boss.state == :dead)
-    if data[:spiky] > 0 || (data[:warn_spiky] > 0 && (data[:warn_spiky] / 4).even?)
+    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, source, boss.facing > 0, alpha, 0, boss.dead?)
+    if boss_spiky? || (data[:warn_spiky] > 0 && (data[:warn_spiky] / 4).even?)
       spr('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, FRAMES[:rusty_crown], false)
     end
   end
 
   def draw_boss_hud
     boss = @boss
-    return unless boss && boss.state != :dead
+    return unless boss && !boss.dead?
     return draw_warning if @warning > 0
     return unless @boss_on
     data = boss.data

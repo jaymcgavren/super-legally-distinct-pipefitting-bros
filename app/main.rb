@@ -124,6 +124,10 @@ class Actor
     @prev_y = @y
     @riding = nil
   end
+
+  def dead? = @state == :dead
+  def walking? = @state == :walk
+  def gone? = @state == :gone
 end
 
 class Player < Actor
@@ -141,6 +145,8 @@ class Player < Actor
     @skid = false
     @throw_t = 0
   end
+
+  def invulnerable? = @invuln > 0
 end
 
 def pad6(n)
@@ -154,6 +160,8 @@ def pad3(n)
 end
 
 class Game
+  def playing? = @mode == :play
+
   def initialize(args)
     @args = args
     @high_score = args.gtk.load_u32(0) || 0
@@ -610,8 +618,8 @@ class Game
     update_timer
     update_lifts
     update_player
-    update_enemies if @mode == :play
-    update_boss if @boss && @mode == :play
+    update_enemies if playing?
+    update_boss if @boss && playing?
     update_wrench
     update_items
     update_effects
@@ -647,7 +655,7 @@ class Game
   end
 
   def update_timer
-    return if @boss && @boss.state == :dead   # the clock stops once the boss falls
+    return if @boss && @boss.dead?   # the clock stops once the boss falls
     @time_accumulator += 1
     return if @time_accumulator < TICK_LENGTH
     @time_accumulator = 0
@@ -870,7 +878,7 @@ class Game
     end
     # knock out enemies standing on the bumped tile
     @enemies.each do |enemy|
-      next unless enemy.active && enemy.state == :walk
+      next unless enemy.active && enemy.walking?
       next unless (enemy.y - top).abs < 6 && enemy.x + enemy.w > x && enemy.x < x + TILE
       knock(enemy, x + 32 < enemy.x + enemy.w / 2 ? 1 : -1)
       add_score(200, enemy.x, enemy.y + 60)
@@ -886,7 +894,7 @@ class Game
 
   def hurt
     player = @player
-    return if player.invuln > 0 || @mode != :play
+    return if player.invulnerable? || !playing?
     if player.powered
       player.powered = false
       player.invuln = 120
@@ -897,7 +905,7 @@ class Game
   end
 
   def die
-    return if @mode != :play
+    return unless playing?
     @mode = :dying
     @mode_frames = 0
     @powered = false
@@ -1013,13 +1021,13 @@ class Game
         enemy.vx = enemy.kind == :crab ? -1.2 : -1.0
       end
       enemy.t += 1
-      if enemy.state == :dead
+      if enemy.dead?
         enemy.vy -= 0.8
         enemy.x += enemy.vx
         enemy.y += enemy.vy
         next
       end
-      next if enemy.state != :walk
+      next unless enemy.walking?
       next if enemy.x < @camera_x - 900 || enemy.x > @camera_x + VIEW_WIDTH + 600
       spiky = false
       speed = 1.0
@@ -1042,10 +1050,10 @@ class Game
       end
       enemy.state = :dead if enemy.y < -100
       @enemies.each do |other|
-        next if other.equal?(enemy) || !other.active || other.state != :walk
+        next if other.equal?(enemy) || !other.active || !other.walking?
         enemy.vx = -enemy.vx if overlap?(enemy, other) && ((other.x - enemy.x) * enemy.vx) > 0
       end
-      next unless @mode == :play && overlap?(player, enemy)
+      next unless playing? && overlap?(player, enemy)
       # full box for stomps, a smaller one for getting hurt (forgiving)
       if player.vy < 0 && player.prev_y >= enemy.y + enemy.h * 0.4 && !spiky
         stomp(enemy)
@@ -1058,7 +1066,7 @@ class Game
       enemy.data[:flat_t] = (enemy.data[:flat_t] || 0) + 1
       enemy.state = :gone if enemy.data[:flat_t] > 30
     end
-    @enemies.reject! { |enemy| enemy.state == :gone || (enemy.state == :dead && enemy.y < -200) }
+    @enemies.reject! { |enemy| enemy.gone? || (enemy.dead? && enemy.y < -200) }
   end
 
   def stomp(enemy)
@@ -1113,7 +1121,7 @@ class Game
     wrench.y += wrench.vy
     collect_nuts(wrench)
     @enemies.each do |enemy|
-      next unless enemy.active && enemy.state == :walk && overlap?(wrench, enemy)
+      next unless enemy.active && enemy.walking? && overlap?(wrench, enemy)
       knock(enemy, wrench.vx > 0 ? 1 : -1)
       add_score(200, enemy.x, enemy.y + 60)
     end
@@ -1123,7 +1131,7 @@ class Game
     end
     # a wrench that hits the main valve turns it: level clear. It bounces
     # off and flies back to the player while the level ends.
-    if @goal && @mode == :play &&
+    if @goal && playing? &&
        rect_hit?(wrench, @goal[:c] * TILE, tile_bottom(@goal[:r]), TILE, 3 * TILE)
       wrench.vx = wrench.vx > 0 ? -7.0 : 7.0
       wrench.vy = 7.0
@@ -1170,7 +1178,7 @@ class Game
         sfx(:powerup)
       end
     end
-    @items.reject! { |item| item.state == :gone }
+    @items.reject!(&:gone?)
   end
 
   # ── effects ───────────────────────────────────────────────────────
@@ -1486,11 +1494,11 @@ class Game
       next if x < -TILE || x > VIEW_WIDTH + TILE
       if enemy.kind == :blob
         source = enemy.state == :flat ? FRAMES[:blob_flat] : frame(:blob, (enemy.t / 10) % 2)
-        spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, source, enemy.vx > 0, 255, 0, enemy.state == :dead)
+        spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, source, enemy.vx > 0, 255, 0, enemy.dead?)
       else
         source = enemy.data[:spin] ? frame(:crab_spin, (enemy.t / 4) % 2) : frame(:crab, (enemy.t / 12) % 2)
         alpha = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
-        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, source, false, alpha, 0, enemy.state == :dead)
+        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, source, false, alpha, 0, enemy.dead?)
       end
     end
     draw_boss(camera_x) if @boss
@@ -1513,7 +1521,7 @@ class Game
 
   def draw_player
     player = @player
-    return if player.invuln > 0 && (player.invuln / 3) % 2 == 0 && @mode == :play
+    return if player.invulnerable? && (player.invuln / 3) % 2 == 0 && playing?
     camera_x = @camera_x.to_i
     pose = if @mode == :dying then :bro_die
            elsif player.throw_t > 0 then :bro_throw

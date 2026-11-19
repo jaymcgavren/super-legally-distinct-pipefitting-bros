@@ -133,9 +133,10 @@ refactor step will break some of them. Update them in the same commit.
       constant arrays/hashes.
 - [x] Name sprite-sheet frames: a `FRAMES` hash, e.g.
       `valve: [64, 0, 8, 16]`, so draw calls say what they draw.
-- [ ] Predicate methods instead of repeated comparisons where it reads better
+- [x] Predicate methods instead of repeated comparisons where it reads better
       (`playing?` for `@mode == :play`, etc.).
-- [ ] Commit per file or per kind of change, not one giant diff.
+- [x] Commit per file or per kind of change, not one giant diff. (Followed
+      throughout step 1; keep doing it.)
 
 ### 2. Extract collaborators out of Game
 Each as its own file under `app/`, required from main.rb. Game keeps thin
@@ -362,3 +363,10 @@ paths, anything the next session needs.)
   mruby splat calls are slow). Passing the array removed it: 0.85-0.92
   vs 0.87-0.89 for un-refactored, interleaved. Avoid splats in draw code.
   Tests ALL PASS (185), shots ALL SAME.
+- 2026-11-19: step 1, predicates (step 1 done). `Game#playing?` (was
+  `@mode == :play`, 9 places), `Actor#dead?`/`#walking?`/`#gone?` (state
+  checks, ~20 places), `Player#invulnerable?`, `boss_invulnerable?`, and the
+  existing `boss_spiky?` used where `data[:spiky] > 0` was repeated. The
+  `x -= 1 if x > 0` countdowns stay as they are. Endless defs. Tests ALL PASS
+  (185), shots ALL SAME, 2-B bench within noise of the previous commit.
+  Next: step 2, `Screen`.
