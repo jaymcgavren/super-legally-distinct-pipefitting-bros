@@ -91,7 +91,7 @@ refactor step will break some of them. Update them in the same commit.
 ## Plan
 
 ### 0. Baseline
-- [ ] Confirm `git branch --show-current` is `main` and the tree is clean.
+- [x] Confirm `git branch --show-current` is `main` and the tree is clean.
 - [ ] Run the tests (ALL PASS) and note the run time.
 - [ ] Performance baseline: a temp build that starts in a busy level (e.g. 7-D
       boss fight or 8-B) run headlessly for a fixed number of frames, timed
@@ -208,3 +208,6 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 ## Notes / progress log
 (Add dated notes here: decisions, surprises, baseline numbers, screenshot
 paths, anything the next session needs.)
+
+- 2026-11-19: step 0 started. On `main`, tree clean, in sync with
+  `origin/main` at d85377e.
