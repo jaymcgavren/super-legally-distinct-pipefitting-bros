@@ -2,7 +2,7 @@
 # A script of [buttons held, 60 Hz steps]: title, start, run and jump, pause
 # for a second, then run on.
 REFRESH_SCRIPT = [[[], 10], [[:start], 2], [[], 200], [%i[right b], 120], [%i[right b a], 20],
-                  [%i[right], 100], [[:start], 2], [[], 60], [[:start], 2], [%i[right], 60]]
+                  [%i[right], 100], [[:start], 2], [[], 60], [[:start], 2], [%i[right], 60]].freeze
 
 # Play the script on a display of the given rate; snapshot the game after
 # each part. Host frames per 60 Hz step = hz / 60 (whole numbers here).

@@ -214,7 +214,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       fights play the same.
 
 ### 6. Tooling and tests (optional; ask the user first)
-- [ ] RuboCop with a `.rubocop.yml` tuned for a game (looser method/class
+- [x] RuboCop with a `.rubocop.yml` tuned for a game (looser method/class
       length, allow short names in tight math). It's a gem for the host Ruby,
       not a compiler, but **ask before installing it**.
 - [ ] Move the scenarios to Minitest (ships with CRuby) if the user wants;
@@ -710,3 +710,42 @@ paths, anything the next session needs.)
   the rules: warning on the approach with the gate open, the klaxon once,
   the gate shutting as you step in, music after the warning, the valve
   between the girders, and Rusty rising into your feet is a stomp.
+- 2026-11-19: step 6, RuboCop (user chose "Both": RuboCop, then Minitest).
+  `rubocop` at the root: 30 files, no offenses. `.rubocop.yml` explains
+  each choice. Ruby 3.4 target. Size limits are raised for game code
+  (method 45 lines, ABC 60, complexity 20, class 700) and off for tools/.
+  It allows short maths names (x, c, r, dx). Some cops are off because
+  their fix would be slower or wrong under mruby: `n > 0` over
+  `n.positive?`, a ternary over `[a, b].max` or `.include?` (allocates
+  an array), no Comparable#clamp (the camera's bounds can cross), and
+  `class X < Struct.new` (constants in a Struct block go top level).
+  Others are off as house style: comment alignment, nested ternaries,
+  several small classes per file, the `require 'x.rb'` paths, and $game
+  and $fails. Scenarios keep `check 'x', a.any? { }` braces, since
+  do/end would bind the block to `check` and always pass.
+  `rubocop -a` plus hand fixes:
+  - guard clauses, `.even?`, `&.`, `_unused` args, frozen constants,
+    hand-wrapped long lines;
+  - THEMES built as one frozen hash, with no mutation after the literal;
+  - SteamPuff `size` -> `width`, since `size` shadowed Struct#size.
+  Fixes outside the game:
+  - tools/gen-levels.rb now writes `].freeze` (31b6602 froze LEVELS in
+    the generated file only, so regenerating would have unfrozen it).
+  - Dead locals removed from bot.rb and 01_core.
+  - Caught one bad autocorrect: Style/RedundantParentheses turned sim.rb's
+    `def clear = (@h.clear; @t&.each_value(&:clear))` into a def plus a
+    stray class-body statement, so render targets stopped clearing and
+    the ending's render-target check could pass on stale sprites. Now a
+    plain method.
+  Nine methods are still over the limits and carry `rubocop:todo` on the
+  def line as candidates to split:
+  - Ending#update and #draw;
+  - load_level, update_player, draw_background and draw_tiles;
+  - Physics#move_y, a hot path; and boss_vs_player.
+  Not split here, since splitting is a refactor of its own.
+  Checked: tests ALL PASS (185); boss trace (70,180 lines) and ending
+  trace the same as HEAD; reach and bot the same; shots ALL SAME;
+  regenerated levels.rb the same. Real-runtime bench vs HEAD (ms/frame,
+  3 runs each): arena 7 0.406/0.461/0.396 vs 0.420/0.427/0.394, arena 5
+  0.75 vs 0.74-0.75, level 1 0.755-0.785 vs 0.743-0.762, ending 5
+  0.397-0.405 vs 0.396-0.415. Same within noise.

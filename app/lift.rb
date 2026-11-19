@@ -57,7 +57,7 @@ class Lift
 
   def fit_under_ceiling(level, c, r)
     columns = [c, c + 1]
-    return unless columns.all? { |column| (r + 1...ROWS).none? { |row| SOLID[level.cell(column, row)] } }
+    return unless columns.all? { |column| ((r + 1)...ROWS).none? { |row| SOLID[level.cell(column, row)] } }
     ceil = (0...r).to_a.reverse.find { |row| columns.any? { |column| SOLID[level.cell(column, row)] } }
     return unless ceil
     max_top = level.tile_bottom(ceil) - PLAYER_HEIGHT - JUMP_RISE

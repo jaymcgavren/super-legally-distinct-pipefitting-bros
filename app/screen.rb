@@ -29,9 +29,7 @@ class Screen
 
   # centred text
   def label(x, y, text, size, color, shadow = false)
-    if shadow
-      @outputs.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
-    end
+    @outputs.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 } if shadow
     @outputs.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: color[0], g: color[1], b: color[2] }
   end
 

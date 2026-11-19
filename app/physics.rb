@@ -55,7 +55,7 @@ module Physics
 
   # vertical move; lands on solids, one-way pipes and lifts. Returns the
   # list of [col, row] cells hit by the head (empty if none).
-  def move_y(actor, use_lifts, corner_fix)
+  def move_y(actor, use_lifts, corner_fix) # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     prev = actor.y
     actor.y += actor.vy
     actor.on_ground = false
@@ -67,23 +67,22 @@ module Physics
       top = @level.tile_top(r)
       c0.upto(c1) do |c|
         tile = @level.cell(c, r)
-        if SOLID[tile] || (tile == '-' && prev >= top - 0.01)
-          actor.y = top
-          actor.vy = 0.0
-          actor.on_ground = true
-          break
-        end
+        next unless SOLID[tile] || (tile == '-' && prev >= top - 0.01)
+        actor.y = top
+        actor.vy = 0.0
+        actor.on_ground = true
+        break
       end
       if use_lifts && !actor.on_ground
         @lifts.each do |lift|
           lift_top = lift.y + lift.h
-          if actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4 && actor.y <= lift_top && prev >= lift_top - 14
-            actor.y = lift_top
-            actor.vy = 0.0
-            actor.on_ground = true
-            actor.riding = lift
-            break
-          end
+          over = actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4
+          next unless over && actor.y <= lift_top && prev >= lift_top - 14
+          actor.y = lift_top
+          actor.vy = 0.0
+          actor.on_ground = true
+          actor.riding = lift
+          break
         end
       end
       return []

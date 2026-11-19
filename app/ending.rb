@@ -42,14 +42,14 @@ class Ending < Scene
     @fireworks = []
     @fireworks_launched = 0
     @next_firework_at = END_FIRE
-    @rng = 12345
+    @rng = 12_345
     @twinkle = nil
     @shake = 0.0
   end
 
   def name = :ending
 
-  def update
+  def update # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     elapsed = @frames
     game = @game
     player = game.player
@@ -69,7 +69,8 @@ class Ending < Scene
       n = elapsed / 40 + 1
       n.times do |i|
         angle = (elapsed * 37 + i * 101) % 360 * 0.01745
-        @steam << SteamPuff.new(vx + Math.cos(angle) * 24, vy + 40 + Math.sin(angle) * 24, Math.cos(angle) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4)
+        @steam << SteamPuff.new(vx + Math.cos(angle) * 24, vy + 40 + Math.sin(angle) * 24, Math.cos(angle) * 2.5, 1.5 + (i % 3),
+                                24, 8 + (elapsed % 3) * 4)
       end
       @shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
     elsif elapsed == END_BURST
@@ -90,12 +91,11 @@ class Ending < Scene
       @flying_valve[:y] += @flying_valve[:v]
       # steam trail
       if @flying_valve[:y] - @rise < 800
-        @steam << SteamPuff.new(@flying_valve[:x] + 32 + (elapsed % 3 - 1) * 6, @flying_valve[:y] - 8, (elapsed % 5 - 2) * 0.6, -@flying_valve[:v] * 0.15, 18, 32)
+        @steam << SteamPuff.new(@flying_valve[:x] + 32 + (elapsed % 3 - 1) * 6, @flying_valve[:y] - 8, (elapsed % 5 - 2) * 0.6,
+                                -@flying_valve[:v] * 0.15, 18, 32)
       end
       if elapsed < END_SLOW
-        if !@locked && @flying_valve[:y] - @rise > END_LOCK_Y
-          @locked = true
-        end
+        @locked = true if !@locked && @flying_valve[:y] - @rise > END_LOCK_Y
         if @locked
           new_rise = @flying_valve[:y] - END_LOCK_Y
           @rise_speed = new_rise - @rise
@@ -139,12 +139,11 @@ class Ending < Scene
       game.vent_sounds
     end
     sound.play(:hurt) if elapsed == RUSTY_FALL + 6
-    if elapsed > END_PROMPT && (controls.start_pressed? || controls.jump_pressed?)
-      game.to_title
-    end
+    return unless elapsed > END_PROMPT && (controls.start_pressed? || controls.jump_pressed?)
+    game.to_title
   end
 
-  def draw
+  def draw # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     elapsed = @frames
     game = @game
     amplitude = @shake
@@ -168,7 +167,7 @@ class Ending < Scene
       x = steam_puff.x.to_i - camera_x + shake_x
       y = steam_puff.y.to_i - rise + shake_y
       next if y < -80 || y > 760
-      size = steam_puff.size
+      size = steam_puff.width
       screen.rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff.life * 5, 200].min)
     end
     if @flying_valve
@@ -191,7 +190,8 @@ class Ending < Scene
       rusty_y = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
       if rusty_y > -140
         # dazed face, flipped upside-down, wobbling as he drops
-        screen.sprite('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt], flip: (elapsed / 6).even?, flip_v: true)
+        screen.sprite('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt],
+                      flip: (elapsed / 6).even?, flip_v: true)
       end
     end
     if elapsed >= END_THANKS
@@ -205,10 +205,9 @@ class Ending < Scene
       screen.label(640, 470, 'CONGRATULATION!', 12, PALE_YELLOW, true)
       screen.label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
     end
-    if elapsed > END_PROMPT
-      screen.label(640, 200, "FINAL SCORE #{pad6(run.score)}", 4, WHITE, true)
-      screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (elapsed / 30) % 2 == 0
-    end
+    return unless elapsed > END_PROMPT
+    screen.label(640, 200, "FINAL SCORE #{pad6(run.score)}", 4, WHITE, true)
+    screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (elapsed / 30).even?
   end
 
   private
@@ -220,7 +219,7 @@ class Ending < Scene
   end
 
   def rand_below(n)
-    @rng = (@rng * 75 + 74) % 65537
+    @rng = (@rng * 75 + 74) % 65_537
     @rng % n
   end
 
@@ -263,9 +262,7 @@ class Firework < Struct.new(:x, :y, :color, :t)
     y0 = y
     alpha = 150 - k * 2
     return if alpha <= 0
-    if k < 5
-      screen.rect(x0 - 80, y0 - 80, 160, 160, WHITE, 200 - k * 30)
-    end
+    screen.rect(x0 - 80, y0 - 80, 160, 160, WHITE, 200 - k * 30) if k < 5
     droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |radius_factor, offset, size|
       r = (40 + k * 10) * radius_factor

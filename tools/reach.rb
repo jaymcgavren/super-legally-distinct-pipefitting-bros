@@ -54,16 +54,17 @@ def analyze(index)
       end
     end
   end
-  reached_goal = seen.keys.any? { |c, r| c >= goal_c - 1 }
+  reached_goal = seen.keys.any? { |c, _r| c >= goal_c - 1 }
   # unreached standable surfaces (ignoring ones fully enclosed)
   missing = []
-  cols.times { |c| 9.times { |r| missing << [c, r] if standable.(c, r) && !seen[[c, r]] } }
+  cols.times { |c| 9.times { |r| missing << [c, r] if standable.call(c, r) && !seen[[c, r]] } }
   [reached_goal, seen.size, missing]
 end
 
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   (ARGV.empty? ? (0...LEVELS.size).to_a : ARGV.map(&:to_i)).each do |i|
     ok, n, miss = analyze(i)
-    puts "#{LEVELS[i][:name]}: goal #{ok ? 'REACHABLE' : 'UNREACHABLE'}, #{n} spots; unreached: #{miss.map { |c, r| "#{c}/#{r}" }.join(' ')}"
+    unreached = miss.map { |c, r| "#{c}/#{r}" }.join(' ')
+    puts "#{LEVELS[i][:name]}: goal #{ok ? 'REACHABLE' : 'UNREACHABLE'}, #{n} spots; unreached: #{unreached}"
   end
 end

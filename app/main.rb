@@ -79,7 +79,7 @@ FRAMES = {
   rusty_crouch: [16, 0, 8, 28], rusty_air: [24, 0, 8, 28], rusty_hurt: [32, 0, 8, 28],
   rusty_mouth: [40, 0, 8, 28], rusty_angry: [48, 0, 8, 28], rusty_crown: [56, 0, 8, 28],
   # shots.png
-  glob: [0, 0, 8, 16], bolt: [8, 0, 8, 16],
+  glob: [0, 0, 8, 16], bolt: [8, 0, 8, 16]
 }.freeze
 FRAMES.each_value(&:freeze)
 
@@ -93,30 +93,32 @@ end
 SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }.freeze
 COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000].freeze
 
-THEMES = {
-  day:   { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
-           tiles: 'sprites/tiles_day.png' },
-  dusk:  { sky: [[72, 0, 120], [120, 16, 136], [160, 40, 120], [200, 72, 88], [228, 112, 56], [240, 160, 72]],
-           cloud: [248, 184, 168], bush: [48, 100, 80], bush_dk: [28, 64, 52], tiles: 'sprites/tiles_dusk.png' },
+OUTDOOR_THEMES = {
+  day: { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
+         tiles: 'sprites/tiles_day.png' },
+  dusk: { sky: [[72, 0, 120], [120, 16, 136], [160, 40, 120], [200, 72, 88], [228, 112, 56], [240, 160, 72]],
+          cloud: [248, 184, 168], bush: [48, 100, 80], bush_dk: [28, 64, 52], tiles: 'sprites/tiles_dusk.png',
+          sun: true },
   night: { sky: [[8, 12, 48]], cloud: [52, 60, 108], bush: [28, 84, 48], bush_dk: [12, 52, 28],
-           tiles: 'sprites/tiles_night.png', stars: true },
-  indoor: { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
-            tiles: 'sprites/tiles_indoor.png', indoor: true },
-}
-THEMES[:dusk][:sun] = true
-# inside a building, with the windows showing a sunset or the night sky
-THEMES[:indoor_dusk] = THEMES[:dusk].merge(tiles: 'sprites/tiles_indoor.png', indoor: true)
-THEMES[:indoor_night] = THEMES[:night].merge(tiles: 'sprites/tiles_indoor.png', indoor: true)
-THEMES.freeze
+           tiles: 'sprites/tiles_night.png', stars: true }
+}.freeze
+INDOOR_TILES = { tiles: 'sprites/tiles_indoor.png', indoor: true }.freeze
+# inside a building, the windows showing a day, sunset or night sky
+THEMES = OUTDOOR_THEMES.merge(
+  indoor: OUTDOOR_THEMES[:day].merge(INDOOR_TILES),
+  indoor_dusk: OUTDOOR_THEMES[:dusk].merge(INDOOR_TILES),
+  indoor_night: OUTDOOR_THEMES[:night].merge(INDOOR_TILES)
+).freeze
 BROS = [
   { name: 'DEZ',   path: 'sprites/dez.png' },
-  { name: 'OZZIE', path: 'sprites/ozzie.png' },
+  { name: 'OZZIE', path: 'sprites/ozzie.png' }
 ].freeze
 BUMP_ARC = [0, 8, 13, 16, 14, 10, 6, 2].freeze
 
 class Actor
   attr_accessor :kind, :x, :y, :w, :h, :vx, :vy, :on_ground, :state, :t, :facing,
                 :active, :data, :prev_y, :riding
+
   def initialize(kind, x, y, w, h)
     @kind = kind
     @x = x.to_f
@@ -139,7 +141,6 @@ class Actor
   def walking? = @state == :walk
   def gone? = @state == :gone
 end
-
 
 def pad6(n)
   digits = n.to_i.to_s
@@ -169,8 +170,10 @@ class Game
   attr_accessor :bro   # 0 Dez, 1 Ozzie
 
   def mode = @scene.name
-  def clock = @frame   # the world clock
+  # the world clock
+  def clock = @frame
   def playing? = @scene.name == :play
+
   def switch_to(scene)
     @scene = scene
   end
@@ -260,7 +263,7 @@ class Game
   end
 
   # ── level loading ─────────────────────────────────────────────────
-  def load_level(index, use_checkpoint)
+  def load_level(index, use_checkpoint) # rubocop:todo Metrics/AbcSize, Metrics/MethodLength
     @level = Level.new(index)
     @enemies = []
     @lifts = []
@@ -338,7 +341,7 @@ class Game
   end
 
   def update_timer
-    return if @boss && @boss.dead?   # the clock stops once the boss falls
+    return if @boss&.dead?   # the clock stops once the boss falls
     return unless @run.tick_clock
     if @run.low_time_warning?
       @sound.play(:warn)
@@ -347,7 +350,7 @@ class Game
     die if @run.time <= 0
   end
 
-  def update_player
+  def update_player # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     player = @player
     player.ride_lift
     dir = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
@@ -444,7 +447,7 @@ class Game
 
   def bump(c, r)
     tile = @level.cell(c, r)
-    key = r * 10000 + c
+    key = r * 10_000 + c
     @bumps[key] = BUMP_ARC.size
     x = c * TILE
     top = @level.tile_top(r)
@@ -666,16 +669,15 @@ class Game
     @particles.reject!(&:gone?)
     @popups.each(&:update)
     @popups.reject!(&:gone?)
-    @bumps.keys.each do |k|
+    @bumps.keys.each do |k|   # rubocop:disable Style/HashEachMethods -- deletes as it goes
       @bumps[k] -= 1
       @bumps.delete(k) if @bumps[k] <= 0
     end
   end
 
-
   # ── drawing ───────────────────────────────────────────────────────
 
-  def draw_background
+  def draw_background # rubocop:todo Metrics/AbcSize, Metrics/MethodLength
     theme = @level.theme
     outputs = @screen.outputs
     sky = theme[:sky]
@@ -799,21 +801,21 @@ class Game
     end
   end
 
-  def draw_tiles
+  def draw_tiles # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity
     camera_x = @camera.x.to_i
     tiles = @level.theme[:tiles]
     c0 = [camera_x / TILE, 0].max
     c1 = [(camera_x + VIEW_WIDTH) / TILE, @level.columns - 1].min
     nut_f = (@frame / 8) % 4
     draw_back_wall(camera_x, tiles, c0, c1) if @level.theme[:indoor]
-    ROWS.times do |r|
+    ROWS.times do |r| # rubocop:todo Metrics/BlockLength
       row = @level.row(r)
       y = @level.tile_bottom(r)
       c0.upto(c1) do |c|
         tile = row[c]
         next if tile == '.' || tile == 'I'
         x = c * TILE - camera_x
-        bump = @bumps[r * 10000 + c]
+        bump = @bumps[r * 10_000 + c]
         bumped_y = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
         case tile
         when '#' then @screen.tile(tiles, x, bumped_y, FRAMES[r == 0 || SOLID[@level.cell(c, r - 1)] ? :brick : :brick_top])
@@ -867,9 +869,7 @@ class Game
     draw_boss(camera_x) if @boss
     draw_player
     draw_boss_hud if @boss
-    if @wrench
-      @wrench.draw(@screen, camera_x)
-    end
+    @wrench&.draw(@screen, camera_x)
     @particles.each { |particle| particle.draw(@screen, camera_x) }
     @popups.each { |popup| popup.draw(@screen, camera_x) }
     draw_hud if hud
@@ -877,7 +877,7 @@ class Game
 
   def draw_player
     player = @player
-    return if player.invulnerable? && (player.invuln / 3) % 2 == 0 && playing?
+    return if player.invulnerable? && (player.invuln / 3).even? && playing?
     camera_x = @camera.x.to_i
     pose = if mode == :dying then :bro_die
            elsif player.throw_t > 0 then :bro_throw
@@ -907,8 +907,9 @@ class Game
     labels << { x: 470, y: 700, text: "NUTS x#{@run.nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }
     labels << { x: 720, y: 700, text: @level.name, size_px: 4, r: color[0], g: color[1], b: color[2] }
     shift_time = @run.time || SHIFT_LENGTH
-    time_color = shift_time <= 100 && (@frame / 15) % 2 == 0 ? ALERT_RED : color
-    labels << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: time_color[0], g: time_color[1], b: time_color[2] }
+    time_color = shift_time <= 100 && (@frame / 15).even? ? ALERT_RED : color
+    labels << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: time_color[0],
+                g: time_color[1], b: time_color[2] }
   end
 end
 

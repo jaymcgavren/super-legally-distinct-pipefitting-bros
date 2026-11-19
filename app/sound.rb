@@ -19,7 +19,7 @@ class Sound
     return if @played[name]
     @played[name] = true
     path = "sounds/#{name}.wav"
-    @args.outputs.sounds << (gain == 1.0 ? path : { path: path, gain: gain })
+    @args.outputs.sounds << (gain == 1.0 ? path : { path: path, gain: gain }) # rubocop:disable Lint/FloatComparison -- the default, exactly
   end
 
   # the nut chime, `semitones` above its normal pitch, on its own channel so
@@ -43,6 +43,7 @@ class Sound
 
   def pause_music = set_music(:paused, true)
   def resume_music = set_music(:paused, false)
+
   def music_pitch=(pitch)
     set_music(:pitch, pitch)
   end

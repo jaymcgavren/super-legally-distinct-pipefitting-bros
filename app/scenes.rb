@@ -26,7 +26,7 @@ class Scene
   def controls = @game.controls
   def run = @game.run
 
-  def blink?(period = 30) = (@frames / period) % 2 == 0
+  def blink?(period = 30) = (@frames / period).even?
 end
 
 # Title: the level scrolls by behind the logo; pick Dez or Ozzie, press
@@ -58,10 +58,9 @@ class Title < Scene
       @rush_armed = true
       sound.play(:oneup)
     end
-    if controls.start_pressed? || controls.jump_pressed?
-      sound.play(:checkpoint)
-      game.new_game(@rush_armed)
-    end
+    return unless controls.start_pressed? || controls.jump_pressed?
+    sound.play(:checkpoint)
+    game.new_game(@rush_armed)
   end
 
   def draw

@@ -3,12 +3,12 @@
 class Player < Actor
   attr_accessor :powered, :invuln, :coyote, :buffer, :jumping, :combo, :anim, :skid, :throw_t
 
-  SKID_DECEL = [0.5, 0.3]           # turning around: [on the ground, in the air]
+  SKID_DECEL = [0.5, 0.3].freeze           # turning around: [on the ground, in the air]
   ACCEL_WALK = 0.2
   ACCEL_RUN = 0.28
   ACCEL_AIR = 0.18
   OVERSPEED_DECEL = 0.12            # above the top speed, on the ground
-  FRICTION = [0.25, 0.04]           # no direction held: [ground, air]
+  FRICTION = [0.25, 0.04].freeze           # no direction held: [ground, air]
   SKID_MIN_SPEED = 1.5
   JUMP_BUFFER = 7                   # steps a jump press is remembered
   COYOTE_TIME = 6                   # steps you can still jump after a ledge
@@ -44,7 +44,10 @@ class Player < Actor
     max_speed = run ? RUN_MAX : WALK_MAX
     ground = @on_ground
     @skid = false
-    if dir != 0
+    if dir == 0
+      f = ground ? FRICTION[0] : FRICTION[1]
+      @vx = @vx.abs <= f ? 0.0 : @vx - f * (@vx > 0 ? 1 : -1)
+    else
       if @vx * dir < 0
         @vx += dir * (ground ? SKID_DECEL[0] : SKID_DECEL[1])
         @skid = ground && @vx.abs > SKID_MIN_SPEED
@@ -55,9 +58,6 @@ class Player < Actor
         @vx -= dir * OVERSPEED_DECEL
       end
       @facing = dir
-    else
-      f = ground ? FRICTION[0] : FRICTION[1]
-      @vx = @vx.abs <= f ? 0.0 : @vx - f * (@vx > 0 ? 1 : -1)
     end
     @skid
   end

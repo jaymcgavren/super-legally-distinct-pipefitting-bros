@@ -16,7 +16,10 @@ d_levels.each_with_index do |li, n|
     check 'boss holds still during the warning', b.state == :wait && s.iv(:warning) > 0
   end
   s.step([], 1) while s.iv(:warning) > 0
-  check "#{LEVELS[li][:name]} boss music after the warning", s.args.audio[:music] && s.args.audio[:music][:input] == 'sounds/boss.wav' if n == 0
+  if n == 0
+    music = s.args.audio[:music]
+    check "#{LEVELS[li][:name]} boss music after the warning", music && music[:input] == 'sounds/boss.wav'
+  end
   # survive a while with invulnerability, record which moves were used
   seen = {}
   1500.times do
@@ -45,9 +48,7 @@ d_levels.each_with_index do |li, n|
   s.step([], 130)
   check "#{LEVELS[li][:name]} timer stops once the boss is beaten", s.run.time == t0
   check "#{LEVELS[li][:name]} goal appears after the boss", !s.iv(:goal).nil?
-  if n == 7
-    check 'final boss got angry', b.angry?
-  end
+  check 'final boss got angry', b.angry? if n == 7
 end
 
 # wrench damages the boss
@@ -78,7 +79,8 @@ check 'wrench hits the boss', b.hp == hp - 1
   g = s.iv(:goal)
   if name == :left
     check 'boss valve sits between the girders', g && g.c == gc &&
-      (5..7).all? { |r| s.level.cell(g.c, r) == '.' } && (6..13).all? { |k| s.level.cell(ac + k, 5) == '.' }
+                                                 (5..7).all? { |r| s.level.cell(g.c, r) == '.' } &&
+                                                 (6..13).all? { |k| s.level.cell(ac + k, 5) == '.' }
   end
   if %i[right girder far_right].include?(name)
     s.step([], 30)
@@ -90,7 +92,7 @@ check 'wrench hits the boss', b.hp == hp - 1
     s.step(name == :left ? [:right] : [], 240)
     s.step([], 700)
     ok = %i[intro play].include?(s.mode) && s.iv(:level_index) == d_levels[0] + 1
-  rescue => e
+  rescue StandardError => e
     puts "  #{e.class}: #{e.message}"; ok = false
   end
   check "boss valve clears the stage (player #{name})", ok
@@ -104,10 +106,10 @@ s.set(:banner, 0)
 b = s.iv(:boss); b.state = :bolts; b.t = 0; s.set(:shots, [])
 s.p.invuln = 999
 s.step([], 1)
-bolts = s.iv(:shots).select { |sh| sh.is_a?(Bolt) }
+bolts = s.iv(:shots).grep(Bolt)
 check 'bolt storm drops 3 bolts', bolts.size == 3
 s.step([], 1) until bolts[0].t >= BOLT_WARNING - 1
-check 'bolt shadow warns for BOLT_WARNING frames', bolts[0].y == 700.0 && BOLT_WARNING > 40
+check 'bolt shadow warns for BOLT_WARNING frames', bolts[0].y == 700.0 && BOLT_WARNING > 40 # rubocop:disable Lint/FloatComparison -- not moved yet
 s.step([], 2)
 v1 = bolts[0].vy; s.step([], 1)
 check 'bolts fall 25% slower', (bolts[0].vy - v1 + 0.506).abs < 0.001

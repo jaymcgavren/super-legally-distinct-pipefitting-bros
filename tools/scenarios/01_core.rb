@@ -32,10 +32,10 @@ held_peak = lambda do |vx, keys|
   s.step(keys + [:a], 1); 50.times { s.step(keys + [:a]); pk = [pk, s.p.y].max }
   pk - y0
 end
-stand = held_peak.(0.0, [])
-walk  = held_peak.(WALK_MAX, [:right])
-part  = held_peak.(RUN_MAX * 0.8, %i[right b])
-run   = held_peak.(RUN_MAX, %i[right b])
+stand = held_peak.call(0.0, [])
+walk  = held_peak.call(WALK_MAX, [:right])
+part  = held_peak.call(RUN_MAX * 0.8, %i[right b])
+run   = held_peak.call(RUN_MAX, %i[right b])
 puts "  held jump: standing #{stand.round}, walking #{walk.round}, 80% run #{part.round}, full run #{run.round} px"
 check 'standing, walking and part-speed jumps share the lower max height', [walk, part].all? { |h| (h - stand).abs < 2 }
 check 'lower max still clears 4 tiles', stand > 4 * TILE
@@ -74,14 +74,14 @@ check 'powered contact only loses power', s.mode == :play && !s.p.powered && s.p
 
 # --- wrench crate -> pickup -> throw ---
 s = Sim.new.start(0)
-g = s.g
 level = s.level
 # a wrench crate with open air beneath it down to the floor
 c, r = nil
 level.columns.times do |cc|
   rr = (0..7).find { |k| level.cell(cc, k) == 'W' }
   next unless rr && ((rr + 1)..7).all? { |k| level.cell(cc, k) == '.' } && SOLID[level.cell(cc, 8)]
-  c, r = cc, rr
+  c = cc
+  r = rr
   break
 end
 check 'found a W crate over open floor', !c.nil?
@@ -107,7 +107,10 @@ check 'wrench comes back', s.iv(:wrench).nil?
 # --- pit death and respawn ---
 s = Sim.new.start(0)
 lives = s.run.lives
-pit = (0...s.level.columns).find { |c| (0..9).none? { |r| SOLID[s.level.cell(c, r)] || s.level.cell(c, r) == '-' } && (0..9).none? { |r| SOLID[s.level.cell(c + 1, r)] } }
+pit = (0...s.level.columns).find do |c|
+  (0..9).none? { |r| SOLID[s.level.cell(c, r)] || s.level.cell(c, r) == '-' } &&
+    (0..9).none? { |r| SOLID[s.level.cell(c + 1, r)] }
+end
 s.p.x = pit * TILE + 12; s.p.y = 300; s.snap
 s.step([], 60)
 check 'pit kills', s.mode == :dying
@@ -221,9 +224,10 @@ top = l.base_y + l.h + l.amplitude
 s.set(:lifts, [])
 s.p.x = l.x + 40; s.p.y = top; s.p.vx = RUN_MAX; s.p.vy = 0.0; s.p.on_ground = true; s.snap
 peak = top
-s.step([:right, :b, :a], 1)
-60.times { s.step([:right, :b, :a]); peak = [peak, s.p.y].max; break if s.p.vy < 0 }
-check "running jump from the 1-B pit lift's highest point peaks below the ceiling (#{peak.to_i} + #{PLAYER_HEIGHT} < #{ceil_bottom})",
+s.step(%i[right b a], 1)
+60.times { s.step(%i[right b a]); peak = [peak, s.p.y].max; break if s.p.vy < 0 }
+check "running jump from the 1-B pit lift's highest point peaks below the ceiling " \
+      "(#{peak.to_i} + #{PLAYER_HEIGHT} < #{ceil_bottom})",
       peak + PLAYER_HEIGHT < ceil_bottom && peak > top + Lift::JUMP_RISE * 0.9
 # lifts elsewhere keep the full swing: a lift over floor indoors (no level has
 # one, so try it in a copy of 1-B), and outdoor lifts
@@ -274,4 +278,4 @@ check 'pause stops the world clock', s.mode == :paused && s.iv(:frame) == f0
 check 'vents stay quiet during the pause', !s.sounds[n0..].include?('sounds/steam.wav')
 s.step([:start]); s.step([])
 check 'lifts carry on smoothly after the pause', s.mode == :play &&
-  s.iv(:lifts).all? { |l| l.dx.abs < 5 && l.dy.abs < 5 }
+                                                 s.iv(:lifts).all? { |l| l.dx.abs < 5 && l.dy.abs < 5 }

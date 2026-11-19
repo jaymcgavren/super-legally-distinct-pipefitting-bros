@@ -4,7 +4,7 @@
 class Level
   # tiles that mark where things start; each_marker clears them to air,
   # except vents, which stay in the grid as solid blocks
-  MARKERS = 'PrvLHSKGB'
+  MARKERS = 'PrvLHSKGB'.freeze
 
   attr_reader :index, :data, :theme, :columns
 

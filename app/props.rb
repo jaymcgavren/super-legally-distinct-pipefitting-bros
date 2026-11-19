@@ -64,7 +64,7 @@ class Cone
   end
 
   def draw(screen, camera_x, frame)
-    blink_on = @lit && (frame / 10) % 2 == 0
+    blink_on = @lit && (frame / 10).even?
     screen.tile('sprites/items.png', @x - camera_x, @y, FRAMES[blink_on ? :cone_lit : :cone_off])
   end
 end

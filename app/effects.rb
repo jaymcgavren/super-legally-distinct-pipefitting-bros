@@ -36,8 +36,8 @@ class Popup < Struct.new(:x, :y, :text, :t)
   end
 end
 
-# A big puff of steam in the ending: drifts, slows sideways and swells.
-class SteamPuff < Struct.new(:x, :y, :vx, :vy, :life, :size)
+# A big puff of steam in the ending: drifts, slows sideways and swells (a square, `width` across).
+class SteamPuff < Struct.new(:x, :y, :vx, :vy, :life, :width)
   DRAG = 0.94
 
   def update
@@ -45,7 +45,7 @@ class SteamPuff < Struct.new(:x, :y, :vx, :vy, :life, :size)
     self.y += vy
     self.vx *= DRAG
     self.life -= 1
-    self.size += 1
+    self.width += 1
   end
 
   def gone? = life <= 0

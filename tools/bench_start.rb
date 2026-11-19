@@ -1,4 +1,3 @@
-
 # ── appended by tools/bench.sh (temp copy only) ──────────────────────
 # Where the run starts, from BENCH_START (bench.sh fills in the two
 # placeholders):

@@ -15,7 +15,7 @@ BOSS_MOVES = [
   [:charge, 'BULL CHARGE',  :bull_charge],
   [:spikes, 'SPIKED CROWN', :spiked_crown],
   [:bolts,  'BOLT STORM',   :bolt_storm],
-  [:enrage, 'SHORT FUSE',   :short_fuse],   # not a move: fumes at half health
+  [:enrage, 'SHORT FUSE',   :short_fuse]   # not a move: fumes at half health
 ].freeze
 BOLT_WARNING = 64       # frames a bolt's shadow shows before it drops (was 40)
 WARN_LENGTH  = 160      # klaxon + WARNING card before each fight
@@ -99,7 +99,7 @@ class Game
     true
   end
 
-  def boss_vs_player
+  def boss_vs_player # rubocop:todo Metrics/AbcSize
     boss = @boss
     player = @player
     return if boss.dead? || !playing?
@@ -182,7 +182,7 @@ class Boss < Actor
 
   # the step method for each state: every move in BOSS_MOVES, plus waiting
   # out the banner, walking between moves, and reeling after a charge
-  STEPS = { wait: :wait_for_banner, walk: :walk, stunned: :reel }
+  STEPS = { wait: :wait_for_banner, walk: :walk, stunned: :reel } # rubocop:disable Style/MutableConstant -- frozen below
   BOSS_MOVES.each { |state, _name, step| STEPS[state] = step unless state == :enrage }
   STEPS.freeze
 
@@ -258,9 +258,8 @@ class Boss < Actor
     x = @x.to_i - camera_x - 8
     shake = @state == :charge && @t < 45 ? ((@t / 2) % 2) * 8 - 4 : 0
     screen.sprite('sprites/rusty.png', x + shake, @y.to_i, 128, 112, source, flip: @facing > 0, alpha: 255, flip_v: dead?)
-    if spiky? || (@warn_spiky > 0 && (@warn_spiky / 4).even?)
-      screen.sprite('sprites/rusty.png', x + shake, @y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
-    end
+    return unless spiky? || (@warn_spiky > 0 && (@warn_spiky / 4).even?)
+    screen.sprite('sprites/rusty.png', x + shake, @y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
   end
 
   private
@@ -268,7 +267,7 @@ class Boss < Actor
   def sound = @game.sound
 
   def rand_below(n)
-    @rng = (@rng * 75 + 74) % 65537
+    @rng = (@rng * 75 + 74) % 65_537
     @rng % n
   end
 
@@ -302,7 +301,7 @@ class Boss < Actor
   end
 
   # stands still until the banner has been up a second
-  def wait_for_banner(dir, angry)
+  def wait_for_banner(_dir, _angry)
     @vx = 0.0
     @state = :walk if @game.banner < 120
   end
@@ -328,7 +327,7 @@ class Boss < Actor
   end
 
   # crouch, leap at the player, and land sending steam waves along the floor
-  def ground_pound(dir, angry)
+  def ground_pound(_dir, angry)
     speed = pace(angry)
     if @t < 20
       @vx = 0.0   # crouch
@@ -355,7 +354,7 @@ class Boss < Actor
   end
 
   # lobs globs of rust at the player (more when angry, or from encounter 6)
-  def rust_spit(dir, angry)
+  def rust_spit(_dir, angry)
     @vx = 0.0
     n = angry ? 3 : 1 + (@encounter >= 6 ? 1 : 0)
     if @t == 24 || (n > 1 && @t == 38) || (n > 2 && @t == 52)
@@ -368,7 +367,7 @@ class Boss < Actor
   end
 
   # coughs up a minion Blob
-  def blob_belch(dir, angry)
+  def blob_belch(dir, _angry)
     @vx = 0.0
     if @t == 30
       sound.play(:appear)
@@ -391,20 +390,20 @@ class Boss < Actor
   end
 
   # stunned after charging into a wall
-  def reel(dir, angry)
+  def reel(_dir, _angry)
     @vx = 0.0
     idle(40) if @t > 70
   end
 
   # warns, then grows a spiked crown: no stomping for a while
-  def spiked_crown(dir, angry)
+  def spiked_crown(_dir, _angry)
     @vx = 0.0
     @warn_spiky = 40 if @t == 1
     idle(30) if @t > 40
   end
 
   # bolts drop on shadows, the first one on the player
-  def bolt_storm(dir, angry)
+  def bolt_storm(_dir, angry)
     @vx = 0.0
     if @t == 1
       sound.play(:warn)
@@ -432,16 +431,15 @@ class Boss < Actor
     @x += @vx
     min_x = (@arena_column + 1) * TILE + 4
     max_x = @level.width - @w - 4
-    if @x < min_x || @x > max_x
-      @x = @x < min_x ? min_x.to_f : max_x.to_f
-      if @state == :charge
-        @game.camera.shake(16)
-        sound.play(:pound)
-        @state = :stunned
-        @t = 0
-      end
-      @vx = 0.0
+    return unless @x < min_x || @x > max_x
+    @x = @x < min_x ? min_x.to_f : max_x.to_f
+    if @state == :charge
+      @game.camera.shake(16)
+      sound.play(:pound)
+      @state = :stunned
+      @t = 0
     end
+    @vx = 0.0
   end
 end
 

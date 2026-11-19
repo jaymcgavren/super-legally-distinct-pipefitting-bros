@@ -11,11 +11,11 @@ require_relative 'segments'
 WORLDS = 2
 TITLES = [
   ['ROOFTOP ROW', 'BOILER ROOM', 'SUNSET STACKS', 'RUSTY YARD'],
-  ['WATER HAMMER', 'MECHANICAL ROOM', 'HOT AND HUMID', 'THE FINAL VALVE'],
-]
-THEME = %i[day indoor dusk night]
+  ['WATER HAMMER', 'MECHANICAL ROOM', 'HOT AND HUMID', 'THE FINAL VALVE']
+].freeze
+THEME = %i[day indoor dusk night].freeze
 # the time of day seen through the windows of each jobsite's B building
-INDOOR_TIME = %i[indoor indoor_dusk]
+INDOOR_TIME = %i[indoor indoor_dusk].freeze
 OUT = File.expand_path('../app/levels.rb', __dir__)
 
 def pool(kind, world)
@@ -60,7 +60,7 @@ def build(world, sec, seed)
   spots = [(names.size / 2) * 20]
   spots << (names.size - 2) * 20 if boss
   spots.each do |seg_c|
-    (seg_c + 1..seg_c + 18).each do |c|
+    ((seg_c + 1)..(seg_c + 18)).each do |c|
       next unless rows[7][c] == '.' && rows[7][c + 1] == '.' && '#F'.include?(rows[8][c])
       next unless rows[6][c] == '.'
       rows[7][c] = 'K'
@@ -78,7 +78,7 @@ def build(world, sec, seed)
   while extra > 0 && (tries += 1) < 400
     c = 30 + rng.rand(cols - 30 - (boss ? 24 : 12))
     next unless rows[7][c] == '.' && '#F'.include?(rows[8][c]) && rows[6][c] == '.'
-    next if (c - 3..c + 3).any? { |k| 'rvKSG'.include?(rows[7][k]) }
+    next if ((c - 3)..(c + 3)).any? { |k| 'rvKSG'.include?(rows[7][k]) }
     rows[7][c] = rng.rand < 0.3 + world * 0.05 ? 'v' : 'r'
     extra -= 1
   end
@@ -106,11 +106,11 @@ def write(levels)
       lv[:rows].each { |r| f.puts "      '#{r}'," }
       f.puts '    ] },'
     end
-    f.puts ']'
+    f.puts '].freeze'
   end
 end
 
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   require_relative 'reach'
   only = ARGV.map(&:to_i)
   seeds = {}

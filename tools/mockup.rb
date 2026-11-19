@@ -3,59 +3,59 @@
 # filling the 1280x720 (16:9) canvas. Coordinates below are virtual, top-left.
 
 PAL = {
-  black:   [0, 0, 0],
-  hud:     [24, 26, 24],
-  sky:     [84, 138, 236], cloud: [236, 236, 236],
-  bush:    [56, 156, 40],  bush_dk: [24, 104, 24],
-  brick:   [176, 76, 40],  mortar: [92, 36, 20], coping: [180, 176, 164],
-  girder:  [128, 136, 152], girder_hi: [188, 196, 208], rivet: [72, 76, 92],
-  steel:   [96, 100, 120],
-  copper:  [200, 108, 44], copper_hi: [236, 152, 80], flange: [140, 68, 24],
-  red:     [200, 40, 40],  crate_dk: [124, 20, 20],
-  yellow:  [236, 212, 64], gold: [228, 184, 48],
-  skin:    [228, 160, 112], vest: [244, 120, 24], stripe: [252, 240, 160],
-  jeans:   [48, 80, 176],   boots: [96, 56, 24],
-  rust:    [168, 84, 32],   valve: [216, 48, 48],
-  white:   [236, 236, 236],
-}
+  black: [0, 0, 0],
+  hud: [24, 26, 24],
+  sky: [84, 138, 236], cloud: [236, 236, 236],
+  bush: [56, 156, 40], bush_dk: [24, 104, 24],
+  brick: [176, 76, 40], mortar: [92, 36, 20], coping: [180, 176, 164],
+  girder: [128, 136, 152], girder_hi: [188, 196, 208], rivet: [72, 76, 92],
+  steel: [96, 100, 120],
+  copper: [200, 108, 44], copper_hi: [236, 152, 80], flange: [140, 68, 24],
+  red: [200, 40, 40], crate_dk: [124, 20, 20],
+  yellow: [236, 212, 64], gold: [228, 184, 48],
+  skin: [228, 160, 112], vest: [244, 120, 24], stripe: [252, 240, 160],
+  jeans: [48, 80, 176], boots: [96, 56, 24],
+  rust: [168, 84, 32], valve: [216, 48, 48],
+  white: [236, 236, 236]
+}.freeze
 
-def bar args, c, l, w, h, col
+def bar(args, c, l, w, h, col)
   args.outputs.solids << [c * 8, 720 - (l + h) * 4, w * 8, h * 4, *PAL[col]]
 end
 
 # 2600-style player graphic: 8 bits wide, one color per row, rows 2 lines tall
-def sprite args, c, l, rows, colors, line_h = 2
+def sprite(args, c, l, rows, colors, line_h = 2)
   rows.each_with_index do |row, r|
     row.size.times do |i|
-      bar(args, c + i, l + r * line_h, 1, line_h, colors[r]) if row[i] == "X"
+      bar(args, c + i, l + r * line_h, 1, line_h, colors[r]) if row[i] == 'X'
     end
   end
 end
 
 PLAYER = [
   '..XXXX..', '.XXXXXX.', '..XXX...', 'X.XXX...', 'XXXXXX..',
-  '..XXXX..', '..XXXX..', '..XXXX..', '..X..X..', '.XX...XX',
-]
-PLAYER_C = %i[yellow yellow skin skin vest vest stripe jeans jeans boots]
+  '..XXXX..', '..XXXX..', '..XXXX..', '..X..X..', '.XX...XX'
+].freeze
+PLAYER_C = %i[yellow yellow skin skin vest vest stripe jeans jeans boots].freeze
 
-BLOB   = ['..XXXX..', '.XXXXXX.', 'XX.XX.XX', 'XXXXXXXX', 'XXXXXXXX', 'X.X..X.X']
-CRAB   = ['...XX...', '.XXXXXX.', 'X..XX..X', '.XXXXXX.', '..X..X..', '.X....X.']
-NUT    = ['.XXXX.', 'XX..XX', 'XX..XX', '.XXXX.']
+BLOB   = ['..XXXX..', '.XXXXXX.', 'XX.XX.XX', 'XXXXXXXX', 'XXXXXXXX', 'X.X..X.X'].freeze
+CRAB   = ['...XX...', '.XXXXXX.', 'X..XX..X', '.XXXXXX.', '..X..X..', '.X....X.'].freeze
+NUT    = ['.XXXX.', 'XX..XX', 'XX..XX', '.XXXX.'].freeze
 
-def crate args, c, l
+def crate(args, c, l)
   bar args, c, l, 8, 12, :red
   bar args, c + 2, l - 2, 4, 2, :yellow        # handle
   bar args, c, l + 4, 8, 1, :crate_dk          # lid seam
   bar args, c + 3, l + 5, 2, 2, :yellow        # latch
 end
 
-def girder args, c, l, w
+def girder(args, c, l, w)
   bar args, c, l, w, 2, :girder_hi
   bar args, c, l + 2, w, 4, :girder
   0.step(w - 1, 4) { |i| bar args, c + i + 1, l + 3, 1, 1, :rivet }
 end
 
-def tick args
+def tick(args)
   args.outputs.background_color = PAL[:black]
 
   # sky: flat 2600 blue with a couple of blocky clouds

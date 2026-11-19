@@ -4,7 +4,6 @@ require_relative 'sim'
 
 def bot(index, frames: 5000, invuln: true)
   s = Sim.new.start(index)
-  g = s.g
   level = s.level
   jump_hold = 0; stuck = 0; lastx = 0; deaths = []
   frames.times do |f|
@@ -21,14 +20,12 @@ def bot(index, frames: 5000, invuln: true)
     fx = p.x + p.w + 30
     wall = SOLID[level.cell(level.column_at(fx), level.row_at(p.y + 10))]
     gc = level.column_at(p.x + p.w + 40)
-    pit = !(0..9).any? { |r| SOLID[level.cell(gc, r)] || %w[-].include?(level.cell(gc, r)) } && p.on_ground
-    pit ||= p.on_ground && level.row_at(p.y - 4) < 10 && !SOLID[level.cell(gc, level.row_at(p.y - 4))] && level.cell(gc, level.row_at(p.y - 4)) != '-'
+    pit = (0..9).none? { |r| SOLID[level.cell(gc, r)] || %w[-].include?(level.cell(gc, r)) } && p.on_ground
+    below = level.cell(gc, level.row_at(p.y - 4))
+    pit ||= p.on_ground && level.row_at(p.y - 4) < 10 && !SOLID[below] && below != '-'
     enemy = s.iv(:enemies).any? { |e| e.state == :walk && e.x > p.x && e.x - p.x < 160 && (e.y - p.y).abs < 40 }
-    lift_ahead = s.iv(:lifts).any? { |l| l.x > p.x && l.x - p.x < 300 }
     if stuck > 30 then jump_hold = 30; stuck = 0 end
-    if p.on_ground && (wall || pit || enemy) && jump_hold <= 0
-      jump_hold = 30
-    end
+    jump_hold = 30 if p.on_ground && (wall || pit || enemy) && jump_hold <= 0
     held = %i[right b]
     if jump_hold > 0
       held << :a; jump_hold -= 1
@@ -41,6 +38,4 @@ def bot(index, frames: 5000, invuln: true)
   [:timeout, (s.p.x / TILE).round, deaths]
 end
 
-if __FILE__ == $0
-  LEVELS.size.times { |i| puts "#{LEVELS[i][:name]}: #{bot(i).inspect}" }
-end
+LEVELS.size.times { |i| puts "#{LEVELS[i][:name]}: #{bot(i).inspect}" } if __FILE__ == $PROGRAM_NAME
