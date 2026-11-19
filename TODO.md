@@ -171,7 +171,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] `Lift` (vertical/horizontal; `amp`, `phase`, base position, `dx/dy`
       for riders; `lower_pit_lift` logic becomes a class method or initializer
       option). Update `tools/reach.rb`.
-- [ ] Items: `PopNut`, `WrenchItem`, `Lunch` (from `update_items` /
+- [x] Items: `PopNut`, `WrenchItem`, `Lunch` (from `update_items` /
       `draw_world`'s `case it.kind`).
 - [ ] Static props as small classes or Structs: `Vent`, `Cone`, `Goal`
       (valve: `turn`, `gone`).
@@ -485,3 +485,17 @@ paths, anything the next session needs.)
   bodies use them. Scenarios and reach.rb read the new readers.
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
   0.98-1.03 vs 0.98-0.99 at HEAD (machine slower this run; noise).
+- 2026-11-19: step 3, items (app/items.rb). `PopNut`, and `WrenchItem` /
+  `Lunch` on a shared `RisingItem` (rises 64 px out of its crate, then
+  `move`s). All still subclass Actor for now (Physics and `gone?` need
+  its fields; Actor slims down once everything has a class). Each has
+  `update(world)` (returns true when it can be picked up this step;
+  `world` is the Game, used for Lunch's move_x/move_y) and
+  `draw(screen, camera_x, frame)`. The `data[:rise]` hash entry is
+  `rising?`. What a pickup does (1UP; score, power-up, sound) stays in
+  `Game#update_items`, by class. `frame(name, i)` is now top-level next
+  to FRAMES, so entity classes can use it.
+  Lunch isn't covered by the scenarios, so I traced a lunchbox for 300
+  steps on 4 levels against the previous commit (x, y, vx, state every
+  step, wall bounces included): identical. Tests ALL PASS (185), shots
+  ALL SAME, reach/bot unchanged; bench level 1 1.00-1.01 vs 1.00-1.01.

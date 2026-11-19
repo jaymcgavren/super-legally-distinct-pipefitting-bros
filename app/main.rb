@@ -83,6 +83,13 @@ FRAMES = {
 }.freeze
 FRAMES.each_value(&:freeze)
 
+# FRAMES[name], or frame `index` of the animation starting there
+def frame(name, index = 0)
+  base = FRAMES[name]
+  return base if index == 0
+  [base[0] + index * base[2], base[1], base[2], base[3]]
+end
+
 SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }.freeze
 COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000].freeze
 
@@ -164,6 +171,7 @@ end
 
 # entities: their class bodies use the constants above
 require 'app/lift.rb'
+require 'app/items.rb'
 
 class Game
   include Physics
@@ -627,16 +635,11 @@ class Game
       @level.set_cell(c, r, 'U') if n - 1 <= 0
     when 'W'
       @level.set_cell(c, r, 'U')
-      item = Actor.new(:wrench_item, x + 4, top - 64, 56, 56)
-      item.data[:rise] = 64
-      @items << item
+      @items << WrenchItem.new(x, top)
       @sound.play(:appear)
     when 'I'
       @level.set_cell(c, r, 'U')
-      item = Actor.new(:lunch, x + 4, top - 64, 56, 56)
-      item.data[:rise] = 64
-      item.vx = 2.5
-      @items << item
+      @items << Lunch.new(x, top)
       @sound.play(:appear)
     else
       @sound.play(:bump)
@@ -651,9 +654,7 @@ class Game
   end
 
   def pop_nut(x, top)
-    item = Actor.new(:popnut, x, top, 64, 64)
-    item.vy = 16.0
-    @items << item
+    @items << PopNut.new(x, top)
     add_nut
   end
 
@@ -910,27 +911,10 @@ class Game
   def update_items
     player = @player
     @items.each do |item|
-      item.t += 1
-      if item.kind == :popnut
-        item.vy -= 1.2
-        item.y += item.vy
-        item.state = :gone if item.t > 26
-        next
-      end
-      if item.data[:rise] > 0
-        item.data[:rise] -= 2
-        item.y += 2
-        next
-      end
-      if item.kind == :lunch
-        item.vy -= GRAVITY_FALL
-        item.vx = -item.vx if move_x(item)
-        move_y(item, false, false)
-        item.state = :gone if item.y < -100
-      end
+      next unless item.update(self)
       next unless overlap?(player, item)
       item.state = :gone
-      if item.kind == :lunch
+      if item.is_a?(Lunch)
         one_up(item.x, item.y + 70)
       else
         add_score(1000, item.x, item.y + 70)
@@ -985,12 +969,6 @@ class Game
 
 
   # ── drawing ───────────────────────────────────────────────────────
-  # FRAMES[name], or frame `index` of the animation starting there
-  def frame(name, index = 0)
-    base = FRAMES[name]
-    return base if index == 0
-    [base[0] + index * base[2], base[1], base[2], base[3]]
-  end
 
   def draw_background
     theme = @level.theme
@@ -1204,16 +1182,7 @@ class Game
       end
     end
     return unless entities
-    @items.each do |item|
-      x = item.x.to_i - camera_x
-      case item.kind
-      when :popnut then @screen.tile('sprites/items.png', x, item.y.to_i, frame(:nut, (item.t / 3) % 4))
-      when :wrench_item
-        bob = item.data[:rise] > 0 ? 0 : ((@frame / 12) % 2) * 4
-        @screen.tile('sprites/items.png', x - 4, item.y.to_i + bob, FRAMES[:wrench_item])
-      when :lunch then @screen.tile('sprites/items.png', x - 4, item.y.to_i, FRAMES[:lunchbox])
-      end
-    end
+    @items.each { |item| item.draw(@screen, camera_x, @frame) }
     @enemies.each do |enemy|
       x = enemy.x.to_i - camera_x
       next if x < -TILE || x > VIEW_WIDTH + TILE

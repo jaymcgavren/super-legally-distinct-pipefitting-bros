@@ -89,7 +89,7 @@ s.put(c)
 s.p.x = c * TILE + 12
 s.step([:a], 30); s.step([], 40)
 check 'W crate used', level.cell(c, r) == 'U'
-item = s.iv(:items).find { |i| i.kind == :wrench_item }
+item = s.iv(:items).find { |i| i.is_a?(WrenchItem) }
 check 'wrench item spawned', !item.nil?
 s.step([], 40)
 s.p.x = item.x; s.p.y = item.y; s.step([], 2) if item
