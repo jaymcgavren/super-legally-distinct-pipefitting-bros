@@ -1,25 +1,25 @@
 # --- secret code -> Boss Rush ---
-def enter_code(s, code = Game::RUSH_CODE)
+def enter_code(s, code = Title::RUSH_CODE)
   code.each { |k| s.step([k], 1); s.step([], 2) }
 end
 
 s = Sim.new
 s.step([], 5)
-enter_code(s, Game::RUSH_CODE[0, 7])
-check 'partial code does not arm boss rush', !s.iv(:rush_armed) && s.mode == :title
+enter_code(s, Title::RUSH_CODE[0, 7])
+check 'partial code does not arm boss rush', !s.g.scene.rush_armed? && s.mode == :title
 enter_code(s, [:right])
-check 'full code arms boss rush on the title', s.iv(:rush_armed) && s.mode == :title
+check 'full code arms boss rush on the title', s.g.scene.rush_armed? && s.mode == :title
 s.step([:a], 1); s.step([], 2)
 check 'A then starts boss rush', s.run.rush? && s.iv(:level_index) == 0 && s.mode == :intro
 check 'boss rush gives 5 lives', s.run.lives == 5
 
 s = Sim.new; s.step([], 5)
-enter_code(s, Game::RUSH_CODE); s.step([:start], 1); s.step([], 2)
+enter_code(s, Title::RUSH_CODE); s.step([:start], 1); s.step([], 2)
 check 'Start also starts boss rush', s.run.rush? && s.iv(:level_index) == 0
 
 s = Sim.new; s.step([], 5)
 enter_code(s, %i[up up up down down left right left right])
-check 'extra Up still accepted', s.iv(:rush_armed)
+check 'extra Up still accepted', s.g.scene.rush_armed?
 
 s = Sim.new; s.step([], 5)
 s.step([:a], 1); s.step([], 2)
@@ -27,7 +27,7 @@ check 'plain A still starts normal game', !s.run.rush? && s.iv(:level_index) == 
 
 s.step([], 1) until s.mode == :play
 s.run.lives = 1; s.g.send(:die); s.step([], 200); s.step([], 130); s.step([:start]); s.step([], 2)
-check 'back on title, boss rush is disarmed', s.mode == :title && !s.iv(:rush_armed)
+check 'back on title, boss rush is disarmed', s.mode == :title && !s.g.scene.rush_armed?
 
 # Each boss in turn, starting in the arena with the wrench
 s = Sim.new; s.step([], 5); enter_code(s); s.step([:start], 1)
@@ -55,7 +55,7 @@ check 'boss rush ends with the ending', s.mode == :ending
 # --- each code press chimes one step higher ---
 s = Sim.new; s.step([], 5)
 pitches = []
-Game::RUSH_CODE.each { |k| s.step([k], 1); pitches << s.args.audio[:code][:pitch]; s.step([], 2) }
+Title::RUSH_CODE.each { |k| s.step([k], 1); pitches << s.args.audio[:code][:pitch]; s.step([], 2) }
 check 'code presses climb in pitch', pitches.each_cons(2).all? { |a, b| b > a }
 s = Sim.new; s.step([], 5); s.step([:start], 1); s.step([], 2)
 check 'normal game still gives 3 lives', s.run.lives == 3

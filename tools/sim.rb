@@ -78,7 +78,8 @@ class Sim
 
   def snap = iv(:camera).jump_to(p.x - 560)
   def p = iv(:player)
-  def mode = iv(:mode)
+  def mode = @g.mode
+  def mode_frames = @g.scene.frames   # steps since the current scene began
 
   # get from title into play on level idx
   def start(level = 0)

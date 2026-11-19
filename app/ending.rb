@@ -29,8 +29,7 @@ FIREWORK_COLORS  = [[255, 48, 48], [48, 255, 96], [64, 112, 255]].freeze
 
 class Game
   def start_ending
-    @mode = :ending
-    @mode_frames = 0
+    switch_to(Ending.new(self))
     @run.bank_time             # the whole time bonus at once
     save_hiscore
     @sound.stop_music
@@ -49,8 +48,7 @@ class Game
     @end_stars ||= Array.new(70) { |i| [(i * 389 + 41) % VIEW_WIDTH, (i * 157 + 23) % 760, i % 3] }
   end
 
-  def step_ending
-    elapsed = @mode_frames
+  def step_ending(elapsed)
     player = @player
     player.vy -= GRAVITY_FALL
     player.vx = 0.0
@@ -161,8 +159,7 @@ class Game
     @sound.play(:firework)
   end
 
-  def draw_ending
-    elapsed = @mode_frames
+  def draw_ending(elapsed)
     amplitude = @end_shake
     shake_x = end_shake_x
     shake_y = amplitude > 0 ? ((@frame % 6) < 3 ? amplitude : -amplitude).to_i / 2 : 0
@@ -223,7 +220,7 @@ class Game
     end
     if elapsed > END_PROMPT
       @screen.label(640, 200, "FINAL SCORE #{pad6(@run.score)}", 4, WHITE, true)
-      @screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (@mode_frames / 30) % 2 == 0
+      @screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (elapsed / 30) % 2 == 0
     end
   end
 

@@ -32,12 +32,12 @@ s.step([])
 check 'level stops being drawn once it is off screen', s.args.outputs.sprites.none? { |sp| sp[:path] == :world }
 fast = s.iv(:rise_speed)
 check 'camera races at the valve speed', (fast - END_TOP_SPEED).abs < 0.01
-s.step([], 1) until s.iv(:mode_frames) >= END_SLOW + 60
+s.step([], 1) until s.mode_frames >= END_SLOW + 60
 check 'camera slows down', s.iv(:rise_speed) < fast * 0.3 && s.iv(:rise_speed) > 1
 check 'valve flies off the top', s.iv(:flying_valve).nil? || s.iv(:flying_valve)[:y] - s.iv(:rise) > 720
 spawns = []
-until s.iv(:mode_frames) >= END_TEXT + 200
-  n0 = s.iv(:fireworks_launched); s.step([]); spawns << s.iv(:mode_frames) if s.iv(:fireworks_launched) > n0
+until s.mode_frames >= END_TEXT + 200
+  n0 = s.iv(:fireworks_launched); s.step([]); spawns << s.mode_frames if s.iv(:fireworks_launched) > n0
 end
 gaps = spawns.each_cons(2).map { |a, b| b - a }
 puts "  firework gaps #{gaps.inspect}"
@@ -48,7 +48,7 @@ check 'CONGRATULATION! / JOB COMPLETE', labels.include?('CONGRATULATION!') && la
 s.step([:start], 1); s.step([], 1)
 check 'start does not skip the ending too early', s.mode == :ending
 txt = -> { s.args.outputs.labels.map { |l| l[:text] } }
-s.step([], 1) until s.iv(:mode_frames) >= END_CREDITS + 1
+s.step([], 1) until s.mode_frames >= END_CREDITS + 1
 check 'credits replace CONGRATULATION!', txt.().include?('CODE: JAY MCGAVREN') && !txt.().include?('CONGRATULATION!') &&
   !txt.().include?('CONCEPT: CPRO')
 s.step([], CREDIT_GAP)
@@ -58,7 +58,7 @@ s.step([], CREDIT_GAP)
 check 'third credit joins below', CREDITS.all? { |c| txt.().include?(c) } &&
   s.args.outputs.labels.select { |l| CREDITS.include?(l[:text]) && l[:r] == 255 }.map { |l| l[:y] }.each_cons(2).all? { |a, b| a > b }
 check 'fireworks behind the credits', s.iv(:fireworks).size > 0
-s.step([], 1) until s.iv(:mode_frames) >= END_THANKS + 1
+s.step([], 1) until s.mode_frames >= END_THANKS + 1
 rusty = []
 (RUSTY_FALL - END_THANKS + 100).times do
   s.step([])
@@ -70,7 +70,7 @@ check 'Big Rusty falls past the centre, upside-down, during THANK YOU', rusty.si
   rusty.any? { |r| (r[:y] + 56 - 360).abs < 40 } && (rusty[0][:x] + 64 - 640).abs < 16 &&
   s.args.outputs.labels.any? { |l| l[:text] == 'THANK YOU FOR PLAYING!!!' }
 check 'credits clear for THANK YOU FOR PLAYING!!!', txt.().include?('THANK YOU FOR PLAYING!!!') && CREDITS.none? { |c| txt.().include?(c) }
-s.step([], 1) until s.iv(:mode_frames) > END_PROMPT
+s.step([], 1) until s.mode_frames > END_PROMPT
 s.step([], 2)
 fires = s.iv(:fireworks_launched)
 check 'fireworks keep coming', fires >= 8

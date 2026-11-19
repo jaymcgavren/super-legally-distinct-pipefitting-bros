@@ -187,15 +187,15 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] Performance check against the baseline.
 
 ### 4. Modes as scene objects
-- [ ] Scenes with `update` and `draw`: `Title`, `Intro`, `Play`, `Paused`,
+- [x] Scenes with `update` and `draw`: `Title`, `Intro`, `Play`, `Paused`,
       `Dying`, `Clear`, `GameOver`/`Win`, `Ending`. Each keeps its own timer
       (replaces the shared `@mode_t`). Game holds `@scene` and swaps it;
       `update`/`draw` become one line each.
-- [ ] Note `@frame` (world clock) stops while paused; keep that.
-- [ ] Title keeps the Boss Rush code (`RUSH_CODE`, `feed_code`, chime notes).
+- [x] Note `@frame` (world clock) stops while paused; keep that.
+- [x] Title keeps the Boss Rush code (`RUSH_CODE`, `feed_code`, chime notes).
 - [ ] `app/ending.rb` becomes the `Ending` scene (render target `:world`,
       fireworks, credits, Rusty's fall). Keep `CREDITS` text exactly.
-- [ ] Tests that check `s.mode == :play` etc.: give scenes a `name` symbol
+- [x] Tests that check `s.mode == :play` etc.: give scenes a `name` symbol
       (or keep `Game#mode` returning one) so the tests stay readable.
 - [ ] Performance check.
 
@@ -587,3 +587,33 @@ paths, anything the next session needs.)
   (Note to self: in zsh, `set -- $cfg` doesn't split words. A loop over
   config strings must run under sh, or every run benches the exception
   banner.)
+- 2026-11-19: step 4, scenes (app/scenes.rb). `Scene` (game, own `frames`
+  timer, `update`, `draw`, `freezes_world?`, `name`) and `Title`,
+  `Intro`, `Play`, `Paused`, `Dying`, `Clear`, `Final` (game over and win:
+  `name` is :gameover / :win), `Ending`. Game holds `@scene`, swaps it
+  with `switch_to`; `Game#update` is the world clock + the scene's timer +
+  `scene.update`, `Game#draw` is `@scene.draw`. `@mode`/`@mode_frames`
+  are gone; `Game#mode` returns the scene's name, so the tests'
+  `s.mode == :play` stay as they were (sim: `s.mode_frames` reads the
+  scene's timer). The world clock stops while `Paused`
+  (`freezes_world?`). Title owns the Boss Rush code (RUSH_CODE,
+  CODE_STEPS, `feed_code`, `rush_armed?`) and the bro select (`Game#bro`
+  stays: the HUD and player sprite use it). Paused goes back to the same
+  Play object. The world stays in Game, which scenes reach through
+  readers (screen, sound, controls, run, camera, player, level, goal,
+  ...): `update_world` (was step_play), and new `settle_player(facing)`,
+  `follow_player`, `next_level`, `finish(kind)` for the scene code.
+  The ending is a thin `Ending` scene for now: `step_ending(elapsed)` /
+  `draw_ending(elapsed)` take the scene's timer. Moving ending.rb into
+  the scene is the next item.
+  One difference, in a timer nothing reads: the old shared `@mode_frames`
+  kept counting from play into the pause; the Paused scene's own timer
+  starts at 1 (and Play's timer stops while paused).
+  Checked with a scene trace against the previous commit (title with
+  bro switch and partial code, intro, play, pause and resume, three
+  deaths to game over, back to the title, a new game, beating the boss,
+  the clear's tally, the next intro and play; 2687 steps of mode, timer,
+  world clock, player, score, lives, shift time, bro, camera, sounds and
+  every label's text): identical apart from the 51 paused steps' timer.
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level
+  1 0.88 vs 0.88, arena 0.87-0.89 vs 0.86-0.89, title 0.36-0.37 vs 0.37.

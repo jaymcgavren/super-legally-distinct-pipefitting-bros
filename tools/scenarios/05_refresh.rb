@@ -11,7 +11,7 @@ def refresh_run(hz)
   s.args.gtk.delta_ms = 1000.0 / hz
   snaps = REFRESH_SCRIPT.map do |held, steps|
     s.step(held, steps * hz / 60)    # e.g. 30 Hz: one frame per two steps
-    [s.mode, s.iv(:frame), s.iv(:mode_frames), s.p&.x&.round(3), s.p&.y&.round(3), s.run.score]
+    [s.mode, s.iv(:frame), s.mode_frames, s.p&.x&.round(3), s.p&.y&.round(3), s.run.score]
   end
   [snaps, s.sounds.tally]
 end

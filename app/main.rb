@@ -159,11 +159,20 @@ require 'app/props.rb'
 require 'app/enemies.rb'
 require 'app/wrench.rb'
 require 'app/effects.rb'
+require 'app/scenes.rb'
 
 class Game
   include Physics
 
-  def playing? = @mode == :play
+  attr_reader :screen, :sound, :controls, :run, :high_score, :camera, :player,
+              :level, :level_index, :goal, :scene
+  attr_accessor :bro   # 0 Dez, 1 Ozzie
+
+  def mode = @scene.name
+  def playing? = @scene.name == :play
+  def switch_to(scene)
+    @scene = scene
+  end
 
   def initialize(args)
     @args = args
@@ -178,39 +187,10 @@ class Game
     to_title
   end
 
-  # ── secret code ───────────────────────────────────────────────────
-  # Up Up Down Down Left Right Left Right on the title screen locks in
-  # Boss Rush; the next game started is a Boss Rush run.
-  RUSH_CODE = %i[up up down down left right left right].freeze
-
-  # nut chime climbing a major scale, one step per correct code press
-  CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12].freeze
-  def code_note(i)
-    @sound.chime(CODE_STEPS[i])
-  end
-
-  # advance the secret-code matcher; true once the whole code is in
-  def feed_code
-    press = @controls.code_press
-    return false unless press
-    if press == RUSH_CODE[@code_index]
-      @code_index += 1
-    else
-      @code_index = press == :up ? (@code_index == 2 ? 2 : 1) : 0
-    end
-    code_note(@code_index - 1) if @code_index > 0
-    return false unless @code_index == RUSH_CODE.size
-    @code_index = 0
-    true
-  end
-
   # ── modes ─────────────────────────────────────────────────────────
   def to_title
-    @mode = :title
-    @mode_frames = 0
+    switch_to(Title.new(self))
     @run.rush = false
-    @rush_armed = false
-    @code_index = 0
     load_level(0, false)
     @sound.stop_music
   end
@@ -222,8 +202,7 @@ class Game
   end
 
   def to_intro
-    @mode = :intro
-    @mode_frames = 0
+    switch_to(Intro.new(self))
     @sound.stop_music
     load_level(@level_index, true)
   end
@@ -266,35 +245,17 @@ class Game
   end
 
   def update
+    scene = @scene
     # @frame is the world clock (lifts, vents, blinking lights), so it stops
     # during the coffee break
-    @frame += 1 unless @mode == :paused
-    @mode_frames += 1
+    @frame += 1 unless scene.freezes_world?
+    scene.frames += 1
     @controls.read
-    case @mode
-    when :title    then step_title
-    when :intro    then step_intro
-    when :play     then step_play
-    when :paused   then step_paused
-    when :dying    then step_dying
-    when :clear    then step_clear
-    when :gameover, :win then step_end
-    when :ending   then step_ending
-    end
+    scene.update
   end
 
   def draw
-    case @mode
-    when :title    then draw_title
-    when :intro    then draw_intro
-    when :play     then draw_play
-    when :paused   then draw_paused
-    when :dying    then draw_world(true)
-    when :clear    then draw_clear
-    when :gameover then draw_end(:gameover)
-    when :win      then draw_end(:win)
-    when :ending   then draw_ending
-    end
+    @scene.draw
   end
 
   # ── level loading ─────────────────────────────────────────────────
@@ -355,71 +316,9 @@ class Game
     @camera.jump_to(@player.x - 480)
   end
 
-  # ── title ─────────────────────────────────────────────────────────
-  def step_title
-    @camera.x = (@mode_frames * 1.5) % @camera.max_x
-    if @controls.left_pressed? || @controls.right_pressed?
-      @bro = 1 - @bro
-      @sound.play(:tick)
-    end
-    if !@rush_armed && feed_code
-      @rush_armed = true
-      @sound.play(:oneup)
-    end
-    if @controls.start_pressed? || @controls.jump_pressed?
-      @sound.play(:checkpoint)
-      new_game(@rush_armed)
-    end
-  end
-
-  def draw_title
-    draw_world(false)
-    @screen.rect(0, 0, VIEW_WIDTH, 720, BLACK, 120)
-    @screen.shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, PALE_YELLOW)
-    @screen.shadow_label(640, 580, 'PIPEFITTING', 12, ORANGE)
-    @screen.shadow_label(640, 470, 'BROTHERS', 12, GOLD)
-    2.times do |i|
-      x = 480 + i * 320
-      selected = i == @bro
-      @screen.rect(x - 56, 196, 112, 120, selected ? PALE_YELLOW : DARK_GRAY)
-      @screen.rect(x - 48, 204, 96, 104, [20, 20, 40])
-      source = selected ? frame(:bro_run, (@mode_frames / 8) % 3) : FRAMES[:bro_stand]
-      @screen.sprite(BROS[i][:path], x - 32, 216, 64, 80, source, flip: i == 1)
-      @screen.shadow_label(x, 180, BROS[i][:name], 4, selected ? PALE_YELLOW : [140, 140, 140])
-    end
-    @screen.shadow_label(640, 120, 'PRESS START', 4, WHITE) if (@mode_frames / 30) % 2 == 0
-    @screen.shadow_label(640, 366, 'BOSS RUSH', 4, ALERT_RED) if @rush_armed
-    @screen.shadow_label(640, 70, "TOP #{pad6(@high_score.value)}", 3, LIGHT_GRAY)
-    @screen.shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
-  end
-
-  # ── intro card ────────────────────────────────────────────────────
-  def step_intro
-    return unless @mode_frames > 150
-    @mode = :play
-    @mode_frames = 0
-    @sound.music(:theme)
-  end
-
-  def draw_intro
-    @args.outputs.background_color = BLACK
-    draw_hud
-    @screen.label(640, 440, @level.name, 6, PALE_YELLOW)
-    @screen.label(640, 370, @level.title, 4, ORANGE)
-    @screen.label(640, 560, "BOSS RUSH #{@level_index + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @run.rush?
-    @screen.sprite(BROS[@bro][:path], 560, 210, 64, 80, FRAMES[:bro_stand])
-    @screen.label(680, 270, "x #{@run.lives}", 5, WHITE)
-  end
-
   # ── gameplay ──────────────────────────────────────────────────────
-  def step_play
-    if @controls.start_pressed?
-      @mode = :paused
-      @sound.play(:pause)
-      @sound.pause_music
-      vent_sounds
-      return
-    end
+  # one step of play (the Play scene)
+  def update_world
     update_timer
     @lifts.each { |lift| lift.update(@frame) }
     update_player
@@ -436,20 +335,6 @@ class Game
 
   def draw_play
     @camera.offset_by(shake_x) { draw_world(true) }
-  end
-
-  def step_paused
-    return unless @controls.start_pressed?
-    @mode = :play
-    @sound.play(:pause)
-    @sound.resume_music
-  end
-
-  def draw_paused
-    draw_world(true)
-    @screen.rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, BLACK, 140)
-    @screen.label(640, 380, 'COFFEE BREAK', 7, PALE_YELLOW)
-    @screen.label(640, 300, 'PRESS START', 3, WHITE)
   end
 
   def update_timer
@@ -611,94 +496,48 @@ class Game
 
   def die
     return unless playing?
-    @mode = :dying
-    @mode_frames = 0
+    switch_to(Dying.new(self))
     @run.powered = false
     @player.vx = 0.0
     @player.vy = 0.0
     @sound.music(:death, looping: false)
   end
 
-  def step_dying
-    player = @player
-    if @mode_frames > 30
-      player.vy = 15.0 if @mode_frames == 31
-      player.vy -= 0.8
-      player.y += player.vy
-    end
-    update_effects
-    vent_sounds
-    return if @mode_frames < 190
-    @run.lives -= 1
-    if @run.lives <= 0
-      @mode = :gameover
-      @mode_frames = 0
-      save_hiscore
-      @sound.music(:gameover, looping: false)
-    else
-      to_intro
-    end
-  end
-
   def start_clear
     return start_ending if @level_index == LEVELS.size - 1
-    @mode = :clear
-    @mode_frames = 0
+    switch_to(Clear.new(self))
     @run.powered = @player.powered
     @sound.music(:clear, looping: false)
   end
 
-  def step_clear
+  # after the valve's turned: the player just drops to the ground
+  def settle_player(facing)
     player = @player
     player.vy -= GRAVITY_FALL
     player.vx = 0.0
     move_y(player, true, false)
-    player.facing = 1
-    @goal.turn += 1 if @mode_frames < 100
-    if @mode_frames > 110 && @run.time > 0
-      @run.bank_time(2)
-      @sound.play(:tick) if @mode_frames % 4 == 0
-    end
-    update_effects
-    update_wrench
+    player.facing = facing
+  end
+
+  def follow_player
     @camera.follow(@player, @boss_on)
-    vent_sounds
-    return unless @run.time <= 0 && @mode_frames > 300
+  end
+
+  def next_level
     @level_index += 1
     @run.checkpoint = nil
     if @level_index >= LEVELS.size
-      @mode = :win
-      @mode_frames = 0
-      save_hiscore
-      @sound.music(:clear, looping: false)
+      finish(:win)
     else
       to_intro
     end
   end
 
-  def draw_clear
-    draw_world(true)
-    @screen.label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, PALE_YELLOW, true)
-    @screen.label(640, 420, 'TIME BONUS', 3, WHITE, true) if @mode_frames > 110
-  end
-
-  def step_end
-    to_title if @mode_frames > 120 && (@controls.start_pressed? || @controls.jump_pressed?)
-  end
-
-  def draw_end(kind)
-    @args.outputs.background_color = BLACK
-    draw_hud
-    if kind == :gameover
-      @screen.label(640, 440, 'GAME OVER', 8, ALERT_RED)
-      @screen.label(640, 350, 'YOU ARE FIRED', 4, WHITE)
-    else
-      @screen.label(640, 500, @run.rush? ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, PALE_YELLOW)
-      @screen.label(640, 420, @run.rush? ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, ORANGE)
-      @screen.label(640, 340, "FINAL SCORE #{pad6(@run.score)}", 4, WHITE)
-    end
-    @screen.label(640, 260, "TOP #{pad6(@high_score.value)}", 3, LIGHT_GRAY)
-    @screen.label(640, 160, 'PRESS START', 3, WHITE) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
+  # game over, or every level done
+  def finish(kind)
+    switch_to(Final.new(self, kind))
+    save_hiscore
+    @sound.music(kind == :gameover ? :gameover : :clear, looping: false)
   end
 
   def save_hiscore
@@ -1032,7 +871,7 @@ class Game
     player = @player
     return if player.invulnerable? && (player.invuln / 3) % 2 == 0 && playing?
     camera_x = @camera.x.to_i
-    pose = if @mode == :dying then :bro_die
+    pose = if mode == :dying then :bro_die
            elsif player.throw_t > 0 then :bro_throw
            elsif !player.on_ground then :bro_jump
            elsif player.skid then :bro_skid

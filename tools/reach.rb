@@ -26,13 +26,13 @@ def analyze(index)
   sim = lambda do |x, y, vx, dir, hold|
     p.x = x; p.y = y; p.vx = vx; p.vy = 0.0; p.on_ground = true; p.coyote = 0; p.buffer = 0
     p.riding = nil; p.jumping = false
-    g.instance_variable_set(:@mode, :play)
+    g.switch_to(Play.new(g))
     150.times do |f|
       pad = { right: dir > 0, left: dir < 0, run_held: true, throw_pressed: false,
               jump_held: f < hold, jump_pressed: f == 0 && hold > 0 }
       pad.each { |k, v| controls.instance_variable_set(:"@#{k}", v) }
       g.send(:update_player)
-      return nil if p.y < 0 || g.instance_variable_get(:@mode) != :play
+      return nil if p.y < 0 || g.mode != :play
       return [(p.x + p.w / 2).div(TILE), level.row_at(p.y + 1)] if p.on_ground && f > 0 && (hold == 0 || f > 2)
     end
     nil
