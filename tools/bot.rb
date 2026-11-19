@@ -9,7 +9,7 @@ def bot(level, frames: 5000, invuln: true)
   frames.times do |f|
     return [:clear, f, deaths] if s.mode == :clear
     if s.mode != :play
-      deaths << (s.p.x / T).round if s.mode == :dying
+      deaths << (s.p.x / TILE).round if s.mode == :dying
       s.step([], 1) until s.mode == :play || s.mode == :gameover
       return [:gameover, f, deaths] if s.mode == :gameover
       next
@@ -37,7 +37,7 @@ def bot(level, frames: 5000, invuln: true)
     stuck = (p.x - lastx).abs < 0.5 ? stuck + 1 : 0
     lastx = p.x
   end
-  [:timeout, (s.p.x / T).round, deaths]
+  [:timeout, (s.p.x / TILE).round, deaths]
 end
 
 if __FILE__ == $0

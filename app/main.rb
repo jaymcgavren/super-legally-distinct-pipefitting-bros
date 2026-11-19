@@ -8,7 +8,7 @@
 
 require 'app/levels.rb'
 
-T       = 64
+TILE    = 64
 ROWS    = 10
 VW      = 1280
 PLAY_H  = 640
@@ -323,16 +323,16 @@ class Game
           start = [c, r]
           row[c] = '.'
         when 'r'
-          @enemies << Actor.new(:blob, c * T + 8, tile_bottom(r), 48, 40)
+          @enemies << Actor.new(:blob, c * TILE + 8, tile_bottom(r), 48, 40)
           row[c] = '.'
         when 'v'
-          e = Actor.new(:crab, c * T + 6, tile_bottom(r), 52, 44)
+          e = Actor.new(:crab, c * TILE + 6, tile_bottom(r), 52, 44)
           e.data[:cycle] = (c * 29) % 200
           @enemies << e
           row[c] = '.'
         when 'L', 'H'
-          l = Actor.new(:lift, c * T, tile_top(r) - 16, 128, 16)
-          l.data = { bx: l.x, by: l.y, amp: 2 * T, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
+          l = Actor.new(:lift, c * TILE, tile_top(r) - 16, 128, 16)
+          l.data = { bx: l.x, by: l.y, amp: 2 * TILE, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
           lower_pit_lift(l, c, r) if ch == 'L'
           @lifts << l
           row[c] = '.'
@@ -353,7 +353,7 @@ class Game
     @vents.each do |v|
       h = 0
       h += 1 while h < 3 && !SOLID[cell(v[:c], v[:r] - h - 1)]
-      v[:h] = h * T
+      v[:h] = h * TILE
     end
     if use_checkpoint && @checkpoint && @checkpoint[0] == idx
       cone = @cones[@checkpoint[1]]
@@ -362,9 +362,9 @@ class Game
     end
     if @rush && @boss
       start = [@arena_c + 1, 7]
-      @enemies.reject! { |e| e.x < (@arena_c + 1) * T }
+      @enemies.reject! { |e| e.x < (@arena_c + 1) * TILE }
     end
-    @p = Player.new(start[0] * T + 12, tile_bottom(start[1]))
+    @p = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
     @p.powered = @powered if use_checkpoint
     @p.powered = true if @rush
     @time = lv[:time] || SHIFT_LEN
@@ -380,11 +380,11 @@ class Game
     @grid[r][c]
   end
 
-  def col_at(x) = (x / T).floor
-  def row_at(y) = ROWS - 1 - (y / T).floor
-  def tile_bottom(r) = (ROWS - 1 - r) * T
-  def tile_top(r) = (ROWS - r) * T
-  def max_cam = @cols * T - VW
+  def col_at(x) = (x / TILE).floor
+  def row_at(y) = ROWS - 1 - (y / TILE).floor
+  def tile_bottom(r) = (ROWS - 1 - r) * TILE
+  def tile_top(r) = (ROWS - r) * TILE
+  def max_cam = @cols * TILE - VW
 
   def box_free?(x, y, w, h)
     r0 = row_at(y + h - 0.01)
@@ -412,14 +412,14 @@ class Game
       c = col_at(a.x + a.w - 0.01)
       r0.upto(r1) do |r|
         next unless SOLID[cell(c, r)]
-        a.x = c * T - a.w
+        a.x = c * TILE - a.w
         return true
       end
     elsif a.vx < 0
       c = col_at(a.x)
       r0.upto(r1) do |r|
         next unless SOLID[cell(c, r)]
-        a.x = (c + 1) * T
+        a.x = (c + 1) * TILE
         return true
       end
     end
@@ -473,8 +473,8 @@ class Game
     return hits if hits.empty?
     if corner_fix && hits.size == 1
       c = hits[0]
-      left_over = a.x + a.w - c * T
-      right_over = (c + 1) * T - a.x
+      left_over = a.x + a.w - c * TILE
+      right_over = (c + 1) * TILE - a.x
       if left_over <= 18 && box_free?(a.x - left_over, a.y, a.w, a.h)
         a.x -= left_over
         return []
@@ -620,10 +620,10 @@ class Game
     return unless ceil
     max_top = tile_bottom(ceil) - PLAYER_H - JUMP_RISE
     top = l.y + l.h
-    return if top + 2 * T <= max_top
+    return if top + 2 * TILE <= max_top
     d = l.data
-    d[:amp] = T
-    d[:by] = max_top - T - l.h
+    d[:amp] = TILE
+    d[:by] = max_top - TILE - l.h
     l.y = d[:by]
   end
 
@@ -697,7 +697,7 @@ class Game
     unless heads.empty?
       cx = p.x + p.w / 2
       best = heads[0]
-      heads.each { |h| best = h if ((h[0] * T + T / 2) - cx).abs < ((best[0] * T + T / 2) - cx).abs }
+      heads.each { |h| best = h if ((h[0] * TILE + TILE / 2) - cx).abs < ((best[0] * TILE + TILE / 2) - cx).abs }
       bump(best[0], best[1])
     end
 
@@ -720,17 +720,17 @@ class Game
     @vents.each do |v|
       k = (@frame + v[:phase]) % 180
       next unless k >= 130 && v[:h] > 0
-      hurt if rect_hit?(p, v[:c] * T + 14, tile_top(v[:r]), 36, v[:h] - 8)
+      hurt if rect_hit?(p, v[:c] * TILE + 14, tile_top(v[:r]), 36, v[:h] - 8)
     end
     @cones.each_with_index do |cone, i|
-      next if cone[:lit] || p.x < cone[:c] * T
+      next if cone[:lit] || p.x < cone[:c] * TILE
       cone[:lit] = true
       @checkpoint = [@level, i]
       sfx(:checkpoint)
-      popup(cone[:c] * T, tile_top(cone[:r]) + 20, 'CHECKPOINT')
+      popup(cone[:c] * TILE, tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
     if goal_touched?(p)
-      p.x = @goal[:c] * T + 8 - p.w if p.x < @goal[:c] * T
+      p.x = @goal[:c] * TILE + 8 - p.w if p.x < @goal[:c] * TILE
       p.vx = 0.0
       start_clear
       return
@@ -743,9 +743,9 @@ class Game
   # counts only if you actually overlap it (it is 3 tiles tall).
   def goal_touched?(p)
     return false unless @goal
-    gx = @goal[:c] * T
+    gx = @goal[:c] * TILE
     return p.x + p.w > gx + 8 if p.x < gx
-    p.x < gx + T - 8 && p.y < tile_bottom(@goal[:r]) + 3 * T
+    p.x < gx + TILE - 8 && p.y < tile_bottom(@goal[:r]) + 3 * TILE
   end
 
   def collect_nuts(a)
@@ -759,7 +759,7 @@ class Game
         next unless cell(c, r) == 'o'
         @grid[r][c] = '.'
         add_nut
-        sparkle(c * T + 32, tile_bottom(r) + 32)
+        sparkle(c * TILE + 32, tile_bottom(r) + 32)
       end
     end
   end
@@ -788,7 +788,7 @@ class Game
     ch = cell(c, r)
     key = r * 10000 + c
     @bumps[key] = BUMP_ARC.size
-    x = c * T
+    x = c * TILE
     top = tile_top(r)
     case ch
     when 'C'
@@ -818,7 +818,7 @@ class Game
     # knock out enemies standing on the bumped tile
     @enemies.each do |e|
       next unless e.active && e.state == :walk
-      next unless (e.y - top).abs < 6 && e.x + e.w > x && e.x < x + T
+      next unless (e.y - top).abs < 6 && e.x + e.w > x && e.x < x + TILE
       knock(e, x + 32 < e.x + e.w / 2 ? 1 : -1)
       add_score(200, e.x, e.y + 60)
     end
@@ -1071,14 +1071,14 @@ class Game
     # a wrench that hits the main valve turns it: level clear. It bounces
     # off and flies back to the player while the level ends.
     if @goal && @mode == :play &&
-       rect_hit?(w, @goal[:c] * T, tile_bottom(@goal[:r]), T, 3 * T)
+       rect_hit?(w, @goal[:c] * TILE, tile_bottom(@goal[:r]), TILE, 3 * TILE)
       w.vx = w.vx > 0 ? -7.0 : 7.0
       w.vy = 7.0
       w.data[:back] = true
       w.data[:bounce] = 14
       w.t = 0
       sfx(:bump)
-      popup(@goal[:c] * T, tile_bottom(@goal[:r]) + 3 * T + 80, 'NICE SHOT')
+      popup(@goal[:c] * TILE, tile_bottom(@goal[:r]) + 3 * TILE + 80, 'NICE SHOT')
       start_clear
       return
     end
@@ -1294,26 +1294,26 @@ class Game
   def draw_back_wall(cam, tiles, c0, c1)
     c0.upto(c1 + 1) do |c|
       win = window_at?(c)
-      x = c * T - cam
+      x = c * TILE - cam
       8.times do |r|
         next if win && WIN_ROWS.include?(r)
-        spr(tiles, x, tile_bottom(r), T, T, 88, 0, 8, 16)
+        spr(tiles, x, tile_bottom(r), TILE, TILE, 88, 0, 8, 16)
       end
     end
     wood = [140, 88, 44]
     sill = [196, 148, 92]
     c0.upto(c1 + 1) do |c|
       next unless c % 13 == 6 && window_at?(c)
-      x = c * T - cam
+      x = c * TILE - cam
       bot = tile_bottom(WIN_ROWS.last)
       top = tile_top(WIN_ROWS.first)
-      w = 2 * T
+      w = 2 * TILE
       rect(x, bot, w, 8, sill)                 # sill
       rect(x - 8, bot - 8, w + 16, 8, wood)
       rect(x, top - 8, w, 8, wood)             # head
       rect(x, bot, 8, top - bot, wood)         # jambs
       rect(x + w - 8, bot, 8, top - bot, wood)
-      rect(x + T - 4, bot, 8, top - bot, wood) # mullion
+      rect(x + TILE - 4, bot, 8, top - bot, wood) # mullion
       rect(x, (bot + top) / 2 - 4, w, 8, wood) # transom bar
     end
   end
@@ -1321,8 +1321,8 @@ class Game
   def draw_tiles
     cam = @cam.to_i
     tiles = @theme[:tiles]
-    c0 = [cam / T, 0].max
-    c1 = [(cam + VW) / T, @cols - 1].min
+    c0 = [cam / TILE, 0].max
+    c1 = [(cam + VW) / TILE, @cols - 1].min
     nut_f = (@frame / 8) % 4
     draw_back_wall(cam, tiles, c0, c1) if @theme[:indoor]
     ROWS.times do |r|
@@ -1331,28 +1331,28 @@ class Game
       c0.upto(c1) do |c|
         ch = row[c]
         next if ch == '.' || ch == 'I'
-        x = c * T - cam
+        x = c * TILE - cam
         b = @bumps[r * 10000 + c]
         yy = b ? y + BUMP_ARC[BUMP_ARC.size - b] : y
         case ch
-        when '#' then spr(tiles, x, yy, T, T, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
-        when 'F' then spr(tiles, x, yy, T, T, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
-        when '=' then spr(tiles, x, yy, T, T, 16, 0, 8, 16)
-        when 'C', 'W', 'M' then spr(tiles, x, yy, T, T, 24, 0, 8, 16)
-        when 'U' then spr(tiles, x, yy, T, T, 32, 0, 8, 16)
+        when '#' then spr(tiles, x, yy, TILE, TILE, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
+        when 'F' then spr(tiles, x, yy, TILE, TILE, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
+        when '=' then spr(tiles, x, yy, TILE, TILE, 16, 0, 8, 16)
+        when 'C', 'W', 'M' then spr(tiles, x, yy, TILE, TILE, 24, 0, 8, 16)
+        when 'U' then spr(tiles, x, yy, TILE, TILE, 32, 0, 8, 16)
         when '-'
           # extend a stand up behind the pipe so it meets the pipe's underside
-          spr(tiles, x, y, T, T, 56, 0, 8, 16) if cell(c, r + 1) == '|'
+          spr(tiles, x, y, TILE, TILE, 56, 0, 8, 16) if cell(c, r + 1) == '|'
           if cell(c + 1, r) != '-'
-            spr(tiles, x, yy, T, T, 48, 0, 8, 16, true)
+            spr(tiles, x, yy, TILE, TILE, 48, 0, 8, 16, true)
           elsif cell(c - 1, r) != '-' || c % 4 == 0
-            spr(tiles, x, yy, T, T, 48, 0, 8, 16)
+            spr(tiles, x, yy, TILE, TILE, 48, 0, 8, 16)
           else
-            spr(tiles, x, yy, T, T, 40, 0, 8, 16)
+            spr(tiles, x, yy, TILE, TILE, 40, 0, 8, 16)
           end
-        when '|' then spr(tiles, x, yy, T, T, 56, 0, 8, 16)
-        when 'S' then spr(tiles, x, yy, T, T, 64, 0, 8, 16)
-        when 'o' then spr('sprites/items.png', x, yy, T, T, nut_f * 8, 0, 8, 16)
+        when '|' then spr(tiles, x, yy, TILE, TILE, 56, 0, 8, 16)
+        when 'S' then spr(tiles, x, yy, TILE, TILE, 64, 0, 8, 16)
+        when 'o' then spr('sprites/items.png', x, yy, TILE, TILE, nut_f * 8, 0, 8, 16)
         end
       end
     end
@@ -1364,8 +1364,8 @@ class Game
     cam = @cam.to_i + dx
     @vents.each do |v|
       next unless (@frame + v[:phase]) % 180 == 130 && v[:h] > 0
-      x = v[:c] * T - cam
-      sfx(:steam) unless x < -T || x > VW
+      x = v[:c] * TILE - cam
+      sfx(:steam) unless x < -TILE || x > VW
     end
   end
 
@@ -1375,29 +1375,29 @@ class Game
     draw_tiles
     @lifts.each do |l|
       x = l.x.to_i - cam
-      spr(@theme[:tiles], x, l.y.to_i - 48, T, T, 80, 0, 8, 16)
-      spr(@theme[:tiles], x + T, l.y.to_i - 48, T, T, 80, 0, 8, 16)
+      spr(@theme[:tiles], x, l.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
+      spr(@theme[:tiles], x + TILE, l.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
     end
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
-      spr('sprites/items.png', cone[:c] * T - cam, tile_bottom(cone[:r]), T, T, lit ? 56 : 48, 0, 8, 16)
+      spr('sprites/items.png', cone[:c] * TILE - cam, tile_bottom(cone[:r]), TILE, TILE, lit ? 56 : 48, 0, 8, 16)
     end
     if @goal
-      gx = @goal[:c] * T - cam
+      gx = @goal[:c] * TILE - cam
       gy = tile_bottom(@goal[:r])
-      spr(@theme[:tiles], gx, gy, T, T, 72, 0, 8, 16)
-      spr(@theme[:tiles], gx, gy + T, T, T, 72, 0, 8, 16)
+      spr(@theme[:tiles], gx, gy, TILE, TILE, 72, 0, 8, 16)
+      spr(@theme[:tiles], gx, gy + TILE, TILE, TILE, 72, 0, 8, 16)
       unless @goal[:gone]
         f = (@goal[:turn] / 5) % 3
-        spr('sprites/items.png', gx, gy + 2 * T, T, T, 64 + f * 8, 0, 8, 16)
-        label(gx + 32, gy + 3 * T + 28, 'MAIN', 2, [255, 255, 255], true)
+        spr('sprites/items.png', gx, gy + 2 * TILE, TILE, TILE, 64 + f * 8, 0, 8, 16)
+        label(gx + 32, gy + 3 * TILE + 28, 'MAIN', 2, [255, 255, 255], true)
       end
     end
     @vents.each do |v|
       k = (@frame + v[:phase]) % 180
       next if k < 100 || v[:h] <= 0
-      x = v[:c] * T - cam
-      next if x < -T || x > VW
+      x = v[:c] * TILE - cam
+      next if x < -TILE || x > VW
       base = tile_top(v[:r])
       if k < 130
         rect(x + 24, base + (k % 10) * 2, 16, 8, [236, 236, 236], 180) if (k / 5).even?
@@ -1413,23 +1413,23 @@ class Game
     @items.each do |it|
       x = it.x.to_i - cam
       case it.kind
-      when :popnut then spr('sprites/items.png', x, it.y.to_i, T, T, ((it.t / 3) % 4) * 8, 0, 8, 16)
+      when :popnut then spr('sprites/items.png', x, it.y.to_i, TILE, TILE, ((it.t / 3) % 4) * 8, 0, 8, 16)
       when :wrench_item
         bob = it.data[:rise] > 0 ? 0 : ((@frame / 12) % 2) * 4
-        spr('sprites/items.png', x - 4, it.y.to_i + bob, T, T, 32, 0, 8, 16)
-      when :lunch then spr('sprites/items.png', x - 4, it.y.to_i, T, T, 40, 0, 8, 16)
+        spr('sprites/items.png', x - 4, it.y.to_i + bob, TILE, TILE, 32, 0, 8, 16)
+      when :lunch then spr('sprites/items.png', x - 4, it.y.to_i, TILE, TILE, 40, 0, 8, 16)
       end
     end
     @enemies.each do |e|
       x = e.x.to_i - cam
-      next if x < -T || x > VW + T
+      next if x < -TILE || x > VW + TILE
       if e.kind == :blob
         f = e.state == :flat ? 2 : (e.t / 10) % 2
-        spr('sprites/enemies.png', x - 8, e.y.to_i, T, 48, f * 8, 0, 8, 12, e.vx > 0, 255, 0, e.state == :dead)
+        spr('sprites/enemies.png', x - 8, e.y.to_i, TILE, 48, f * 8, 0, 8, 12, e.vx > 0, 255, 0, e.state == :dead)
       else
         f = e.data[:spin] ? 5 + (e.t / 4) % 2 : 3 + (e.t / 12) % 2
         a = e.data[:warn] && (e.t / 3).even? ? 110 : 255
-        spr('sprites/enemies.png', x - 6, e.y.to_i, T, 48, f * 8, 0, 8, 12, false, a, 0, e.state == :dead)
+        spr('sprites/enemies.png', x - 6, e.y.to_i, TILE, 48, f * 8, 0, 8, 12, false, a, 0, e.state == :dead)
       end
     end
     draw_boss(cam) if @boss

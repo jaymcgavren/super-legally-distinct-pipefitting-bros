@@ -7,7 +7,7 @@ def analyze(level)
   g = s.g
   grid = g.instance_variable_get(:@grid)
   g.instance_variable_get(:@lifts).each do |l|
-    c = (l.x / T).round; r = g.row_at(l.y + l.h - 1)
+    c = (l.x / TILE).round; r = g.row_at(l.y + l.h - 1)
     offs = l.data[:axis] == :x ? [-2, 0, 2].map { |d| [c + d, r] } : [-2, 0, 2].map { |d| [c, r + d] }
     offs.each { |cc, rr| [cc, cc + 1].each { |k| grid[rr][k] = '=' if rr.between?(0, 9) && grid[rr][k] == '.' } }
   end
@@ -19,7 +19,7 @@ def analyze(level)
   cols = g.instance_variable_get(:@cols)
   standable = ->(c, r) { !SOLID[g.cell(c, r)] && (SOLID[g.cell(c, r + 1)] || g.cell(c, r + 1) == '-') && r < 9 }
   p = s.p
-  start = [(p.x / T).floor, g.row_at(p.y + 1)]
+  start = [(p.x / TILE).floor, g.row_at(p.y + 1)]
   seen = { start => true }; q = [start]
   sim = lambda do |x, y, vx, dir, hold|
     p.x = x; p.y = y; p.vx = vx; p.vy = 0.0; p.on_ground = true; p.coyote = 0; p.buffer = 0
@@ -31,7 +31,7 @@ def analyze(level)
       g.instance_variable_set(:@in_a, f < hold); g.instance_variable_set(:@in_a_down, f == 0 && hold > 0)
       g.send(:update_player)
       return nil if p.y < 0 || g.instance_variable_get(:@mode) != :play
-      return [(p.x + p.w / 2).div(T), g.row_at(p.y + 1)] if p.on_ground && f > 0 && (hold == 0 || f > 2)
+      return [(p.x + p.w / 2).div(TILE), g.row_at(p.y + 1)] if p.on_ground && f > 0 && (hold == 0 || f > 2)
     end
     nil
   end
@@ -39,7 +39,7 @@ def analyze(level)
     c, r = q.shift
     y = g.tile_bottom(r).to_f
     [1, -1].each do |d|
-      [c * T + 1.0, c * T + 23.0].each do |x|
+      [c * TILE + 1.0, c * TILE + 23.0].each do |x|
         [0.0, RUN_MAX * d, WALK_MAX * d].each do |vx|
           [0, 5, 10, 18, 40].each do |hold|
             [d, 0].each do |air|

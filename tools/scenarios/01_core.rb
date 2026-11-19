@@ -1,7 +1,7 @@
 # spawn a lone active blob on the start segment's open floor
 def lone_blob(s, col)
   s.iv(:enemies).clear
-  e = Actor.new(:blob, col * T + 8, s.g.tile_bottom(7), 48, 40)
+  e = Actor.new(:blob, col * TILE + 8, s.g.tile_bottom(7), 48, 40)
   e.active = true; e.vx = -1.0
   s.iv(:enemies) << e
   e
@@ -17,8 +17,8 @@ s.step([], 60)
 s.put(4); peak = s.p.y
 s.step([:a], 3); 40.times { s.step([]); peak = [peak, s.p.y].max }
 tap = peak - y0
-puts "  full jump #{full.round} px (#{(full / T).round(2)} tiles), tap #{tap.round} px"
-check 'full jump clears 3+ tiles', full > 3 * T
+puts "  full jump #{full.round} px (#{(full / TILE).round(2)} tiles), tap #{tap.round} px"
+check 'full jump clears 3+ tiles', full > 3 * TILE
 check 'tap jump is much lower', tap < full * 0.6
 
 # --- full height only at (almost) top running speed ---
@@ -39,8 +39,8 @@ part  = held_peak.(RUN_MAX * 0.8, %i[right b])
 run   = held_peak.(RUN_MAX, %i[right b])
 puts "  held jump: standing #{stand.round}, walking #{walk.round}, 80% run #{part.round}, full run #{run.round} px"
 check 'standing, walking and part-speed jumps share the lower max height', [walk, part].all? { |h| (h - stand).abs < 2 }
-check 'lower max still clears 4 tiles', stand > 4 * T
-check 'full-speed run jumps clearly higher (1+ tile)', run > stand + T
+check 'lower max still clears 4 tiles', stand > 4 * TILE
+check 'full-speed run jumps clearly higher (1+ tile)', run > stand + TILE
 
 # --- run speed ---
 s.put(1); s.step(%i[right b], 60)
@@ -86,7 +86,7 @@ g.instance_variable_get(:@cols).times do |cc|
 end
 check 'found a W crate over open floor', !c.nil?
 s.put(c)
-s.p.x = c * T + 12
+s.p.x = c * TILE + 12
 s.step([:a], 30); s.step([], 40)
 check 'W crate used', g.cell(c, r) == 'U'
 item = s.iv(:items).find { |i| i.kind == :wrench_item }
@@ -108,7 +108,7 @@ check 'wrench comes back', s.iv(:wrench).nil?
 s = Sim.new.start(0)
 lives = s.iv(:lives)
 pit = (0...s.g.instance_variable_get(:@cols)).find { |c| (0..9).none? { |r| SOLID[s.g.cell(c, r)] || s.g.cell(c, r) == '-' } && (0..9).none? { |r| SOLID[s.g.cell(c + 1, r)] } }
-s.p.x = pit * T + 12; s.p.y = 300; s.snap
+s.p.x = pit * TILE + 12; s.p.y = 300; s.snap
 s.step([], 60)
 check 'pit kills', s.mode == :dying
 s.step([], 200)
@@ -123,7 +123,7 @@ s.step([], 2)
 check 'checkpoint lit', cone[:lit]
 s.g.send(:die); s.step([], 200)
 s.step([], 1) until s.mode == :play
-check 'respawn at checkpoint', (s.p.x - cone[:c] * T).abs < 64
+check 'respawn at checkpoint', (s.p.x - cone[:c] * TILE).abs < 64
 
 # --- timer runs out ---
 s = Sim.new.start(0)
@@ -135,9 +135,9 @@ check 'timer death', s.mode == :dying
 s = Sim.new.start(0)
 v = s.iv(:vents)[0]
 s.put(v[:c])
-s.p.x = v[:c] * T + 12
+s.p.x = v[:c] * TILE + 12
 hurt = false
-200.times { s.step([]); s.p.x = v[:c] * T + 12; (hurt = true; break) if s.mode == :dying }
+200.times { s.step([]); s.p.x = v[:c] * TILE + 12; (hurt = true; break) if s.mode == :dying }
 check 'vent steam hurts', hurt
 
 # --- lift carries the player ---
@@ -196,7 +196,7 @@ s.iv(:enemies).clear
 s.step([:b], 1)
 cleared = false
 40.times { s.step([]); (cleared = true; break) if s.mode == :clear }
-check 'wrench hitting the valve clears the level', cleared && s.p.x < g[:c] * T - 3 * T
+check 'wrench hitting the valve clears the level', cleared && s.p.x < g[:c] * TILE - 3 * TILE
 w = s.iv(:wrench)
 check 'wrench bounces off the valve', w && w.vx < 0
 back = false
@@ -209,9 +209,9 @@ check 'wrench clear advances to 1-B', s.iv(:level) == 1
 lv_of = ->(name) { LEVELS.index { |l| l[:name] == name } }
 ceil_bottom = Sim.new.g.tile_bottom(0)
 s = Sim.new.start(lv_of['JOBSITE 1-B'])
-pit = s.iv(:lifts).select { |l| [165, 170].include?((l.data[:bx] / T).to_i) }
+pit = s.iv(:lifts).select { |l| [165, 170].include?((l.data[:bx] / TILE).to_i) }
 check '1-B has its two pit lifts', pit.size == 2
-check '1-B pit lifts swing half as far', pit.all? { |l| l.data[:amp] == T }
+check '1-B pit lifts swing half as far', pit.all? { |l| l.data[:amp] == TILE }
 check '1-B pit lifts never come within a full jump of the ceiling',
       pit.all? { |l| l.data[:by] + l.h + l.data[:amp] + PLAYER_H + Game::JUMP_RISE <= ceil_bottom }
 check '1-B pit lifts stay above the death line', pit.all? { |l| l.data[:by] - l.data[:amp] > -140 + PLAYER_H }
@@ -234,10 +234,10 @@ LEVELS << LEVELS[lv_of['JOBSITE 1-B']].merge(rows: rows)
 s = Sim.new.start(LEVELS.size - 1)
 LEVELS.pop
 check 'indoor lift over the floor keeps its full swing',
-      s.iv(:lifts).any? { |lf| (lf.data[:bx] / T).to_i == fc && lf.data[:amp] == 2 * T }
+      s.iv(:lifts).any? { |lf| (lf.data[:bx] / TILE).to_i == fc && lf.data[:amp] == 2 * TILE }
 out = LEVELS.index { |l| !THEMES[l[:theme]][:indoor] && l[:rows].any? { |r| r =~ /[LH]/ } }
 s = Sim.new.start(out)
-check 'outdoor lifts keep their full swing', !s.iv(:lifts).empty? && s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * T }
+check 'outdoor lifts keep their full swing', !s.iv(:lifts).empty? && s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * TILE }
 
 # --- a full-speed running jump can land on top of 1-A's wrench crate ---
 wc = LEVELS[0][:rows].each_with_index.map { |r, i| [r.index('W'), i] }.find(&:first)
@@ -245,7 +245,7 @@ landed = (0..20).step(2).any? do |jx|
   [10, 20, 30].any? do |coast|
     s = Sim.new.start(0); s.iv(:enemies).clear
     s.put(wc[0] - 14); s.p.vx = RUN_MAX
-    s.step(%i[right b], 1) until s.p.x >= (wc[0] - 6) * T + jx * 8
+    s.step(%i[right b], 1) until s.p.x >= (wc[0] - 6) * TILE + jx * 8
     s.step(%i[right b a], 1)
     hit = false
     60.times do |f|

@@ -6,7 +6,7 @@ d_levels.each_with_index do |li, n|
   b = s.iv(:boss)
   check "#{LEVELS[li][:name]} has boss level #{n + 1}", b && s.g.boss_level == n + 1
   ac = s.iv(:arena_c)
-  s.p.x = (ac + 3) * T + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.snap
+  s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.snap
   s.step([], 2)
   check "#{LEVELS[li][:name]} fight starts and gate closes", s.iv(:boss_on) && s.g.cell(ac, 6) == '#'
   if n == 0
@@ -40,7 +40,7 @@ d_levels.each_with_index do |li, n|
     s.step([])
   end
   check "#{LEVELS[li][:name]} boss can be defeated", b.state == :dead
-  s.p.x = (ac + 8) * T; s.p.y = s.g.tile_bottom(7).to_f; s.p.vy = 0
+  s.p.x = (ac + 8) * TILE; s.p.y = s.g.tile_bottom(7).to_f; s.p.vy = 0
   t0 = s.iv(:time)
   s.step([], 130)
   check "#{LEVELS[li][:name]} timer stops once the boss is beaten", s.iv(:time) == t0
@@ -53,7 +53,7 @@ end
 # wrench damages the boss
 s = Sim.new.start(d_levels[0])
 b = s.iv(:boss); ac = s.iv(:arena_c)
-s.p.x = (ac + 3) * T + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.p.powered = true; s.p.facing = 1; s.snap
+s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.p.powered = true; s.p.facing = 1; s.snap
 s.step([], 2)
 s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
@@ -84,7 +84,7 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
     s.step([], 30)
     check "boss valve does not clear by itself (player #{name})", s.mode == :play
     s.step([], 1) until s.p.on_ground
-    s.step([:left], 1) until s.mode != :play || s.p.x < gc * T - 200
+    s.step([:left], 1) until s.mode != :play || s.p.x < gc * TILE - 200
   end
   begin
     s.step(name == :left ? [:right] : [], 240)

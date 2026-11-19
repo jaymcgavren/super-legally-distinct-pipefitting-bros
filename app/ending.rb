@@ -56,11 +56,11 @@ class Game
     p.vy -= GRAV_FALL
     p.vx = 0.0
     move_y(p, true, false)
-    p.facing = @goal[:c] * T > p.x ? 1 : -1
+    p.facing = @goal[:c] * TILE > p.x ? 1 : -1
     update_effects
     update_wrench
-    vx = @goal[:c] * T + 32                  # valve centre, world x
-    vy = tile_bottom(@goal[:r]) + 2 * T      # valve bottom, world y
+    vx = @goal[:c] * TILE + 32                  # valve centre, world x
+    vy = tile_bottom(@goal[:r]) + 2 * TILE      # valve bottom, world y
 
     if t < END_BURST
       # spin up: frame phase speeds toward one frame per tick
@@ -203,7 +203,7 @@ class Game
       y = @rk[:y].to_i - lift + shy
       if y < 760
         f = t % 3
-        spr('sprites/items.png', x, y, T, T, 64 + f * 8, 0, 8, 16)
+        spr('sprites/items.png', x, y, TILE, TILE, 64 + f * 8, 0, 8, 16)
       end
     end
     if @twinkle && @twinkle[:t] < 40

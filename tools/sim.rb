@@ -97,7 +97,7 @@ class Sim
 
   # teleport player to tile column (standing on the ground row 8)
   def put(col, row = 7)
-    p.x = col * T + 12.0; p.y = @g.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
+    p.x = col * TILE + 12.0; p.y = @g.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
     snap
     self
   end

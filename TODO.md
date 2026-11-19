@@ -274,3 +274,11 @@ paths, anything the next session needs.)
   became `rows.map(&:chars)` (same arrays). Tests ALL PASS with identical
   info lines; `tools/shots.sh --compare` ALL SAME. To find semicolons
   without matching strings, lex with Ripper and look for `:on_semicolon`.
+- 2026-11-19: step 1, `T` -> `TILE` (own commit; the rest of the names item
+  is still open). Renamed constant tokens only (Ripper `:on_const`), in app/
+  and tools/ (sim, scenarios, reach, bot). `bench_start.rb` uses
+  `BENCH_TILE = defined?(TILE) ? TILE : T` so it still builds
+  `un-refactored`. Checks: tests ALL PASS, shots ALL SAME, and
+  `tools/reach.rb` / `tools/bot.rb` output byte-identical to `un-refactored`
+  (extract it with `git archive un-refactored app tools | tar -x -C <dir>`
+  and run the tools there).

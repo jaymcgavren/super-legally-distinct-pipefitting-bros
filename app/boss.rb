@@ -26,7 +26,7 @@ class Game
   def boss_knows?(move) = BOSS_MOVES.index { |m| m[0] == move } < boss_level
 
   def spawn_boss(c, r)
-    b = Actor.new(:boss, c * T - 24, tile_bottom(r), BOSS_W, BOSS_H)
+    b = Actor.new(:boss, c * TILE - 24, tile_bottom(r), BOSS_W, BOSS_H)
     hp = 6 + boss_level
     b.data = { hp: hp, max: hp, inv: 0, cd: 90, spiky: 0, warn_spiky: 0, angry: false, minions: 0 }
     b.state = :wait
@@ -49,7 +49,7 @@ class Game
     # the warning goes off on the approach, while the player can still look
     # before stepping in; the gate shuts once they are inside the arena
     unless @boss_warned
-      return unless p.x > (@arena_c - WARN_AHEAD) * T
+      return unless p.x > (@arena_c - WARN_AHEAD) * TILE
       @boss_warned = true
       @warning = WARN_LEN
       sfx(:klaxon)
@@ -57,7 +57,7 @@ class Game
     end
     @warning -= 1 if @warning > 0
     unless @boss_on
-      return unless p.x > (@arena_c + 2) * T
+      return unless p.x > (@arena_c + 2) * TILE
       @boss_on = true
       8.times { |r| @grid[r][@arena_c] = '#' }   # the gate slams shut
       sfx(:bump)
@@ -79,7 +79,7 @@ class Game
       if b.t == 120
         @goal = { c: @arena_c + 10, r: 7, turn: 0 }   # between the arena girders
         sfx(:appear)
-        popup(@goal[:c] * T, tile_top(7) + 60, 'MAIN VALVE')
+        popup(@goal[:c] * TILE, tile_top(7) + 60, 'MAIN VALVE')
       end
       update_shots
       return
@@ -183,7 +183,7 @@ class Game
         cnt.times do |i|
           c = @arena_c + 2 + boss_rand(16)
           c = col_at(p.x + p.w / 2) if i == 0
-          @shots << { k: :bolt, x: c * T + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
+          @shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
         end
       end
       boss_idle(40) if b.t > 60
@@ -200,8 +200,8 @@ class Game
       b.on_ground = true
     end
     b.x += b.vx
-    lo = (@arena_c + 1) * T + 4
-    hi = @cols * T - b.w - 4
+    lo = (@arena_c + 1) * TILE + 4
+    hi = @cols * TILE - b.w - 4
     if b.x < lo || b.x > hi
       b.x = b.x < lo ? lo.to_f : hi.to_f
       if b.state == :charge
@@ -291,7 +291,7 @@ class Game
       case s[:k]
       when :wave
         s[:x] += s[:vx]
-        s[:dead] = true if s[:x] < @arena_c * T || s[:x] > @cols * T
+        s[:dead] = true if s[:x] < @arena_c * TILE || s[:x] > @cols * TILE
       when :glob
         s[:vy] -= 0.5
         s[:x] += s[:vx]

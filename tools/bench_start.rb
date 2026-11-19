@@ -9,6 +9,8 @@
 #   :ending  skip straight to the ending sequence (Rusty gone, valve turned)
 # Lives are set to 99 so a run stays in play.
 BENCH_MODE = :BENCH_START
+# tile size: TILE since the refactor, T in un-refactored
+BENCH_TILE = defined?(TILE) ? TILE : T
 
 class Game
   alias bench_initialize initialize
@@ -27,12 +29,12 @@ class Game
     return unless @boss
     case BENCH_MODE
     when :arena
-      @p.x = (@arena_c + 3) * T + 12
+      @p.x = (@arena_c + 3) * BENCH_TILE + 12
       @p.y = tile_bottom(7)
     when :ending
       @boss = nil
       @goal = { c: @arena_c + 10, r: 7, turn: 0 }
-      @p.x = (@arena_c + 9) * T + 12
+      @p.x = (@arena_c + 9) * BENCH_TILE + 12
       @p.y = tile_bottom(7)
       @cam = max_cam.to_f
       start_ending
