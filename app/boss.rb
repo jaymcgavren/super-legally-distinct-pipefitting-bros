@@ -1,14 +1,21 @@
 # BIG RUSTY -- the boss at the end of every level. Same boss each time;
 # encounter n knows every move from encounters 1..n, and move n is new.
+#
+# Boss is Rusty himself: his moves, gravity and the arena walls. Game runs
+# the fight around him: the warning and gate, his shots, and what touching
+# or hitting him does.
+
+# The move table: encounter n knows moves 1..n, and move n is the new one
+# the banner names. [state, banner name, the Boss method that runs it]
 BOSS_MOVES = [
-  [:hop,    'HOP'],
-  [:pound,  'GROUND POUND'],
-  [:spit,   'RUST SPIT'],
-  [:summon, 'BLOB BELCH'],
-  [:charge, 'BULL CHARGE'],
-  [:spikes, 'SPIKED CROWN'],
-  [:bolts,  'BOLT STORM'],
-  [:enrage, 'SHORT FUSE'],
+  [:hop,    'HOP',          :hop],
+  [:pound,  'GROUND POUND', :ground_pound],
+  [:spit,   'RUST SPIT',    :rust_spit],
+  [:summon, 'BLOB BELCH',   :blob_belch],
+  [:charge, 'BULL CHARGE',  :bull_charge],
+  [:spikes, 'SPIKED CROWN', :spiked_crown],
+  [:bolts,  'BOLT STORM',   :bolt_storm],
+  [:enrage, 'SHORT FUSE',   :short_fuse],   # not a move: fumes at half health
 ].freeze
 BOLT_WARNING = 64       # frames a bolt's shadow shows before it drops (was 40)
 WARN_LENGTH  = 160      # klaxon + WARNING card before each fight
@@ -17,22 +24,13 @@ BOSS_WIDTH   = 112
 BOSS_HEIGHT  = 104
 
 class Game
-  def boss_rand(n)
-    @rng = (@rng * 75 + 74) % 65537
-    @rng % n
-  end
-
   def boss_level = @level.data[:boss] || 1
-  def boss_knows?(move) = BOSS_MOVES.index { |entry| entry[0] == move } < boss_level
 
-  def spawn_boss(c, r)
-    boss = Actor.new(:boss, c * TILE - 24, @level.tile_bottom(r), BOSS_WIDTH, BOSS_HEIGHT)
-    hp = 6 + boss_level
-    boss.data = { hp: hp, max: hp, inv: 0, cd: 90, spiky: 0, warn_spiky: 0, angry: false, minions: 0 }
-    boss.state = :wait
+  def spawn_boss(c, r, seed)
+    boss = Boss.new(self, c, r, seed)
     @boss = boss
     @boss_on = false
-    @arena_column = @level.columns - 20
+    @arena_column = boss.arena_column
     @shots = []
     @banner = 0
     @warning = 0
@@ -69,172 +67,26 @@ class Game
     end
     @banner -= 1 if @banner > 0
     @camera.settle
-    data = boss.data
-    data[:inv] -= 1 if data[:inv] > 0
-    boss.t += 1
+    boss.update
     if boss.dead?
-      boss.vy -= 0.6
-      boss.y += boss.vy
-      if boss.t == 120
-        @goal = Goal.new(@level, @arena_column + 10, 7)   # between the arena girders
-        @sound.play(:appear)
-        popup(@goal.x, @level.tile_top(7) + 60, 'MAIN VALVE')
-      end
-      update_shots
-      return
+      reveal_valve if boss.t == 120
+    else
+      boss_vs_player
     end
-    angry = data[:angry]
-    speed = angry ? 1.5 : 1.0
-    if boss_knows?(:enrage) && !angry && data[:hp] * 2 <= data[:max]
-      data[:angry] = true
-      popup(boss.x, boss.y + 140, 'RUSTY IS FUMING!')
-      @sound.play(:warn)
-      @sound.music_pitch = 1.2
-    end
-    data[:spiky] -= 1 if data[:spiky] > 0
-    data[:warn_spiky] -= 1 if data[:warn_spiky] > 0
-    data[:spiky] = (angry ? 220 : 160) if data[:warn_spiky] == 1
-    dir = player.x + player.w / 2 > boss.x + boss.w / 2 ? 1 : -1
-    case boss.state
-    when :wait
-      boss.vx = 0.0
-      boss.state = :walk if @banner < 120
-    when :walk
-      boss.facing = dir
-      boss.vx = dir * 1.3 * speed
-      data[:cd] -= 1
-      boss_choose if data[:cd] <= 0 && boss.on_ground
-    when :hop
-      if boss.t == 1
-        boss.vy = 13.0
-        boss.vx = dir * 3.0 * speed
-      elsif boss.on_ground && boss.t > 3
-        boss_idle(50)
-      end
-    when :pound
-      if boss.t < 20
-        boss.vx = 0.0                                   # crouch
-      elsif boss.t == 20
-        boss.vy = 21.0
-        data[:air] = true
-        boss.vx = ((player.x - boss.x) / 42.0).to_f
-        boss.vx = 7.0 if boss.vx > 7
-        boss.vx = -7.0 if boss.vx < -7
-      elsif boss.on_ground && data[:air] && boss.t > 22
-        data[:air] = false
-        boss.vx = 0.0
-        @camera.shake(20)
-        @sound.play(:pound)
-        waves = angry ? 2 : 1
-        waves.times do |i|
-          [-1, 1].each do |side|
-            @shots << { k: :wave, x: boss.x + boss.w / 2 - 20 + side * 50, y: boss.y, w: 40, h: 36,
-                        vx: side * (6.0 + i * 2.5) * speed, vy: 0.0, t: 0 }
-          end
-        end
-        boss_idle(60)
-      end
-    when :spit
-      boss.vx = 0.0
-      n = angry ? 3 : 1 + (boss_level >= 6 ? 1 : 0)
-      if boss.t == 24 || (n > 1 && boss.t == 38) || (n > 2 && boss.t == 52)
-        @sound.play(:spit)
-        dx = (player.x - boss.x).to_f
-        t_air = 50.0
-        @shots << { k: :glob, x: boss.x + boss.w / 2 - 16, y: boss.y + 70, w: 32, h: 32,
-                    vx: dx / t_air + (boss.t - 38) * 0.08, vy: 12.0, t: 0 }
-      end
-      boss_idle(50) if boss.t > 30 + n * 14
-    when :summon
-      boss.vx = 0.0
-      if boss.t == 30
-        @sound.play(:appear)
-        @enemies << Blob.minion(boss.x + boss.w / 2 - 24, boss.y + 60, dir)
-      end
-      boss_idle(60) if boss.t > 50
-    when :charge
-      if boss.t < 45
-        boss.vx = 0.0
-        boss.facing = dir if boss.t == 1
-        @sound.play(:warn) if boss.t == 1
-      else
-        boss.vx = boss.facing * 9.0 * speed
-        boss_idle(30) if boss.t > 240
-      end
-    when :stunned
-      boss.vx = 0.0
-      boss_idle(40) if boss.t > 70
-    when :spikes
-      boss.vx = 0.0
-      data[:warn_spiky] = 40 if boss.t == 1
-      boss_idle(30) if boss.t > 40
-    when :bolts
-      boss.vx = 0.0
-      if boss.t == 1
-        @sound.play(:warn)
-        count = angry ? 5 : 3
-        count.times do |i|
-          c = @arena_column + 2 + boss_rand(16)
-          c = @level.column_at(player.x + player.w / 2) if i == 0
-          @shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
-        end
-      end
-      boss_idle(40) if boss.t > 60
-    end
-    # Rusty ignores the girders: he stays on the arena floor, between the walls
-    fall(boss)
-    boss.prev_y = boss.y
-    boss.y += boss.vy
-    boss.on_ground = false
-    if boss.y <= 128
-      boss.y = 128.0
-      boss.vy = 0.0
-      boss.on_ground = true
-    end
-    boss.x += boss.vx
-    min_x = (@arena_column + 1) * TILE + 4
-    max_x = @level.width - boss.w - 4
-    if boss.x < min_x || boss.x > max_x
-      boss.x = boss.x < min_x ? min_x.to_f : max_x.to_f
-      if boss.state == :charge
-        @camera.shake(16)
-        @sound.play(:pound)
-        boss.state = :stunned
-        boss.t = 0
-      end
-      boss.vx = 0.0
-    end
-    boss_vs_player
     update_shots
   end
 
-  def boss_idle(cooldown)
-    boss = @boss
-    boss.state = :walk
-    boss.t = 0
-    boss.data[:cd] = boss.data[:angry] ? cooldown / 2 : cooldown
+  # Rusty is down: the main valve appears between the arena girders
+  def reveal_valve
+    @goal = Goal.new(@level, @arena_column + 10, 7)
+    @sound.play(:appear)
+    popup(@goal.x, @level.tile_top(7) + 60, 'MAIN VALVE')
   end
-
-  # pick a move: the newest one comes up most often
-  def boss_choose
-    boss = @boss
-    known = []
-    BOSS_MOVES.each_with_index { |entry, i| known << entry[0] if i < boss_level && entry[0] != :enrage }
-    newest = known[-1]
-    move = boss_rand(10) < 4 ? newest : known[boss_rand(known.size)]
-    move = :hop if move == :summon && @enemies.count { |enemy| enemy.minion && enemy.walking? } >= 2
-    move = :hop if move == :spikes && boss_spiky?
-    boss.state = move
-    boss.t = 0
-  end
-
-  def boss_spiky? = @boss.data[:spiky] > 0
-  def boss_invulnerable? = @boss.data[:inv] > 0
 
   def boss_hit(damage)
     boss = @boss
     data = boss.data
-    return false if boss_invulnerable? || boss.dead?
+    return false if boss.invulnerable? || boss.dead?
     data[:hp] -= damage
     data[:inv] = 45
     @sound.play(:bosshit)
@@ -260,7 +112,7 @@ class Game
     # a stomp is the player coming down onto him *relative to his motion*, so
     # Rusty hopping up into your feet counts too
     closing = (player.y - player.prev_y) - (boss.y - boss.prev_y) < 0
-    if closing && player.prev_y >= boss.prev_y + boss.h * 0.6 && !boss_spiky?
+    if closing && player.prev_y >= boss.prev_y + boss.h * 0.6 && !boss.spiky?
       if boss_hit(2)
         player.vy = @controls.jump_held? ? 18.0 : 14.0
         player.jumping = @controls.jump_held?
@@ -316,7 +168,6 @@ class Game
   def draw_boss(camera_x)
     boss = @boss
     return unless boss
-    data = boss.data
     @shots.each do |shot|
       x = shot[:x].to_i - camera_x
       case shot[:k]
@@ -342,23 +193,7 @@ class Game
         end
       end
     end
-    return if boss_invulnerable? && (data[:inv] / 3).even? && !boss.dead?
-    source = case boss.state
-             when :dead, :stunned then FRAMES[:rusty_hurt]
-             when :pound then FRAMES[boss.t < 20 ? :rusty_crouch : :rusty_air]
-             when :hop then FRAMES[boss.on_ground ? :rusty_crouch : :rusty_air]
-             when :spit, :summon then FRAMES[:rusty_mouth]
-             when :charge then FRAMES[boss.t < 45 ? :rusty_crouch : :rusty_angry]
-             else data[:angry] ? FRAMES[:rusty_angry] : frame(:rusty_walk, (boss.t / 12) % 2)
-             end
-    source = FRAMES[:rusty_hurt] if boss_invulnerable? && !boss.dead?
-    x = boss.x.to_i - camera_x - 8
-    shake = boss.state == :charge && boss.t < 45 ? ((boss.t / 2) % 2) * 8 - 4 : 0
-    alpha = 255
-    @screen.sprite('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, source, flip: boss.facing > 0, alpha: alpha, flip_v: boss.dead?)
-    if boss_spiky? || (data[:warn_spiky] > 0 && (data[:warn_spiky] / 4).even?)
-      @screen.sprite('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
-    end
+    boss.draw(@screen, camera_x)
   end
 
   def draw_boss_hud
@@ -390,5 +225,257 @@ class Game
     @screen.rect(0, 340, VIEW_WIDTH, 240, BLACK, 150)
     @screen.label(640, 560, 'WARNING', 16, WARNING_RED, true)
     @screen.label(640, 412, 'HUGE ENEMY APPROACH', 5, GOLD, true)
+  end
+end
+
+class Boss < Actor
+  FLOOR = 128          # the arena floor: Rusty ignores the girders
+  ANGRY_SPEED = 1.5
+
+  # the step method for each state: every move in BOSS_MOVES, plus waiting
+  # out the banner, walking between moves, and reeling after a charge
+  STEPS = { wait: :wait_for_banner, walk: :walk, stunned: :reel }
+  BOSS_MOVES.each { |state, _name, step| STEPS[state] = step unless state == :enrage }
+  STEPS.freeze
+
+  attr_reader :encounter, :arena_column
+
+  def initialize(game, c, r, seed)
+    level = game.level
+    super(:boss, c * TILE - 24, level.tile_bottom(r), BOSS_WIDTH, BOSS_HEIGHT)
+    @game = game
+    @level = level
+    @encounter = level.data[:boss] || 1
+    @arena_column = level.columns - 20
+    @rng = seed          # Rusty's own LCG: fights replay the same
+    hp = 6 + @encounter
+    @data = { hp: hp, max: hp, inv: 0, cd: 90, spiky: 0, warn_spiky: 0, angry: false, minions: 0 }
+    @state = :wait
+  end
+
+  def knows?(move) = BOSS_MOVES.index { |entry| entry[0] == move } < @encounter
+  def spiky? = @data[:spiky] > 0
+  def invulnerable? = @data[:inv] > 0
+
+  # one step of the fight
+  def update
+    data = @data
+    data[:inv] -= 1 if data[:inv] > 0
+    @t += 1
+    if dead?
+      @vy -= 0.6
+      @y += @vy
+      return
+    end
+    angry = data[:angry]   # this step's moves go at the speed he started it with
+    short_fuse if knows?(:enrage) && !angry && data[:hp] * 2 <= data[:max]
+    data[:spiky] -= 1 if data[:spiky] > 0
+    data[:warn_spiky] -= 1 if data[:warn_spiky] > 0
+    data[:spiky] = (angry ? 220 : 160) if data[:warn_spiky] == 1
+    player = @game.player
+    dir = player.x + player.w / 2 > @x + @w / 2 ? 1 : -1
+    send(STEPS[@state], dir, angry)
+    move_in_arena
+  end
+
+  def draw(screen, camera_x)
+    return if invulnerable? && (@data[:inv] / 3).even? && !dead?
+    source = case @state
+             when :dead, :stunned then FRAMES[:rusty_hurt]
+             when :pound then FRAMES[@t < 20 ? :rusty_crouch : :rusty_air]
+             when :hop then FRAMES[@on_ground ? :rusty_crouch : :rusty_air]
+             when :spit, :summon then FRAMES[:rusty_mouth]
+             when :charge then FRAMES[@t < 45 ? :rusty_crouch : :rusty_angry]
+             else @data[:angry] ? FRAMES[:rusty_angry] : frame(:rusty_walk, (@t / 12) % 2)
+             end
+    source = FRAMES[:rusty_hurt] if invulnerable? && !dead?
+    x = @x.to_i - camera_x - 8
+    shake = @state == :charge && @t < 45 ? ((@t / 2) % 2) * 8 - 4 : 0
+    screen.sprite('sprites/rusty.png', x + shake, @y.to_i, 128, 112, source, flip: @facing > 0, alpha: 255, flip_v: dead?)
+    if spiky? || (@data[:warn_spiky] > 0 && (@data[:warn_spiky] / 4).even?)
+      screen.sprite('sprites/rusty.png', x + shake, @y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
+    end
+  end
+
+  private
+
+  def sound = @game.sound
+
+  def rand_below(n)
+    @rng = (@rng * 75 + 74) % 65537
+    @rng % n
+  end
+
+  def pace(angry) = angry ? ANGRY_SPEED : 1.0
+
+  # back to walking, with a cooldown before the next move
+  def idle(cooldown)
+    @state = :walk
+    @t = 0
+    @data[:cd] = @data[:angry] ? cooldown / 2 : cooldown
+  end
+
+  # pick a move: the newest one comes up most often
+  def choose_move
+    known = []
+    BOSS_MOVES.each_with_index { |entry, i| known << entry[0] if i < @encounter && entry[0] != :enrage }
+    newest = known[-1]
+    move = rand_below(10) < 4 ? newest : known[rand_below(known.size)]
+    move = :hop if move == :summon && @game.enemies.count { |enemy| enemy.minion && enemy.walking? } >= 2
+    move = :hop if move == :spikes && spiky?
+    @state = move
+    @t = 0
+  end
+
+  # SHORT FUSE: at half health he fumes, and moves faster from then on
+  def short_fuse
+    @data[:angry] = true
+    @game.popup(@x, @y + 140, 'RUSTY IS FUMING!')
+    sound.play(:warn)
+    sound.music_pitch = 1.2
+  end
+
+  # stands still until the banner has been up a second
+  def wait_for_banner(dir, angry)
+    @vx = 0.0
+    @state = :walk if @game.banner < 120
+  end
+
+  # walks at the player until the cooldown runs out, then picks a move
+  def walk(dir, angry)
+    speed = pace(angry)
+    @facing = dir
+    @vx = dir * 1.3 * speed
+    @data[:cd] -= 1
+    choose_move if @data[:cd] <= 0 && @on_ground
+  end
+
+  # a short hop toward the player
+  def hop(dir, angry)
+    speed = pace(angry)
+    if @t == 1
+      @vy = 13.0
+      @vx = dir * 3.0 * speed
+    elsif @on_ground && @t > 3
+      idle(50)
+    end
+  end
+
+  # crouch, leap at the player, and land sending steam waves along the floor
+  def ground_pound(dir, angry)
+    speed = pace(angry)
+    if @t < 20
+      @vx = 0.0   # crouch
+    elsif @t == 20
+      @vy = 21.0
+      @data[:air] = true
+      @vx = ((@game.player.x - @x) / 42.0).to_f
+      @vx = 7.0 if @vx > 7
+      @vx = -7.0 if @vx < -7
+    elsif @on_ground && @data[:air] && @t > 22
+      @data[:air] = false
+      @vx = 0.0
+      @game.camera.shake(20)
+      sound.play(:pound)
+      waves = angry ? 2 : 1
+      waves.times do |i|
+        [-1, 1].each do |side|
+          @game.shots << { k: :wave, x: @x + @w / 2 - 20 + side * 50, y: @y, w: 40, h: 36,
+                           vx: side * (6.0 + i * 2.5) * speed, vy: 0.0, t: 0 }
+        end
+      end
+      idle(60)
+    end
+  end
+
+  # lobs globs of rust at the player (more when angry, or from encounter 6)
+  def rust_spit(dir, angry)
+    @vx = 0.0
+    n = angry ? 3 : 1 + (@encounter >= 6 ? 1 : 0)
+    if @t == 24 || (n > 1 && @t == 38) || (n > 2 && @t == 52)
+      sound.play(:spit)
+      dx = (@game.player.x - @x).to_f
+      t_air = 50.0
+      @game.shots << { k: :glob, x: @x + @w / 2 - 16, y: @y + 70, w: 32, h: 32,
+                       vx: dx / t_air + (@t - 38) * 0.08, vy: 12.0, t: 0 }
+    end
+    idle(50) if @t > 30 + n * 14
+  end
+
+  # coughs up a minion Blob
+  def blob_belch(dir, angry)
+    @vx = 0.0
+    if @t == 30
+      sound.play(:appear)
+      @game.enemies << Blob.minion(@x + @w / 2 - 24, @y + 60, dir)
+    end
+    idle(60) if @t > 50
+  end
+
+  # shakes, then charges until he hits a wall (and is stunned)
+  def bull_charge(dir, angry)
+    speed = pace(angry)
+    if @t < 45
+      @vx = 0.0
+      @facing = dir if @t == 1
+      sound.play(:warn) if @t == 1
+    else
+      @vx = @facing * 9.0 * speed
+      idle(30) if @t > 240
+    end
+  end
+
+  # stunned after charging into a wall
+  def reel(dir, angry)
+    @vx = 0.0
+    idle(40) if @t > 70
+  end
+
+  # warns, then grows a spiked crown: no stomping for a while
+  def spiked_crown(dir, angry)
+    @vx = 0.0
+    @data[:warn_spiky] = 40 if @t == 1
+    idle(30) if @t > 40
+  end
+
+  # bolts drop on shadows, the first one on the player
+  def bolt_storm(dir, angry)
+    @vx = 0.0
+    if @t == 1
+      sound.play(:warn)
+      count = angry ? 5 : 3
+      count.times do |i|
+        c = @arena_column + 2 + rand_below(16)
+        c = @level.column_at(@game.player.x + @game.player.w / 2) if i == 0
+        @game.shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
+      end
+    end
+    idle(40) if @t > 60
+  end
+
+  # gravity, the arena floor and walls; a charge into a wall stuns him
+  def move_in_arena
+    @game.fall(self)
+    @prev_y = @y
+    @y += @vy
+    @on_ground = false
+    if @y <= FLOOR
+      @y = FLOOR.to_f
+      @vy = 0.0
+      @on_ground = true
+    end
+    @x += @vx
+    min_x = (@arena_column + 1) * TILE + 4
+    max_x = @level.width - @w - 4
+    if @x < min_x || @x > max_x
+      @x = @x < min_x ? min_x.to_f : max_x.to_f
+      if @state == :charge
+        @game.camera.shake(16)
+        sound.play(:pound)
+        @state = :stunned
+        @t = 0
+      end
+      @vx = 0.0
+    end
   end
 end

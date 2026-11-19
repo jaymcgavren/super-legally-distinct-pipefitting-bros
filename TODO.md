@@ -200,7 +200,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] Performance check.
 
 ### 5. Big Rusty
-- [ ] `Boss` class (app/boss.rb). Replace the 167-line `update_boss` with one
+- [x] `Boss` class (app/boss.rb). Replace the 167-line `update_boss` with one
       method per move (`hop`, `ground_pound`, `rust_spit`, `blob_belch`,
       `bull_charge`, `spiked_crown`, `bolt_storm`, `short_fuse`), picked from
       `BOSS_MOVES` and the encounter level (`boss_knows?`). Keep the move list
@@ -649,3 +649,26 @@ paths, anything the next session needs.)
   | title | 0.345 | 0.354 | +2.6% (+1%) |
   The scenes cost nothing measurable: the rows moved within noise of
   step 3's, all under the 10% bar.
+- 2026-11-19: step 5, `Boss < Actor` in app/boss.rb. `update_boss` is
+  split: Game keeps the fight around Rusty (warning, gate, banner, shots,
+  `boss_vs_player`, `boss_hit`, and the new `reveal_valve` when he's
+  down); `Boss#update` is Rusty himself: one step method per state, from
+  `STEPS`, which is built from `BOSS_MOVES` (now [state, banner name,
+  method]: `hop`, `ground_pound`, `rust_spit`, `blob_belch`,
+  `bull_charge`, `spiked_crown`, `bolt_storm`, and `short_fuse`, his
+  half-health anger) plus `wait_for_banner`, `walk`, `reel` (stunned).
+  So the move list, its order (encounter n learns move n) and the code
+  for each are one table. `move_in_arena` is gravity, the floor and walls
+  and the charge stun. `knows?`, `spiky?`, `invulnerable?`, `idle`,
+  `choose_move` and Rusty's draw moved onto Boss. The LCG is Boss's own
+  `@rng` with the same seed (1 + level * 31) and call order. Moves still
+  get the step's starting mood (`angry`), so the fuming step keeps calm
+  speed as before. Game gains readers `enemies`, `shots`, `banner`.
+  `data` is untouched (next item).
+  Traced against the previous commit: all 8 fights, approaching mortal,
+  invincible, and invincible with Rusty hit every 150 steps, 3000 steps
+  each (70,180 steps: every move, anger, death, valve, clears and a game
+  over), recording Rusty's whole state and LCG, shots, enemies, popups,
+  sounds and an MD5 of everything drawn: identical. Tests ALL PASS
+  (185), shots ALL SAME, reach/bot unchanged; bench arena 7 0.425-0.431
+  vs 0.424-0.430, arena 5 0.854-0.867 vs 0.860-0.869.

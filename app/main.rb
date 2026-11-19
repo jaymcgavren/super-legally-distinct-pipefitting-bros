@@ -165,7 +165,7 @@ class Game
   include Physics
 
   attr_reader :screen, :sound, :controls, :run, :high_score, :camera, :player,
-              :level, :level_index, :goal, :scene
+              :level, :level_index, :goal, :scene, :enemies, :shots, :banner
   attr_accessor :bro   # 0 Dez, 1 Ozzie
 
   def mode = @scene.name
@@ -278,7 +278,6 @@ class Game
     @shots = []
     @camera = Camera.new(@level)
     @banner = 0
-    @rng = 1 + index * 31
     boss_at = nil
     start = [2, 7]
     @level.each_marker do |tile, c, r|
@@ -300,7 +299,7 @@ class Game
         boss_at = [c, r]
       end
     end
-    spawn_boss(boss_at[0], boss_at[1]) if boss_at
+    spawn_boss(boss_at[0], boss_at[1], 1 + index * 31) if boss_at
     if use_checkpoint && @run.checkpoint && @run.checkpoint[0] == index
       cone = @cones[@run.checkpoint[1]]
       start = [cone.c, cone.r]
