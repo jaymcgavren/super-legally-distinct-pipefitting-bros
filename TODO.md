@@ -197,7 +197,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       fireworks, credits, Rusty's fall). Keep `CREDITS` text exactly.
 - [x] Tests that check `s.mode == :play` etc.: give scenes a `name` symbol
       (or keep `Game#mode` returning one) so the tests stay readable.
-- [ ] Performance check.
+- [x] Performance check.
 
 ### 5. Big Rusty
 - [ ] `Boss` class (app/boss.rb). Replace the 167-line `update_boss` with one
@@ -635,3 +635,17 @@ paths, anything the next session needs.)
   sounds): identical. Tests ALL PASS (185), shots ALL SAME (incl. the
   four ending stages, render target and all), reach/bot unchanged; bench
   ending 0.43-0.44 vs 0.43-0.44, level 1 0.86 vs 0.89.
+- 2026-11-19: step 4 performance check, `un-refactored` vs 90dcd74,
+  interleaved, 3 pairs per row, median ms/frame (step 3's change in
+  brackets):
+  | run | baseline | now | change |
+  |---|---|---|---|
+  | arena 7 (2-D fight) | 0.414 | 0.428 | +3% (+3%) |
+  | arena 5 (2-B fight) | 0.842 | 0.869 | +3% (+1%) |
+  | level 5 (2-B start) | 0.820 | 0.825 | +1% (+4.5%) |
+  | level 0 (1-A start) | 0.336 | 0.341 | +1.5% (+3%) |
+  | level 1 (1-B start) | 0.859 | 0.881 | +2.6% (+1.4%) |
+  | ending | 0.426 | 0.453 | +6% (+7%) |
+  | title | 0.345 | 0.354 | +2.6% (+1%) |
+  The scenes cost nothing measurable: the rows moved within noise of
+  step 3's, all under the 10% bar.
