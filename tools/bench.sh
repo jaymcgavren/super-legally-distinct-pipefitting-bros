@@ -25,8 +25,9 @@
 # frames far faster than 60 Hz and the game skips most updates.
 #
 # The repo's app/ is never modified. bench_start.rb calls Game internals
-# (new_game, to_intro, start_ending, @p, @boss, @arena_c, @goal, @cam), so
-# update it when those change.
+# (new_game, to_intro, start_ending, the player, arena column and camera
+# ivars, @boss, @goal), so update it when those change. It must also still
+# build un-refactored. A Ruby exception in the cart makes this script fail.
 set -e
 cd "$(dirname "$0")/.."
 level=${1:?usage: tools/bench.sh <level-index> [frames] [runs]}
@@ -48,7 +49,14 @@ i=0
 while [ $i -lt "$runs" ]; do
   node --import ./tools/bench_time.mjs node_modules/wasmcart/bin/wasmcart-play.js \
     "$tmp/bench.wasc" --seed 1 --frames "$frames" --shot "$tmp/last.png" 2>&1 |
-    grep -E 'runFrame|exception' || true
+    grep -E 'runFrame|exception' > "$tmp/out.txt" || true
+  cat "$tmp/out.txt"
+  # A Ruby exception means the cart (or the bench_start patch) is broken:
+  # its screenshot is just the exception banner, so fail loudly.
+  if grep -q exception "$tmp/out.txt"; then
+    echo "bench.sh: ruby exception in the cart" >&2
+    exit 1
+  fi
   i=$((i + 1))
 done
 [ -n "$BENCH_SHOT" ] && cp "$tmp/last.png" "$BENCH_SHOT"

@@ -10,7 +10,8 @@
 # Lives are set to 99 so a run stays in play.
 BENCH_MODE = :BENCH_START
 # Names that the refactor changed; the patch must also build un-refactored.
-BENCH_TILE = defined?(TILE) ? TILE : T
+# (mruby has no `defined?` keyword: it parses as a method call)
+BENCH_TILE = Object.const_defined?(:TILE) ? TILE : T
 
 class Game
   alias bench_initialize initialize

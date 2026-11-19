@@ -33,7 +33,11 @@ nothing below has been started yet.
   - Probed in the real runtime (2026-11-19):
     - works: endless `def x = ...` (used for one-line helpers), `String#chars`.
     - missing: `Struct.new(..., keyword_init: true)` (TypeError), pattern
-      matching `case/in` (syntax error), `Data`, `Float#clamp`.
+      matching `case/in` (syntax error), `Data`, `Float#clamp`, and the
+      `defined?` keyword (it parses as a method call: NameError /
+      NoMethodError). Use `Object.const_defined?`,
+      `instance_variable_defined?`, `respond_to?` instead.
+    - works (2026-11-19): `freeze` raises FrozenError on mutation, as in CRuby.
     - Probe anything else before relying on it: a one-file cart in the
       scratchpad that draws the result as a label, run with `--frames 3
       --shot`; exceptions print as `[cart] ruby exception ...`.
@@ -323,3 +327,13 @@ paths, anything the next session needs.)
   i/j/k/n/f, `spr`'s sx/sy/sw/sh (step 2's Screen redoes that signature),
   `spr`/`sfx` themselves (renamed in step 2), `ms`, `gtk`. Tests ALL PASS,
   shots ALL SAME, reach/bot unchanged.
+- 2026-11-19: HARNESS BUG, fixed. Since 0875030, tools/bench_start.rb used
+  `defined?(TILE)`, which mruby lacks, so every shot on BOTH sides was the
+  "RUBY EXCEPTION" banner and `shots.sh --compare` said ALL SAME without
+  testing anything. The shot checks logged for 0875030, 592f7bc, f1700c2,
+  3f0037b and 4ecdf84 were therefore void (their CRuby tests and reach/bot
+  checks were real). Fixed with `Object.const_defined?(:TILE)`; bench.sh now
+  exits 1 when the cart logs a Ruby exception, so shots.sh stops instead of
+  comparing banners (checked by re-introducing a FrozenError: it stopped).
+  Re-run against un-refactored on the current tree: ALL SAME with 11
+  distinct real images, which covers all of those commits at once.
