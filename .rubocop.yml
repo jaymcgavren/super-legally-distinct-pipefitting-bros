@@ -121,9 +121,9 @@ Style/ComparableClamp:
 Style/MinMaxComparison:
   Enabled: false
 # The runtime calls the top-level `tick`, which keeps the game in $game;
-# the scenarios count failures in $fails.
+# the scenarios count failures in $fails and find their test in $scenario.
 Style/GlobalVars:
-  AllowedVariables: ['$game', '$fails']
+  AllowedVariables: ['$game', '$fails', '$scenario']
 # wasmcart-mruby's require takes the packed path, extension included.
 Style/RedundantFileExtensionInRequire:
   Exclude:

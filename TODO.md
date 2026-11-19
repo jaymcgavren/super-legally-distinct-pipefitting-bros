@@ -217,7 +217,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] RuboCop with a `.rubocop.yml` tuned for a game (looser method/class
       length, allow short names in tight math). It's a gem for the host Ruby,
       not a compiler, but **ask before installing it**.
-- [ ] Move the scenarios to Minitest (ships with CRuby) if the user wants;
+- [x] Move the scenarios to Minitest (ships with CRuby) if the user wants;
       keep `ruby tools/sim.rb` working as the one command either way.
 
 ### 7. Finish
@@ -749,3 +749,19 @@ paths, anything the next session needs.)
   3 runs each): arena 7 0.406/0.461/0.396 vs 0.420/0.427/0.394, arena 5
   0.75 vs 0.74-0.75, level 1 0.755-0.785 vs 0.743-0.762, ending 5
   0.397-0.405 vs 0.396-0.415. Same within noise.
+- 2026-11-19: step 6, Minitest (6.0.6, bundled with Ruby 3.4). `ruby
+  tools/sim.rb` is still the one command and still ends with ALL PASS or
+  N FAILED, and exits 1 on any failure. Each file in tools/scenarios is
+  now one test (`test_01_core` ... `test_05_refresh`), run in file order
+  (`run_order :alpha`). `ruby tools/sim.rb -n test_02_boss` runs one.
+  The scenario files are unchanged. `check` still prints PASS/FAIL and
+  counts as an assertion, but a failed check doesn't stop its scenario;
+  the test fails at the end listing every failed check, as before. New:
+  an exception in one scenario is a Minitest error instead of aborting
+  the rest. Each scenario prints a `== name` header (that also keeps
+  Minitest's progress dot off the next PASS line). `$scenario` is the
+  running test, added to the RuboCop global allow-list. reach.rb, bot.rb
+  and friends `require` sim.rb and don't start Minitest. Checked: 185
+  PASS lines, 190 assertions (185 checks + 5 tests), the info lines
+  unchanged; a deliberate double failure in 03_rush failed the test with
+  both names and exit 1; reach and bot the same; rubocop 0 offenses.

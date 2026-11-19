@@ -1,5 +1,5 @@
 # Headless gameplay harness: runs app/main.rb under host Ruby with a stub
-# `args`, so scenarios can be scripted and asserted.  ruby tools/sim.rb
+# `args`, so scenarios can be scripted and asserted (Minitest).  ruby tools/sim.rb
 $LOAD_PATH.unshift File.expand_path('..', __dir__)
 
 class Keys
@@ -123,14 +123,42 @@ class Sim
   end
 end
 
+# A scenario calls `check name, condition` for each thing it pins down. It
+# prints PASS/FAIL and counts as a Minitest assertion, but a failure doesn't
+# stop the scenario: the rest of its checks still run, and the test fails
+# at the end listing every failed check.
 $fails = 0
 def check(name, cond)
   puts "#{cond ? 'PASS' : 'FAIL'}  #{name}"
+  return unless $scenario
+  $scenario.assertions += 1
+  $scenario.failed_checks << name unless cond
   $fails += 1 unless cond
 end
 
 if __FILE__ == $PROGRAM_NAME
-  Dir[File.join(__dir__, 'scenarios', '*.rb')].each { |f| load f }
-  puts $fails.zero? ? 'ALL PASS' : "#{$fails} FAILED"
-  exit($fails.zero? ? 0 : 1)
+  # ruby tools/sim.rb                  every scenario
+  # ruby tools/sim.rb -n test_02_boss  one scenario (any Minitest option works)
+  require 'minitest/autorun'
+
+  # One test per file in tools/scenarios, run in file order.
+  class ScenarioTest < Minitest::Test
+    def self.run_order = :alpha
+
+    def failed_checks = (@failed_checks ||= [])
+
+    Dir[File.join(__dir__, 'scenarios', '*.rb')].each do |file|
+      name = File.basename(file, '.rb')
+      define_method("test_#{name}") do
+        puts "\n== #{name}"   # own line: Minitest's progress dot ends the last one
+        $scenario = self   # read by the top-level check
+        load file
+        assert failed_checks.empty?, "failed checks:\n  #{failed_checks.join("\n  ")}"
+      ensure
+        $scenario = nil
+      end
+    end
+  end
+
+  Minitest.after_run { puts $fails.zero? ? 'ALL PASS' : "#{$fails} FAILED" }
 end
