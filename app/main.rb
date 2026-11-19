@@ -173,6 +173,7 @@ end
 require 'app/lift.rb'
 require 'app/items.rb'
 require 'app/props.rb'
+require 'app/enemies.rb'
 
 class Game
   include Physics
@@ -338,11 +339,9 @@ class Game
       when 'P'
         start = [c, r]
       when 'r'
-        @enemies << Actor.new(:blob, c * TILE + 8, @level.tile_bottom(r), 48, 40)
+        @enemies << Blob.at(@level, c, r)
       when 'v'
-        enemy = Actor.new(:crab, c * TILE + 6, @level.tile_bottom(r), 52, 44)
-        enemy.data[:cycle] = (c * 29) % 200
-        @enemies << enemy
+        @enemies << Crab.at(@level, c, r)
       when 'L', 'H'
         @lifts << Lift.new(@level, c, r, tile == 'H' ? :x : :y)
       when 'S' then @vents << Vent.new(@level, c, r)
@@ -763,64 +762,22 @@ class Game
 
   # ── enemies ───────────────────────────────────────────────────────
   def knock(enemy, dir)
-    enemy.state = :dead
-    enemy.vy = 12.0
-    enemy.vx = dir * 2.0
+    enemy.knock(dir)
     @sound.play(:kick)
   end
 
   def update_enemies
     player = @player
+    camera_x = @camera.x
     @enemies.each do |enemy|
-      unless enemy.active
-        next if enemy.x > @camera.x + VIEW_WIDTH + 48
-        enemy.active = true
-        enemy.vx = enemy.kind == :crab ? -1.2 : -1.0
-      end
-      enemy.t += 1
-      if enemy.dead?
-        enemy.vy -= 0.8
-        enemy.x += enemy.vx
-        enemy.y += enemy.vy
-        next
-      end
-      next unless enemy.walking?
-      next if enemy.x < @camera.x - 900 || enemy.x > @camera.x + VIEW_WIDTH + 600
-      spiky = false
-      speed = 1.0
-      if enemy.kind == :crab
-        k = (enemy.t + enemy.data[:cycle]) % 220
-        spiky = k >= 150
-        enemy.data[:spin] = spiky
-        enemy.data[:warn] = k >= 120 && k < 150
-        speed = spiky ? 2.6 : 1.2
-      end
-      enemy.vx = (enemy.vx < 0 ? -1 : 1) * speed
-      fall(enemy)
-      enemy.vx = -enemy.vx if move_x(enemy)
-      move_y(enemy, false, false)
-      if enemy.on_ground
-        front_x = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2
-        below = @level.cell(@level.column_at(front_x), @level.row_at(enemy.y - 4))
-        enemy.vx = -enemy.vx unless SOLID[below] || below == '-'
-      end
-      enemy.state = :dead if enemy.y < -100
-      @enemies.each do |other|
-        next if other.equal?(enemy) || !other.active || !other.walking?
-        enemy.vx = -enemy.vx if overlap?(enemy, other) && ((other.x - enemy.x) * enemy.vx) > 0
-      end
+      next unless enemy.update(self, @level, camera_x, @enemies)
       next unless playing? && overlap?(player, enemy)
       # full box for stomps, a smaller one for getting hurt (forgiving)
-      if player.vy < 0 && player.prev_y >= enemy.y + enemy.h * 0.4 && !spiky
+      if player.vy < 0 && player.prev_y >= enemy.y + enemy.h * 0.4 && !enemy.spiky?
         stomp(enemy)
       elsif rect_hit?(player, enemy.x + 8, enemy.y, enemy.w - 16, enemy.h - 8)
         hurt
       end
-    end
-    @enemies.each do |enemy|
-      next unless enemy.state == :flat
-      enemy.data[:flat_t] = (enemy.data[:flat_t] || 0) + 1
-      enemy.state = :gone if enemy.data[:flat_t] > 30
     end
     @enemies.reject! { |enemy| enemy.gone? || (enemy.dead? && enemy.y < -200) }
   end
@@ -830,18 +787,15 @@ class Game
     if player.combo >= COMBO.size
       one_up(enemy.x, enemy.y + 60)
     else
-      add_score(COMBO[player.combo] * (enemy.kind == :crab ? 2 : 1), enemy.x + 20, enemy.y + 60)
+      add_score(enemy.stomp_points(COMBO[player.combo]), enemy.x + 20, enemy.y + 60)
     end
     player.combo += 1
     player.vy = @controls.jump_held? ? 17.0 : 10.0
     player.jumping = @controls.jump_held?
     puff(enemy.x + enemy.w / 2, enemy.y + 10)
     @sound.play(:stomp)
-    if enemy.kind == :blob
-      enemy.state = :flat
-    else
-      knock(enemy, player.facing)
-    end
+    enemy.stomp(player.facing)
+    @sound.play(:kick) if enemy.dead?
   end
 
   # ── wrench boomerang ──────────────────────────────────────────────
@@ -1152,15 +1106,7 @@ class Game
     @items.each { |item| item.draw(@screen, camera_x, @frame) }
     @enemies.each do |enemy|
       x = enemy.x.to_i - camera_x
-      next if x < -TILE || x > VIEW_WIDTH + TILE
-      if enemy.kind == :blob
-        source = enemy.state == :flat ? FRAMES[:blob_flat] : frame(:blob, (enemy.t / 10) % 2)
-        @screen.sprite('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, source, flip: enemy.vx > 0, flip_v: enemy.dead?)
-      else
-        source = enemy.data[:spin] ? frame(:crab_spin, (enemy.t / 4) % 2) : frame(:crab, (enemy.t / 12) % 2)
-        alpha = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
-        @screen.sprite('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, source, alpha: alpha, flip_v: enemy.dead?)
-      end
+      enemy.draw(@screen, x) unless x < -TILE || x > VIEW_WIDTH + TILE
     end
     draw_boss(camera_x) if @boss
     draw_player

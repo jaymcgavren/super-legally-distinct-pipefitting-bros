@@ -1,7 +1,7 @@
 # spawn a lone active blob on the start segment's open floor
 def lone_blob(s, col)
   s.iv(:enemies).clear
-  e = Actor.new(:blob, col * TILE + 8, s.level.tile_bottom(7), 48, 40)
+  e = Blob.new(col * TILE + 8, s.level.tile_bottom(7))
   e.active = true; e.vx = -1.0
   s.iv(:enemies) << e
   e
@@ -47,7 +47,7 @@ check 'run reaches RUN_MAX', (s.p.vx - RUN_MAX).abs < 0.01
 
 # --- stomp a blob ---
 s = Sim.new.start(0)
-e = s.iv(:enemies).find { |en| en.kind == :blob }
+e = s.iv(:enemies).find { |en| en.is_a?(Blob) }
 s.p.x = e.x; s.p.y = e.y + e.h + 8; s.p.vy = -2.0; s.snap
 s.iv(:enemies).each { |en| en.active = true }
 sc = s.run.score

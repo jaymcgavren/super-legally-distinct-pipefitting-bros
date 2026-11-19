@@ -149,12 +149,7 @@ class Game
       boss.vx = 0.0
       if boss.t == 30
         @sound.play(:appear)
-        enemy = Actor.new(:blob, boss.x + boss.w / 2 - 24, boss.y + 60, 48, 40)
-        enemy.active = true
-        enemy.vx = dir * 1.0
-        enemy.vy = 8.0
-        enemy.data[:minion] = true
-        @enemies << enemy
+        @enemies << Blob.minion(boss.x + boss.w / 2 - 24, boss.y + 60, dir)
       end
       boss_idle(60) if boss.t > 50
     when :charge
@@ -227,7 +222,7 @@ class Game
     BOSS_MOVES.each_with_index { |entry, i| known << entry[0] if i < boss_level && entry[0] != :enrage }
     newest = known[-1]
     move = boss_rand(10) < 4 ? newest : known[boss_rand(known.size)]
-    move = :hop if move == :summon && @enemies.count { |enemy| enemy.data[:minion] && enemy.walking? } >= 2
+    move = :hop if move == :summon && @enemies.count { |enemy| enemy.minion && enemy.walking? } >= 2
     move = :hop if move == :spikes && boss_spiky?
     boss.state = move
     boss.t = 0
@@ -249,7 +244,7 @@ class Game
       boss.t = 0
       boss.vy = 14.0
       @shots = []
-      @enemies.each { |enemy| knock(enemy, 1) if enemy.data[:minion] && enemy.walking? }
+      @enemies.each { |enemy| knock(enemy, 1) if enemy.minion && enemy.walking? }
       add_score(5000, boss.x + 30, boss.y + 170)
       @sound.stop_music
       @sound.play(:bossdie, 0.75)

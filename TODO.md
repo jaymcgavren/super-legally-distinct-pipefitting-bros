@@ -175,7 +175,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       `draw_world`'s `case it.kind`).
 - [x] Static props as small classes or Structs: `Vent`, `Cone`, `Goal`
       (valve: `turn`, `gone`).
-- [ ] Enemies: `Enemy` base with walking/turning/gravity, `Blob`
+- [x] Enemies: `Enemy` base with walking/turning/gravity, `Blob`
       (flattens when stomped) and `Crab` (spiky cycle, `spiky?`, `warning?`,
       double score). `stomp`/`knock` become methods on the enemy.
 - [ ] `Wrench` (boomerang) from `update_wrench`.
@@ -510,3 +510,21 @@ paths, anything the next session needs.)
   bench_start builds a Goal when the class exists (old refs get the hash).
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
   0.86-0.87 vs 0.84-0.87, 2-B arena 0.83 vs 0.82, ending start runs.
+- 2026-11-19: step 3, enemies (app/enemies.rb). `Enemy < Actor` wakes as
+  the camera nears, walks, falls, turns at walls, ledges and other
+  enemies; `update(world, level, camera_x, others)` returns true when it
+  can touch the player this step, and the stomp/hurt decision stays in
+  Game. `knock(dir)` and `stomp(dir)` are methods (Game still plays the
+  sounds); `stomp_points` doubles for crabs. `Blob` squashes (`flat?`,
+  its 30-step timer now runs in its own update, starting at 1 on the
+  stomp step, which matches the old separate pass); `Blob.minion` is what
+  Rusty spits out (`minion` replaces `data[:minion]`). `Crab` has the
+  spin cycle with named steps (CYCLE, WARN, SPIN), `spiky?`, `warning?`.
+  Both place themselves from markers with `.at(level, c, r)` and draw
+  themselves. The level is passed in (Game has no `level` reader).
+  Checked with a trace (all 8 levels, 1500 steps of running/jumping/
+  throwing, every enemy's x, y, vx, state, t, active plus score each
+  step, with 356 flat and 148 knocked-out samples) against the previous
+  commit: identical. Tests ALL PASS (185), shots ALL SAME, reach/bot
+  unchanged; bench level 1 0.83-0.84 vs 0.82-0.88, arena 0.82 vs 0.77
+  (noise band).
