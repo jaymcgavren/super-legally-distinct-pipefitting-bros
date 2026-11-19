@@ -793,3 +793,17 @@ paths, anything the next session needs.)
     still under 1 ms of a 16.7 ms frame.
   The refactor is done. The only open item is the web player, which waits
   for the user to ask.
+- 2026-11-19: splitting the nine `rubocop:todo` methods (user asked).
+  Ending#update is now the phase order, with one private method per
+  phase:
+  - follow_valve, spin_up, blast_off, fly_valve, ease_rise (the
+    rise easing appeared twice and is now shared), update_fireworks and
+    hiss_vents.
+  Ending#draw is the layer order:
+  - draw_backdrop, draw_steam, draw_flying_valve, draw_twinkle,
+    draw_falling_rusty and draw_captions.
+  Statement order is the same, so the LCG draws and sound order are too.
+  Checked:
+  - ending trace (4000 steps, with draw hashes) and tests the same;
+  - shots ALL SAME against HEAD;
+  - ending bench: HEAD 0.408-0.466 vs new 0.411-0.441 ms/frame (5 runs).
