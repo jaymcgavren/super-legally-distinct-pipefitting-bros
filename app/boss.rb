@@ -99,29 +99,44 @@ class Game
     true
   end
 
-  def boss_vs_player # rubocop:todo Metrics/AbcSize
+  def boss_vs_player
     boss = @boss
     player = @player
     return if boss.dead? || !playing?
     return unless overlap?(player, boss)
-    # a stomp is the player coming down onto him *relative to his motion*, so
-    # Rusty hopping up into your feet counts too
-    closing = (player.y - player.prev_y) - (boss.y - boss.prev_y) < 0
-    if closing && player.prev_y >= boss.prev_y + boss.h * 0.6 && !boss.spiky?
-      if boss_hit(2)
-        player.vy = @controls.jump_held? ? 18.0 : 14.0
-        player.jumping = @controls.jump_held?
-        puff(player.x + player.w / 2, player.y)
-      else
-        player.vy = 10.0
-      end
-      player.vx = (player.x + player.w / 2 < boss.x + boss.w / 2 ? -1 : 1) * 5.0
+    if stomping?(player, boss)
+      stomp_boss(player, boss)
     elsif rect_hit?(player, boss.x + 12, boss.y, boss.w - 24, boss.h - 12)
       hurt
       # shove the player away so one touch is one hit
-      player.vx = (player.x + player.w / 2 < boss.x + boss.w / 2 ? -1 : 1) * 7.0
+      player.vx = away_from(player, boss) * 7.0
       player.vy = 8.0 if player.on_ground
     end
+  end
+
+  # A stomp is the player coming down onto him *relative to his motion*, so
+  # Rusty hopping up into your feet counts too. Not while his crown is up.
+  def stomping?(player, boss)
+    closing = (player.y - player.prev_y) - (boss.y - boss.prev_y) < 0
+    closing && player.prev_y >= boss.prev_y + boss.h * 0.6 && !boss.spiky?
+  end
+
+  # bounce off his head: high (higher with jump held) if it hurt him, low
+  # if he was still flashing from the last hit
+  def stomp_boss(player, boss)
+    if boss_hit(2)
+      player.vy = @controls.jump_held? ? 18.0 : 14.0
+      player.jumping = @controls.jump_held?
+      puff(player.x + player.w / 2, player.y)
+    else
+      player.vy = 10.0
+    end
+    player.vx = away_from(player, boss) * 5.0
+  end
+
+  # -1 or 1: which way is away from Rusty's middle
+  def away_from(player, boss)
+    player.x + player.w / 2 < boss.x + boss.w / 2 ? -1 : 1
   end
 
   def update_shots

@@ -108,6 +108,15 @@ refactor step will break some of them. Update them in the same commit.
 
 ## Plan
 
+### Miscellaneous
+
+- [ ] I see at least an `anim` abbreviation still in use. Find all remaining
+      abbreviations that are not common acronyms (like "HTTP") or names of
+      frameworks (like "GTK") and replace them with spelled-out versions.
+- [ ] There is still a `Game` class split up among multiple files that are not
+      named `game.rb`. There should be only one class per file, and that file
+      should be named after the class.
+
 ### 0. Baseline
 - [x] Confirm `git branch --show-current` is `main` and the tree is clean.
 - [x] Run the tests (ALL PASS) and note the run time.
@@ -823,3 +832,15 @@ paths, anything the next session needs.)
   - benches: level 5 HEAD 0.751-0.793 vs new 0.752-0.779, level 2
     0.337-0.340 vs 0.335-0.339, arena 7 0.385-0.389 vs 0.384-0.390.
   Left: boss_vs_player and Physics#move_y.
+- 2026-11-19: split the last two (no `rubocop:todo` left; rubocop 0
+  offenses).
+  - boss_vs_player: stomping?, stomp_boss and away_from (-1 or 1).
+  - Physics#move_y: land_on_tiles, land_on_lift, head_hits, and
+    slip_past_corner (true when the corner nudge applied). The loops
+    use `break`, not `return`, inside their blocks.
+  Checked:
+  - boss trace (70,180) and ending trace the same, tests the same;
+  - reach and bot the same (both lean on move_y); shots ALL SAME;
+  - benches, 5 runs each, HEAD vs new: level 1 0.737-0.751 vs
+    0.736-0.755, arena 5 0.737-0.763 vs 0.736-0.765, arena 7
+    0.393-0.401 vs 0.389-0.398.

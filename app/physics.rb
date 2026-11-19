@@ -55,38 +55,51 @@ module Physics
 
   # vertical move; lands on solids, one-way pipes and lifts. Returns the
   # list of [col, row] cells hit by the head (empty if none).
-  def move_y(actor, use_lifts, corner_fix) # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+  def move_y(actor, use_lifts, corner_fix)
     prev = actor.y
     actor.y += actor.vy
     actor.on_ground = false
     actor.riding = nil
     c0 = @level.column_at(actor.x + 0.01)
     c1 = @level.column_at(actor.x + actor.w - 0.01)
-    if actor.vy <= 0
-      r = @level.row_at(actor.y)
-      top = @level.tile_top(r)
-      c0.upto(c1) do |c|
-        tile = @level.cell(c, r)
-        next unless SOLID[tile] || (tile == '-' && prev >= top - 0.01)
-        actor.y = top
-        actor.vy = 0.0
-        actor.on_ground = true
-        break
-      end
-      if use_lifts && !actor.on_ground
-        @lifts.each do |lift|
-          lift_top = lift.y + lift.h
-          over = actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4
-          next unless over && actor.y <= lift_top && prev >= lift_top - 14
-          actor.y = lift_top
-          actor.vy = 0.0
-          actor.on_ground = true
-          actor.riding = lift
-          break
-        end
-      end
-      return []
+    return head_hits(actor, prev, c0, c1, corner_fix) if actor.vy > 0
+    land_on_tiles(actor, prev, c0, c1)
+    land_on_lift(actor, prev) if use_lifts && !actor.on_ground
+    []
+  end
+
+  # falling (or standing): stop on a solid tile, or on a one-way pipe if
+  # the feet were above it before this step
+  def land_on_tiles(actor, prev, c0, c1)
+    r = @level.row_at(actor.y)
+    top = @level.tile_top(r)
+    c0.upto(c1) do |c|
+      tile = @level.cell(c, r)
+      next unless SOLID[tile] || (tile == '-' && prev >= top - 0.01)
+      actor.y = top
+      actor.vy = 0.0
+      actor.on_ground = true
+      break
     end
+  end
+
+  # a lift catches feet that crossed its top this step (with some slack)
+  def land_on_lift(actor, prev)
+    @lifts.each do |lift|
+      lift_top = lift.y + lift.h
+      over = actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4
+      next unless over && actor.y <= lift_top && prev >= lift_top - 14
+      actor.y = lift_top
+      actor.vy = 0.0
+      actor.on_ground = true
+      actor.riding = lift
+      break
+    end
+  end
+
+  # rising: the head stops under solid tiles (and hidden crates it started
+  # below). Returns the [col, row] cells hit, or [] if it got past.
+  def head_hits(actor, prev, c0, c1, corner_fix)
     r = @level.row_at(actor.y + actor.h)
     hits = []
     c0.upto(c1) do |c|
@@ -97,20 +110,25 @@ module Physics
     # a hidden crate only blocks if the head started below it
     hits = hits.select { |c| @level.cell(c, r) != 'I' || prev + actor.h <= @level.tile_bottom(r) + 0.01 }
     return hits if hits.empty?
-    if corner_fix && hits.size == 1
-      c = hits[0]
-      left_over = actor.x + actor.w - c * TILE
-      right_over = (c + 1) * TILE - actor.x
-      if left_over <= 18 && box_free?(actor.x - left_over, actor.y, actor.w, actor.h)
-        actor.x -= left_over
-        return []
-      elsif right_over <= 18 && box_free?(actor.x + right_over, actor.y, actor.w, actor.h)
-        actor.x += right_over
-        return []
-      end
-    end
+    return [] if corner_fix && hits.size == 1 && slip_past_corner(actor, hits[0])
     actor.y = @level.tile_bottom(r) - actor.h
     actor.vy = 0.0
     hits.map { |c| [c, r] }
+  end
+
+  # Clipping a single tile by its corner nudges the actor sideways (up to
+  # 18 px) past it instead of stopping the jump. Returns whether it did.
+  def slip_past_corner(actor, c)
+    left_over = actor.x + actor.w - c * TILE
+    right_over = (c + 1) * TILE - actor.x
+    if left_over <= 18 && box_free?(actor.x - left_over, actor.y, actor.w, actor.h)
+      actor.x -= left_over
+      true
+    elsif right_over <= 18 && box_free?(actor.x + right_over, actor.y, actor.w, actor.h)
+      actor.x += right_over
+      true
+    else
+      false
+    end
   end
 end
