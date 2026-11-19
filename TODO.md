@@ -208,9 +208,9 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] Real attributes instead of `data`: `hp`, `max_hp`, `invulnerable`,
       `cooldown`, `spiky`, `warn_spiky`, `angry?`, `minions`.
 - [x] Shots (`@shots`: spit, bolts with their shadow warning) as small classes.
-- [ ] Keep the warning/klaxon sequence, arena gate, valve placement, and the
+- [x] Keep the warning/klaxon sequence, arena gate, valve placement, and the
       stomp rule (rising into the player's feet counts as a stomp).
-- [ ] Keep `boss_rand` (its own LCG in `@rng`) and call order identical so
+- [x] Keep `boss_rand` (its own LCG in `@rng`) and call order identical so
       fights play the same.
 
 ### 6. Tooling and tests (optional; ask the user first)
@@ -699,3 +699,14 @@ paths, anything the next session needs.)
   waves, globs and bolts): identical. Tests ALL PASS (185), shots ALL
   SAME, reach/bot unchanged; bench arena 7 0.430-0.435 vs 0.425-0.434,
   arena 5 0.863-0.865 vs 0.866-0.878.
+- 2026-11-19: step 5's two "keep" items, checked for the whole of step 5
+  at once: the fight trace (all 8 fights; mortal approach, invincible,
+  invincible with Rusty hit every 150 steps; 70,180 steps recording
+  Rusty's state and LCG, shots, enemies, popups, sounds, warning, banner,
+  gate, valve column and an MD5 of everything drawn) run on 1f5d8b4 and on
+  3d7c90b (before step 5): identical, through 88 distinct LCG values.
+  The LCG is now Boss's `@rng`, same seed (1 + level * 31), drawn only by
+  `choose_move` and `bolt_storm` in the same order. Scenario 02 still pins
+  the rules: warning on the approach with the gate open, the klaxon once,
+  the gate shutting as you step in, music after the warning, the valve
+  between the girders, and Rusty rising into your feet is a stomp.
