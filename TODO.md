@@ -205,7 +205,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       `bull_charge`, `spiked_crown`, `bolt_storm`, `short_fuse`), picked from
       `BOSS_MOVES` and the encounter level (`boss_knows?`). Keep the move list
       and the "encounter n learns move n" rule in one table.
-- [ ] Real attributes instead of `data`: `hp`, `max_hp`, `invulnerable`,
+- [x] Real attributes instead of `data`: `hp`, `max_hp`, `invulnerable`,
       `cooldown`, `spiky`, `warn_spiky`, `angry?`, `minions`.
 - [ ] Shots (`@shots`: spit, bolts with their shadow warning) as small classes.
 - [ ] Keep the warning/klaxon sequence, arena gate, valve placement, and the
@@ -672,3 +672,15 @@ paths, anything the next session needs.)
   sounds and an MD5 of everything drawn: identical. Tests ALL PASS
   (185), shots ALL SAME, reach/bot unchanged; bench arena 7 0.425-0.431
   vs 0.424-0.430, arena 5 0.854-0.867 vs 0.860-0.869.
+- 2026-11-19: step 5, Rusty's `data` hash is attributes: `hp`,
+  `max_hp` (reader), `invulnerable`, `spiky`, `warn_spiky`, `cooldown`
+  (frame counters, with `invulnerable?`/`spiky?`), `angry?` (+ writer
+  for the tests), and private `@airborne` (the ground pound's `:air`).
+  `minions` is gone: it was always 0 and never read (the minion cap
+  counts `enemies`). `Boss#take_hit(damage)` takes the hp, starts the
+  flashing (`HIT_INVULNERABLE` 45) and knocks him out at 0; `boss_hit`
+  keeps the sound, score and clean-up. Scenarios/sim.rb use the
+  attributes. Fight trace (same 70,180 steps, Rusty's numbers read from
+  `data` on the old side): identical. Tests ALL PASS (185), shots ALL
+  SAME, reach/bot unchanged; bench arena 7 0.432-0.437 vs 0.424-0.431,
+  arena 5 0.861-0.876 vs 0.857-0.900.

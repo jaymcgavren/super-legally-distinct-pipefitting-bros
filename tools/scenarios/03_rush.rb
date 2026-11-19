@@ -45,7 +45,7 @@ ok = true
   s.step([:right], 40)
   check "rush #{i + 1}: fight starts", s.iv(:boss_on) if i == 0
   s.step([], 1) while s.iv(:warning) > 0
-  s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
+  s.iv(:boss).invulnerable = 0; s.g.send(:boss_hit, 99); s.step([], 130)
   g = s.iv(:goal)
   s.put(g.c - 3); s.step([:right], 120); s.step([], 700)
   s.step([], 1) until s.mode == :play || s.mode == :ending

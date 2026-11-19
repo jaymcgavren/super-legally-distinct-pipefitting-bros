@@ -95,7 +95,7 @@ class Sim
   def beat_boss
     put(iv(:arena_column) + 3); step([], 2)
     step([], 1) while iv(:warning) > 0
-    iv(:boss).data[:inv] = 0; @g.send(:boss_hit, 99); step([], 130)
+    iv(:boss).invulnerable = 0; @g.send(:boss_hit, 99); step([], 130)
     self
   end
 

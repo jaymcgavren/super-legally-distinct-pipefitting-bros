@@ -85,16 +85,11 @@ class Game
 
   def boss_hit(damage)
     boss = @boss
-    data = boss.data
     return false if boss.invulnerable? || boss.dead?
-    data[:hp] -= damage
-    data[:inv] = 45
+    boss.take_hit(damage)
     @sound.play(:bosshit)
     add_score(500, boss.x + 30, boss.y + 140)
-    if data[:hp] <= 0
-      boss.state = :dead
-      boss.t = 0
-      boss.vy = 14.0
+    if boss.dead?
       @shots = []
       @enemies.each { |enemy| knock(enemy, 1) if enemy.minion && enemy.walking? }
       add_score(5000, boss.x + 30, boss.y + 170)
@@ -201,13 +196,14 @@ class Game
     return unless boss && !boss.dead?
     return draw_warning if @warning > 0
     return unless @boss_on
-    data = boss.data
     @screen.label(640, 628, 'BIG RUSTY', 3, PALE_YELLOW, true)
-    w = 16 * data[:max]
+    max_hp = boss.max_hp
+    hp = boss.hp
+    w = 16 * max_hp
     left = 640 - w / 2
     @screen.rect(left - 4, 588, w + 8, 20, NEAR_BLACK)
-    data[:max].times do |i|
-      col = i < data[:hp] ? (data[:angry] ? ORANGE : [216, 48, 48]) : DARK_GRAY
+    max_hp.times do |i|
+      col = i < hp ? (boss.angry? ? ORANGE : [216, 48, 48]) : DARK_GRAY
       @screen.rect(left + i * 16 + 2, 592, 12, 12, col)
     end
     return unless @banner > 0
@@ -231,6 +227,7 @@ end
 class Boss < Actor
   FLOOR = 128          # the arena floor: Rusty ignores the girders
   ANGRY_SPEED = 1.5
+  HIT_INVULNERABLE = 45   # frames of flashing after a hit
 
   # the step method for each state: every move in BOSS_MOVES, plus waiting
   # out the banner, walking between moves, and reeling after a charge
@@ -238,7 +235,11 @@ class Boss < Actor
   BOSS_MOVES.each { |state, _name, step| STEPS[state] = step unless state == :enrage }
   STEPS.freeze
 
-  attr_reader :encounter, :arena_column
+  attr_reader :encounter, :arena_column, :max_hp
+  # hp left; the rest count down frames: flashing after a hit, the spiked
+  # crown, its warning flash, and the walk before the next move
+  attr_accessor :hp, :invulnerable, :spiky, :warn_spiky, :cooldown
+  attr_writer :angry   # fuming (SHORT FUSE): faster, shorter cooldowns
 
   def initialize(game, c, r, seed)
     level = game.level
@@ -248,30 +249,44 @@ class Boss < Actor
     @encounter = level.data[:boss] || 1
     @arena_column = level.columns - 20
     @rng = seed          # Rusty's own LCG: fights replay the same
-    hp = 6 + @encounter
-    @data = { hp: hp, max: hp, inv: 0, cd: 90, spiky: 0, warn_spiky: 0, angry: false, minions: 0 }
+    @max_hp = @hp = 6 + @encounter
+    @invulnerable = 0
+    @cooldown = 90
+    @spiky = 0
+    @warn_spiky = 0
+    @angry = false
+    @airborne = false    # in the leap of a ground pound
     @state = :wait
   end
 
   def knows?(move) = BOSS_MOVES.index { |entry| entry[0] == move } < @encounter
-  def spiky? = @data[:spiky] > 0
-  def invulnerable? = @data[:inv] > 0
+  def spiky? = @spiky > 0
+  def invulnerable? = @invulnerable > 0
+  def angry? = @angry
+
+  def take_hit(damage)
+    @hp -= damage
+    @invulnerable = HIT_INVULNERABLE
+    return if @hp > 0
+    @state = :dead
+    @t = 0
+    @vy = 14.0
+  end
 
   # one step of the fight
   def update
-    data = @data
-    data[:inv] -= 1 if data[:inv] > 0
+    @invulnerable -= 1 if @invulnerable > 0
     @t += 1
     if dead?
       @vy -= 0.6
       @y += @vy
       return
     end
-    angry = data[:angry]   # this step's moves go at the speed he started it with
-    short_fuse if knows?(:enrage) && !angry && data[:hp] * 2 <= data[:max]
-    data[:spiky] -= 1 if data[:spiky] > 0
-    data[:warn_spiky] -= 1 if data[:warn_spiky] > 0
-    data[:spiky] = (angry ? 220 : 160) if data[:warn_spiky] == 1
+    angry = @angry   # this step's moves go at the speed he started it with
+    short_fuse if knows?(:enrage) && !angry && @hp * 2 <= @max_hp
+    @spiky -= 1 if @spiky > 0
+    @warn_spiky -= 1 if @warn_spiky > 0
+    @spiky = (angry ? 220 : 160) if @warn_spiky == 1
     player = @game.player
     dir = player.x + player.w / 2 > @x + @w / 2 ? 1 : -1
     send(STEPS[@state], dir, angry)
@@ -279,20 +294,20 @@ class Boss < Actor
   end
 
   def draw(screen, camera_x)
-    return if invulnerable? && (@data[:inv] / 3).even? && !dead?
+    return if invulnerable? && (@invulnerable / 3).even? && !dead?
     source = case @state
              when :dead, :stunned then FRAMES[:rusty_hurt]
              when :pound then FRAMES[@t < 20 ? :rusty_crouch : :rusty_air]
              when :hop then FRAMES[@on_ground ? :rusty_crouch : :rusty_air]
              when :spit, :summon then FRAMES[:rusty_mouth]
              when :charge then FRAMES[@t < 45 ? :rusty_crouch : :rusty_angry]
-             else @data[:angry] ? FRAMES[:rusty_angry] : frame(:rusty_walk, (@t / 12) % 2)
+             else @angry ? FRAMES[:rusty_angry] : frame(:rusty_walk, (@t / 12) % 2)
              end
     source = FRAMES[:rusty_hurt] if invulnerable? && !dead?
     x = @x.to_i - camera_x - 8
     shake = @state == :charge && @t < 45 ? ((@t / 2) % 2) * 8 - 4 : 0
     screen.sprite('sprites/rusty.png', x + shake, @y.to_i, 128, 112, source, flip: @facing > 0, alpha: 255, flip_v: dead?)
-    if spiky? || (@data[:warn_spiky] > 0 && (@data[:warn_spiky] / 4).even?)
+    if spiky? || (@warn_spiky > 0 && (@warn_spiky / 4).even?)
       screen.sprite('sprites/rusty.png', x + shake, @y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
     end
   end
@@ -312,7 +327,7 @@ class Boss < Actor
   def idle(cooldown)
     @state = :walk
     @t = 0
-    @data[:cd] = @data[:angry] ? cooldown / 2 : cooldown
+    @cooldown = @angry ? cooldown / 2 : cooldown
   end
 
   # pick a move: the newest one comes up most often
@@ -329,7 +344,7 @@ class Boss < Actor
 
   # SHORT FUSE: at half health he fumes, and moves faster from then on
   def short_fuse
-    @data[:angry] = true
+    @angry = true
     @game.popup(@x, @y + 140, 'RUSTY IS FUMING!')
     sound.play(:warn)
     sound.music_pitch = 1.2
@@ -346,8 +361,8 @@ class Boss < Actor
     speed = pace(angry)
     @facing = dir
     @vx = dir * 1.3 * speed
-    @data[:cd] -= 1
-    choose_move if @data[:cd] <= 0 && @on_ground
+    @cooldown -= 1
+    choose_move if @cooldown <= 0 && @on_ground
   end
 
   # a short hop toward the player
@@ -368,12 +383,12 @@ class Boss < Actor
       @vx = 0.0   # crouch
     elsif @t == 20
       @vy = 21.0
-      @data[:air] = true
+      @airborne = true
       @vx = ((@game.player.x - @x) / 42.0).to_f
       @vx = 7.0 if @vx > 7
       @vx = -7.0 if @vx < -7
-    elsif @on_ground && @data[:air] && @t > 22
-      @data[:air] = false
+    elsif @on_ground && @airborne && @t > 22
+      @airborne = false
       @vx = 0.0
       @game.camera.shake(20)
       sound.play(:pound)
@@ -434,7 +449,7 @@ class Boss < Actor
   # warns, then grows a spiked crown: no stomping for a while
   def spiked_crown(dir, angry)
     @vx = 0.0
-    @data[:warn_spiky] = 40 if @t == 1
+    @warn_spiky = 40 if @t == 1
     idle(30) if @t > 40
   end
 

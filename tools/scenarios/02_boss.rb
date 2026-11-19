@@ -32,8 +32,8 @@ d_levels.each_with_index do |li, n|
   400.times do
     break if b.state == :dead
     s.p.invuln = 5
-    b.data[:spiky] = 0; b.data[:warn_spiky] = 0
-    if b.data[:inv] == 0
+    b.spiky = 0; b.warn_spiky = 0
+    if b.invulnerable == 0
       s.p.x = b.x + 30; s.p.y = b.y + b.h - 2; s.p.vy = -3.0; s.p.prev_y = b.y + b.h + 4
       hits += 1
     end
@@ -46,7 +46,7 @@ d_levels.each_with_index do |li, n|
   check "#{LEVELS[li][:name]} timer stops once the boss is beaten", s.run.time == t0
   check "#{LEVELS[li][:name]} goal appears after the boss", !s.iv(:goal).nil?
   if n == 7
-    check 'final boss got angry', b.data[:angry]
+    check 'final boss got angry', b.angry?
   end
 end
 
@@ -57,17 +57,17 @@ s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.level.tile_bottom(7).to_f; s.p.powered
 s.step([], 2)
 s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
-hp = b.data[:hp]
+hp = b.hp
 b.x = s.p.x + 150; b.state = :wait
 s.step([:b], 1); s.step([], 20)
-check 'wrench hits the boss', b.data[:hp] == hp - 1
+check 'wrench hits the boss', b.hp == hp - 1
 
 # the boss valve appears between the girders, and clears even if it lands on you
 [[:left, -3], [:on, 0], [:right, 4], [:girder, 13], [:far_right, 5]].each do |name, off|
   s = Sim.new.start(d_levels[0])
   ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
-  s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99)
+  s.iv(:boss).invulnerable = 0; s.g.send(:boss_hit, 99)
   gc = ac + 10
   if name == :girder
     s.put(ac + 16, 4)           # standing on the right girder
@@ -111,14 +111,14 @@ check 'bolt shadow warns for BOLT_WARNING frames', bolts[0][:y] == 700.0 && BOLT
 s.step([], 2)
 v1 = bolts[0][:vy]; s.step([], 1)
 check 'bolts fall 25% slower', (bolts[0][:vy] - v1 + 0.506).abs < 0.001
-b.data[:angry] = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
+b.angry = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
 check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh[:k] == :bolt } == 5
 
 # wrench at the boss valve from the right side
 s = Sim.new.start(d_levels[0])
 ac = s.iv(:arena_column)
 s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
-s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99)
+s.iv(:boss).invulnerable = 0; s.g.send(:boss_hit, 99)
 s.put(ac + 15); s.p.powered = true
 s.step([], 1) until s.iv(:goal)
 s.step([], 10)
@@ -133,14 +133,14 @@ check 'wrench clears the boss valve from the right', cleared
   ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.set(:banner, 0)
-  b = s.iv(:boss); b.state = :wait; b.t = 0; b.data[:inv] = 0
+  b = s.iv(:boss); b.state = :wait; b.t = 0; b.invulnerable = 0
   b.y = 128.0; b.vy = 13.0; b.x = s.p.x + 200
-  hp = b.data[:hp]
+  hp = b.hp
   s.p.powered = true; s.p.invuln = 0
   s.p.x = b.x + 30; s.p.y = b.y + b.h + 4; s.p.vy = pvy; s.p.on_ground = false; s.snap
   s.step([], 1)
   check "Rusty rising into the player's feet is a stomp (player #{name})",
-        b.data[:hp] < hp && s.p.powered && s.mode == :play
+        b.hp < hp && s.p.powered && s.mode == :play
 end
 
 # ...but walking into him, or him landing on you, still hurts
@@ -149,13 +149,13 @@ end
   ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.set(:banner, 0)
-  b = s.iv(:boss); b.state = :wait; b.t = 0; b.data[:inv] = 0
+  b = s.iv(:boss); b.state = :wait; b.t = 0; b.invulnerable = 0
   b.x = s.p.x + 200; b.y = 128.0 + above * 60; b.vy = bvy
-  hp = b.data[:hp]
+  hp = b.hp
   s.p.powered = true; s.p.invuln = 0
   s.p.x = above == 1 ? b.x + 30 : b.x - 20; s.snap
   s.step([], 1)
-  check "Rusty still hurts the player (#{name})", !s.p.powered && b.data[:hp] == hp
+  check "Rusty still hurts the player (#{name})", !s.p.powered && b.hp == hp
 end
 
 # --- the warning goes off on the approach, before the gate shuts ---
