@@ -23,7 +23,7 @@ class Game
   end
 
   def boss_level = @level_data[:boss] || 1
-  def boss_knows?(move) = BOSS_MOVES.index { |m| m[0] == move } < boss_level
+  def boss_knows?(move) = BOSS_MOVES.index { |entry| entry[0] == move } < boss_level
 
   def spawn_boss(c, r)
     boss = Actor.new(:boss, c * TILE - 24, tile_bottom(r), BOSS_WIDTH, BOSS_HEIGHT)
@@ -70,8 +70,8 @@ class Game
     end
     @banner -= 1 if @banner > 0
     @shake -= 1 if @shake > 0
-    d = boss.data
-    d[:inv] -= 1 if d[:inv] > 0
+    data = boss.data
+    data[:inv] -= 1 if data[:inv] > 0
     boss.t += 1
     if boss.state == :dead
       boss.vy -= 0.6
@@ -84,18 +84,18 @@ class Game
       update_shots
       return
     end
-    angry = d[:angry]
-    spd = angry ? 1.5 : 1.0
-    if boss_knows?(:enrage) && !angry && d[:hp] * 2 <= d[:max]
-      d[:angry] = true
+    angry = data[:angry]
+    speed = angry ? 1.5 : 1.0
+    if boss_knows?(:enrage) && !angry && data[:hp] * 2 <= data[:max]
+      data[:angry] = true
       popup(boss.x, boss.y + 140, 'RUSTY IS FUMING!')
       sfx(:warn)
-      m = @args.audio[:music]
-      m[:pitch] = 1.2 if m
+      track = @args.audio[:music]
+      track[:pitch] = 1.2 if track
     end
-    d[:spiky] -= 1 if d[:spiky] > 0
-    d[:warn_spiky] -= 1 if d[:warn_spiky] > 0
-    d[:spiky] = (angry ? 220 : 160) if d[:warn_spiky] == 1
+    data[:spiky] -= 1 if data[:spiky] > 0
+    data[:warn_spiky] -= 1 if data[:warn_spiky] > 0
+    data[:spiky] = (angry ? 220 : 160) if data[:warn_spiky] == 1
     dir = player.x + player.w / 2 > boss.x + boss.w / 2 ? 1 : -1
     case boss.state
     when :wait
@@ -103,13 +103,13 @@ class Game
       boss.state = :walk if @banner < 120
     when :walk
       boss.facing = dir
-      boss.vx = dir * 1.3 * spd
-      d[:cd] -= 1
-      boss_choose if d[:cd] <= 0 && boss.on_ground
+      boss.vx = dir * 1.3 * speed
+      data[:cd] -= 1
+      boss_choose if data[:cd] <= 0 && boss.on_ground
     when :hop
       if boss.t == 1
         boss.vy = 13.0
-        boss.vx = dir * 3.0 * spd
+        boss.vx = dir * 3.0 * speed
       elsif boss.on_ground && boss.t > 3
         boss_idle(50)
       end
@@ -118,20 +118,20 @@ class Game
         boss.vx = 0.0                                   # crouch
       elsif boss.t == 20
         boss.vy = 21.0
-        d[:air] = true
+        data[:air] = true
         boss.vx = ((player.x - boss.x) / 42.0).to_f
         boss.vx = 7.0 if boss.vx > 7
         boss.vx = -7.0 if boss.vx < -7
-      elsif boss.on_ground && d[:air] && boss.t > 22
-        d[:air] = false
+      elsif boss.on_ground && data[:air] && boss.t > 22
+        data[:air] = false
         boss.vx = 0.0
         @shake = 20
         sfx(:pound)
         waves = angry ? 2 : 1
         waves.times do |i|
-          [-1, 1].each do |sd|
-            @shots << { k: :wave, x: boss.x + boss.w / 2 - 20 + sd * 50, y: boss.y, w: 40, h: 36,
-                        vx: sd * (6.0 + i * 2.5) * spd, vy: 0.0, t: 0 }
+          [-1, 1].each do |side|
+            @shots << { k: :wave, x: boss.x + boss.w / 2 - 20 + side * 50, y: boss.y, w: 40, h: 36,
+                        vx: side * (6.0 + i * 2.5) * speed, vy: 0.0, t: 0 }
           end
         end
         boss_idle(60)
@@ -165,7 +165,7 @@ class Game
         boss.facing = dir if boss.t == 1
         sfx(:warn) if boss.t == 1
       else
-        boss.vx = boss.facing * 9.0 * spd
+        boss.vx = boss.facing * 9.0 * speed
         boss_idle(30) if boss.t > 240
       end
     when :stunned
@@ -173,16 +173,16 @@ class Game
       boss_idle(40) if boss.t > 70
     when :spikes
       boss.vx = 0.0
-      d[:warn_spiky] = 40 if boss.t == 1
+      data[:warn_spiky] = 40 if boss.t == 1
       boss_idle(30) if boss.t > 40
     when :bolts
       boss.vx = 0.0
       if boss.t == 1
         sfx(:warn)
-        cnt = angry ? 5 : 3
-        cnt.times do |i|
+        count = angry ? 5 : 3
+        count.times do |i|
           c = @arena_column + 2 + boss_rand(16)
-          c = col_at(player.x + player.w / 2) if i == 0
+          c = column_at(player.x + player.w / 2) if i == 0
           @shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
         end
       end
@@ -200,10 +200,10 @@ class Game
       boss.on_ground = true
     end
     boss.x += boss.vx
-    lo = (@arena_column + 1) * TILE + 4
-    hi = @cols * TILE - boss.w - 4
-    if boss.x < lo || boss.x > hi
-      boss.x = boss.x < lo ? lo.to_f : hi.to_f
+    min_x = (@arena_column + 1) * TILE + 4
+    max_x = @cols * TILE - boss.w - 4
+    if boss.x < min_x || boss.x > max_x
+      boss.x = boss.x < min_x ? min_x.to_f : max_x.to_f
       if boss.state == :charge
         @shake = 16
         sfx(:pound)
@@ -216,18 +216,18 @@ class Game
     update_shots
   end
 
-  def boss_idle(cd)
+  def boss_idle(cooldown)
     boss = @boss
     boss.state = :walk
     boss.t = 0
-    boss.data[:cd] = boss.data[:angry] ? cd / 2 : cd
+    boss.data[:cd] = boss.data[:angry] ? cooldown / 2 : cooldown
   end
 
   # pick a move: the newest one comes up most often
   def boss_choose
     boss = @boss
     known = []
-    BOSS_MOVES.each_with_index { |m, i| known << m[0] if i < boss_level && m[0] != :enrage }
+    BOSS_MOVES.each_with_index { |entry, i| known << entry[0] if i < boss_level && entry[0] != :enrage }
     newest = known[-1]
     move = boss_rand(10) < 4 ? newest : known[boss_rand(known.size)]
     move = :hop if move == :summon && @enemies.count { |enemy| enemy.data[:minion] && enemy.state == :walk } >= 2
@@ -238,15 +238,15 @@ class Game
 
   def boss_spiky? = @boss.data[:spiky] > 0
 
-  def boss_hit(dmg)
+  def boss_hit(damage)
     boss = @boss
-    d = boss.data
-    return false if d[:inv] > 0 || boss.state == :dead
-    d[:hp] -= dmg
-    d[:inv] = 45
+    data = boss.data
+    return false if data[:inv] > 0 || boss.state == :dead
+    data[:hp] -= damage
+    data[:inv] = 45
     sfx(:bosshit)
     add_score(500, boss.x + 30, boss.y + 140)
-    if d[:hp] <= 0
+    if data[:hp] <= 0
       boss.state = :dead
       boss.t = 0
       boss.vy = 14.0
@@ -286,57 +286,57 @@ class Game
 
   def update_shots
     player = @player
-    @shots.each do |s|
-      s[:t] += 1
-      case s[:k]
+    @shots.each do |shot|
+      shot[:t] += 1
+      case shot[:k]
       when :wave
-        s[:x] += s[:vx]
-        s[:dead] = true if s[:x] < @arena_column * TILE || s[:x] > @cols * TILE
+        shot[:x] += shot[:vx]
+        shot[:dead] = true if shot[:x] < @arena_column * TILE || shot[:x] > @cols * TILE
       when :glob
-        s[:vy] -= 0.5
-        s[:x] += s[:vx]
-        s[:y] += s[:vy]
-        if s[:y] <= 128 || SOLID[cell(col_at(s[:x] + 16), row_at(s[:y]))]
-          s[:dead] = true
-          puff(s[:x] + 16, s[:y])
+        shot[:vy] -= 0.5
+        shot[:x] += shot[:vx]
+        shot[:y] += shot[:vy]
+        if shot[:y] <= 128 || SOLID[cell(column_at(shot[:x] + 16), row_at(shot[:y]))]
+          shot[:dead] = true
+          puff(shot[:x] + 16, shot[:y])
         end
       when :bolt
-        next if s[:t] < BOLT_WARNING
-        s[:vy] -= 0.506   # 0.9, then 25% slower twice
-        s[:y] += s[:vy]
-        if s[:y] <= 128
-          s[:dead] = true
-          puff(s[:x] + 16, 128)
+        next if shot[:t] < BOLT_WARNING
+        shot[:vy] -= 0.506   # 0.9, then 25% slower twice
+        shot[:y] += shot[:vy]
+        if shot[:y] <= 128
+          shot[:dead] = true
+          puff(shot[:x] + 16, 128)
           sfx(:bump)
         end
       end
-      next if s[:dead] || (s[:k] == :bolt && s[:t] < BOLT_WARNING)
-      hurt if @mode == :play && rect_hit?(player, s[:x] + 4, s[:y], s[:w] - 8, s[:h] - 4)
-      if @wrench && s[:k] == :glob && overlap?(@wrench, Actor.new(:x, s[:x], s[:y], s[:w], s[:h]))
-        s[:dead] = true
-        puff(s[:x] + 16, s[:y] + 16)
+      next if shot[:dead] || (shot[:k] == :bolt && shot[:t] < BOLT_WARNING)
+      hurt if @mode == :play && rect_hit?(player, shot[:x] + 4, shot[:y], shot[:w] - 8, shot[:h] - 4)
+      if @wrench && shot[:k] == :glob && overlap?(@wrench, Actor.new(:x, shot[:x], shot[:y], shot[:w], shot[:h]))
+        shot[:dead] = true
+        puff(shot[:x] + 16, shot[:y] + 16)
       end
     end
-    @shots.reject! { |s| s[:dead] }
+    @shots.reject! { |shot| shot[:dead] }
   end
 
-  def draw_boss(cam)
+  def draw_boss(camera_x)
     boss = @boss
     return unless boss
-    d = boss.data
-    @shots.each do |s|
-      x = s[:x].to_i - cam
-      case s[:k]
+    data = boss.data
+    @shots.each do |shot|
+      x = shot[:x].to_i - camera_x
+      case shot[:k]
       when :wave
         3.times do |i|
-          h = 36 - i * 10 + ((s[:t] / 3 + i) % 2) * 6
-          rect(x + i * 12 - (s[:vx] > 0 ? 0 : 12), 128, 16, h, [236, 236, 236], 220 - i * 50)
+          h = 36 - i * 10 + ((shot[:t] / 3 + i) % 2) * 6
+          rect(x + i * 12 - (shot[:vx] > 0 ? 0 : 12), 128, 16, h, [236, 236, 236], 220 - i * 50)
         end
-      when :glob then spr('sprites/shots.png', x, s[:y].to_i, 32, 32, 0, 0, 8, 16)
+      when :glob then spr('sprites/shots.png', x, shot[:y].to_i, 32, 32, 0, 0, 8, 16)
       when :bolt
-        if s[:t] < BOLT_WARNING
+        if shot[:t] < BOLT_WARNING
           # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
-          k = s[:t] < 0 ? 0 : s[:t]
+          k = shot[:t] < 0 ? 0 : shot[:t]
           flash = (k / 4).even?
           w = 32 + (k * 48 / BOLT_WARNING)
           cx = x + 16
@@ -345,25 +345,25 @@ class Game
           rect(cx - w / 2, 130, w, 14, [0, 0, 0], 235)
           label(cx, 236, '!', 6, flash ? [252, 220, 40] : [232, 40, 40], true) if k > 0
         else
-          spr('sprites/shots.png', x - 8, s[:y].to_i, 48, 48, 8, 0, 8, 16)
+          spr('sprites/shots.png', x - 8, shot[:y].to_i, 48, 48, 8, 0, 8, 16)
         end
       end
     end
-    return if d[:inv] > 0 && (d[:inv] / 3).even? && boss.state != :dead
+    return if data[:inv] > 0 && (data[:inv] / 3).even? && boss.state != :dead
     f = case boss.state
         when :dead, :stunned then 4
         when :pound then boss.t < 20 ? 2 : 3
         when :hop then boss.on_ground ? 2 : 3
         when :spit, :summon then 5
         when :charge then boss.t < 45 ? 2 : 6
-        else d[:angry] ? 6 : (boss.t / 12) % 2
+        else data[:angry] ? 6 : (boss.t / 12) % 2
         end
-    f = 4 if d[:inv] > 0 && boss.state != :dead
-    x = boss.x.to_i - cam - 8
+    f = 4 if data[:inv] > 0 && boss.state != :dead
+    x = boss.x.to_i - camera_x - 8
     shake = boss.state == :charge && boss.t < 45 ? ((boss.t / 2) % 2) * 8 - 4 : 0
-    a = 255
-    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, f * 8, 0, 8, 28, boss.facing > 0, a, 0, boss.state == :dead)
-    if d[:spiky] > 0 || (d[:warn_spiky] > 0 && (d[:warn_spiky] / 4).even?)
+    alpha = 255
+    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, f * 8, 0, 8, 28, boss.facing > 0, alpha, 0, boss.state == :dead)
+    if data[:spiky] > 0 || (data[:warn_spiky] > 0 && (data[:warn_spiky] / 4).even?)
       spr('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, 56, 0, 8, 28, false)
     end
   end
@@ -373,14 +373,14 @@ class Game
     return unless boss && boss.state != :dead
     return draw_warning if @warning > 0
     return unless @boss_on
-    d = boss.data
+    data = boss.data
     label(640, 628, 'BIG RUSTY', 3, [252, 240, 160], true)
-    w = 16 * d[:max]
-    x0 = 640 - w / 2
-    rect(x0 - 4, 588, w + 8, 20, [16, 16, 16])
-    d[:max].times do |i|
-      col = i < d[:hp] ? (d[:angry] ? [244, 120, 24] : [216, 48, 48]) : [60, 60, 60]
-      rect(x0 + i * 16 + 2, 592, 12, 12, col)
+    w = 16 * data[:max]
+    left = 640 - w / 2
+    rect(left - 4, 588, w + 8, 20, [16, 16, 16])
+    data[:max].times do |i|
+      col = i < data[:hp] ? (data[:angry] ? [244, 120, 24] : [216, 48, 48]) : [60, 60, 60]
+      rect(left + i * 16 + 2, 592, 12, 12, col)
     end
     return unless @banner > 0
     n = boss_level

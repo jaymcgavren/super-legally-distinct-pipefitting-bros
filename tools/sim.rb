@@ -74,7 +74,7 @@ class Sim
     self
   end
 
-  def snap = set(:camera_x, [[p.x - 560, 0].max, @g.max_cam].min.to_f)
+  def snap = set(:camera_x, [[p.x - 560, 0].max, @g.max_camera_x].min.to_f)
   def p = iv(:player)
   def mode = iv(:mode)
 

@@ -123,7 +123,7 @@ refactor step will break some of them. Update them in the same commit.
       `b` -> `boss`, `e` -> `enemy`, `l` -> `lift`, `w` -> `wrench`,
       `it` -> `item`, `t` -> `time`/`frames` where it helps. Rename `T` (tile
       size) to `TILE` everywhere at once.
-- [ ] Replace abbreviations. E.g. `gravity`, not `grav`.
+- [x] Replace abbreviations. E.g. `gravity`, not `grav`.
 - [ ] Name the colours used more than once (`WHITE = [255, 255, 255]`,
       steam `[236, 236, 236]`, label yellow `[252, 240, 160]`, ...). Freeze
       constant arrays/hashes.
@@ -147,13 +147,13 @@ delegating methods at first if that keeps the diff small, then callers move.
       `jump_pressed?`, `run_held?`, `start_pressed?`, `code_press`). Watch the
       fixed-step detail: presses are latched in `poll_input` once per frame
       and consumed by `update` steps (`PRESS_KEYS`); keep that behaviour.
-- [ ] `Level` (app/level.rb): grid, `cell`, `col_at`, `row_at`, `tile_top`,
-      `tile_bottom`, `max_cam`, loading from `LEVELS[i]` (`load_level`'s grid
+- [ ] `Level` (app/level.rb): grid, `cell`, `column_at`, `row_at`, `tile_top`,
+      `tile_bottom`, `max_camera_x`, loading from `LEVELS[i]` (`load_level`'s grid
       part) and spawning markers into entity lists. Theme lookup.
 - [ ] `Physics` module (app/physics.rb): `move_x`, `move_y`, `box_free?`,
       `overlap?`, `rect_hit?`, constants for gravity. Mixed into whatever needs
       it, or functions taking the level.
-- [ ] `Camera` (app/camera.rb): position, follow, shake, `max_cam`.
+- [ ] `Camera` (app/camera.rb): position, follow, shake, `max_camera_x`.
 - [ ] `Run` / session state (app/run.rb): score, lives, nuts, time, combo,
       rush mode, high score load/save (`save_u32` slot 0).
 
@@ -310,3 +310,16 @@ paths, anything the next session needs.)
   scenario `iv(:...)` symbols). bench_start.rb picks old or new names with
   `bench_iv(new, old)`, so shots still build un-refactored. Tests ALL PASS,
   shots ALL SAME, reach/bot output unchanged. Next: methods and locals.
+- 2026-11-19: abbreviations part 3/3 (item done): methods and locals.
+  `col_at`->`column_at`, `max_cam`->`max_camera_x` (tools updated;
+  bench_start.rb uses whichever exists). Locals per method (Ripper,
+  with a clash check against identifiers already in the method): cam->
+  camera_x, th->theme, kb->keyboard, d->data/distance/depth/pressed/down,
+  s->segment/swing/shot/steam_puff/digits, v->vent/speed, m->track (not
+  `music`: it would sit beside calls to the `music` method), a->alpha/angle,
+  col->color, ch->tile, pp/pt->popup/particle, o->outputs/labels/other,
+  dmg/cnt/spd/cd/sz/len/off/ang -> full words, and so on. Kept on purpose:
+  x/y/w/h, dx/dy, vx/vy, c/r and c0/c1/r0/r1 (grid column/row), cx/cy,
+  i/j/k/n/f, `spr`'s sx/sy/sw/sh (step 2's Screen redoes that signature),
+  `spr`/`sfx` themselves (renamed in step 2), `ms`, `gtk`. Tests ALL PASS,
+  shots ALL SAME, reach/bot unchanged.

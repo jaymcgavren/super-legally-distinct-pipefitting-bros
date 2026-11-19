@@ -91,13 +91,13 @@ class Player < Actor
 end
 
 def pad6(n)
-  s = n.to_i.to_s
-  s.size >= 6 ? s : ('0' * (6 - s.size)) + s
+  digits = n.to_i.to_s
+  digits.size >= 6 ? digits : ('0' * (6 - digits.size)) + digits
 end
 
 def pad3(n)
-  s = [n.to_i, 0].max.to_s
-  s.size >= 3 ? s : ('0' * (3 - s.size)) + s
+  digits = [n.to_i, 0].max.to_s
+  digits.size >= 3 ? digits : ('0' * (3 - digits.size)) + digits
 end
 
 class Game
@@ -120,30 +120,30 @@ class Game
   # reads it, so a press on a frame with no update isn't lost and a frame
   # with several updates doesn't see it twice.
   def poll_input
-    d = @args.inputs.keyboard.key_down
+    down = @args.inputs.keyboard.key_down
     @pressed ||= {}
-    PRESS_KEYS.each { |k| @pressed[k] = true if d.send(k) }
+    PRESS_KEYS.each { |k| @pressed[k] = true if down.send(k) }
   end
 
   def read_input
-    kb = @args.inputs.keyboard
-    ax = kb.left_analog_x_perc || 0
-    @in_left  = kb.left || ax < -0.5
-    @in_right = kb.right || ax > 0.5
-    @in_a     = kb.a
-    @in_b     = kb.b || kb.x
-    d = @pressed
-    @in_a_down = d[:a]
-    @in_b_down = d[:b] || d[:x]
-    @in_start_down = d[:start]
-    @in_left_down = d[:left]
-    @in_right_down = d[:right]
-    @in_code = if d[:up] then :up
-               elsif d[:down] then :down
-               elsif d[:left] then :left
-               elsif d[:right] then :right
+    keyboard = @args.inputs.keyboard
+    analog_x = keyboard.left_analog_x_perc || 0
+    @in_left  = keyboard.left || analog_x < -0.5
+    @in_right = keyboard.right || analog_x > 0.5
+    @in_a     = keyboard.a
+    @in_b     = keyboard.b || keyboard.x
+    pressed = @pressed
+    @in_a_down = pressed[:a]
+    @in_b_down = pressed[:b] || pressed[:x]
+    @in_start_down = pressed[:start]
+    @in_left_down = pressed[:left]
+    @in_right_down = pressed[:right]
+    @in_code = if pressed[:up] then :up
+               elsif pressed[:down] then :down
+               elsif pressed[:left] then :left
+               elsif pressed[:right] then :right
                end
-    d.clear
+    pressed.clear
   end
 
   # Up Up Down Down Left Right Left Right on the title screen locks in
@@ -285,15 +285,15 @@ class Game
   end
 
   # ── level loading ─────────────────────────────────────────────────
-  def load_level(idx, use_checkpoint)
-    lv = LEVELS[idx]
-    @level_data = lv
-    @theme = THEMES[lv[:theme]]
-    if lv[:rows]
-      rows = lv[:rows]
+  def load_level(index, use_checkpoint)
+    level = LEVELS[index]
+    @level_data = level
+    @theme = THEMES[level[:theme]]
+    if level[:rows]
+      rows = level[:rows]
     else
       rows = Array.new(ROWS) { '' }
-      lv[:segs].each { |s| s.each_with_index { |row, r| rows[r] += row } }
+      level[:segs].each { |segment| segment.each_with_index { |row, r| rows[r] += row } }
     end
     @cols = rows[0].size
     @grid = rows.map(&:chars)
@@ -313,12 +313,12 @@ class Game
     @shots = []
     @shake = 0
     @banner = 0
-    @rng = 1 + idx * 31
+    @rng = 1 + index * 31
     boss_at = nil
     start = [2, 7]
     @grid.each_with_index do |row, r|
-      row.each_with_index do |ch, c|
-        case ch
+      row.each_with_index do |tile, c|
+        case tile
         when 'P'
           start = [c, r]
           row[c] = '.'
@@ -332,8 +332,8 @@ class Game
           row[c] = '.'
         when 'L', 'H'
           lift = Actor.new(:lift, c * TILE, tile_top(r) - 16, 128, 16)
-          lift.data = { bx: lift.x, by: lift.y, amp: 2 * TILE, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
-          lower_pit_lift(lift, c, r) if ch == 'L'
+          lift.data = { bx: lift.x, by: lift.y, amp: 2 * TILE, axis: tile == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
+          lower_pit_lift(lift, c, r) if tile == 'L'
           @lifts << lift
           row[c] = '.'
         when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
@@ -350,12 +350,12 @@ class Game
       end
     end
     spawn_boss(boss_at[0], boss_at[1]) if boss_at
-    @vents.each do |v|
+    @vents.each do |vent|
       h = 0
-      h += 1 while h < 3 && !SOLID[cell(v[:c], v[:r] - h - 1)]
-      v[:h] = h * TILE
+      h += 1 while h < 3 && !SOLID[cell(vent[:c], vent[:r] - h - 1)]
+      vent[:h] = h * TILE
     end
-    if use_checkpoint && @checkpoint && @checkpoint[0] == idx
+    if use_checkpoint && @checkpoint && @checkpoint[0] == index
       cone = @cones[@checkpoint[1]]
       start = [cone[:c], cone[:r]]
       cone[:lit] = true
@@ -367,10 +367,10 @@ class Game
     @player = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
     @player.powered = @powered if use_checkpoint
     @player.powered = true if @rush
-    @time = lv[:time] || SHIFT_LENGTH
+    @time = level[:time] || SHIFT_LENGTH
     @time_accumulator = 0
     @warned = false
-    @camera_x = [[@player.x - 480, 0].max, max_cam].min.to_f
+    @camera_x = [[@player.x - 480, 0].max, max_camera_x].min.to_f
   end
 
   # ── tile helpers ──────────────────────────────────────────────────
@@ -380,17 +380,17 @@ class Game
     @grid[r][c]
   end
 
-  def col_at(x) = (x / TILE).floor
+  def column_at(x) = (x / TILE).floor
   def row_at(y) = ROWS - 1 - (y / TILE).floor
   def tile_bottom(r) = (ROWS - 1 - r) * TILE
   def tile_top(r) = (ROWS - r) * TILE
-  def max_cam = @cols * TILE - VIEW_WIDTH
+  def max_camera_x = @cols * TILE - VIEW_WIDTH
 
   def box_free?(x, y, w, h)
     r0 = row_at(y + h - 0.01)
     r1 = row_at(y + 0.01)
-    c0 = col_at(x + 0.01)
-    c1 = col_at(x + w - 0.01)
+    c0 = column_at(x + 0.01)
+    c1 = column_at(x + w - 0.01)
     r0.upto(r1) { |r| c0.upto(c1) { |c| return false if SOLID[cell(c, r)] } }
     true
   end
@@ -409,14 +409,14 @@ class Game
     r0 = row_at(actor.y + actor.h - 0.01)
     r1 = row_at(actor.y + 0.01)
     if actor.vx > 0
-      c = col_at(actor.x + actor.w - 0.01)
+      c = column_at(actor.x + actor.w - 0.01)
       r0.upto(r1) do |r|
         next unless SOLID[cell(c, r)]
         actor.x = c * TILE - actor.w
         return true
       end
     elsif actor.vx < 0
-      c = col_at(actor.x)
+      c = column_at(actor.x)
       r0.upto(r1) do |r|
         next unless SOLID[cell(c, r)]
         actor.x = (c + 1) * TILE
@@ -433,14 +433,14 @@ class Game
     actor.y += actor.vy
     actor.on_ground = false
     actor.riding = nil
-    c0 = col_at(actor.x + 0.01)
-    c1 = col_at(actor.x + actor.w - 0.01)
+    c0 = column_at(actor.x + 0.01)
+    c1 = column_at(actor.x + actor.w - 0.01)
     if actor.vy <= 0
       r = row_at(actor.y)
       top = tile_top(r)
       c0.upto(c1) do |c|
-        ch = cell(c, r)
-        if SOLID[ch] || (ch == '-' && prev >= top - 0.01)
+        tile = cell(c, r)
+        if SOLID[tile] || (tile == '-' && prev >= top - 0.01)
           actor.y = top
           actor.vy = 0.0
           actor.on_ground = true
@@ -449,9 +449,9 @@ class Game
       end
       if use_lifts && !actor.on_ground
         @lifts.each do |lift|
-          lt = lift.y + lift.h
-          if actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4 && actor.y <= lt && prev >= lt - 14
-            actor.y = lt
+          lift_top = lift.y + lift.h
+          if actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4 && actor.y <= lift_top && prev >= lift_top - 14
+            actor.y = lift_top
             actor.vy = 0.0
             actor.on_ground = true
             actor.riding = lift
@@ -464,8 +464,8 @@ class Game
     r = row_at(actor.y + actor.h)
     hits = []
     c0.upto(c1) do |c|
-      ch = cell(c, r)
-      hits << c if SOLID[ch] || ch == 'I'
+      tile = cell(c, r)
+      hits << c if SOLID[tile] || tile == 'I'
     end
     return hits if hits.empty?
     # a hidden crate only blocks if the head started below it
@@ -490,7 +490,7 @@ class Game
 
   # ── title ─────────────────────────────────────────────────────────
   def step_title
-    @camera_x = (@mode_frames * 1.5) % max_cam
+    @camera_x = (@mode_frames * 1.5) % max_camera_x
     if @in_left_down || @in_right_down
       @bro = 1 - @bro
       sfx(:tick)
@@ -513,12 +513,12 @@ class Game
     shadow_label(640, 470, 'BROTHERS', 12, [236, 212, 64])
     2.times do |i|
       x = 480 + i * 320
-      sel = i == @bro
-      rect(x - 56, 196, 112, 120, sel ? [252, 240, 160] : [60, 60, 60])
+      selected = i == @bro
+      rect(x - 56, 196, 112, 120, selected ? [252, 240, 160] : [60, 60, 60])
       rect(x - 48, 204, 96, 104, [20, 20, 40])
-      f = sel ? 1 + (@mode_frames / 8) % 3 : 0
+      f = selected ? 1 + (@mode_frames / 8) % 3 : 0
       spr(BROS[i][:path], x - 32, 216, 64, 80, f * 8, 0, 8, 20, i == 1)
-      shadow_label(x, 180, BROS[i][:name], 4, sel ? [252, 240, 160] : [140, 140, 140])
+      shadow_label(x, 180, BROS[i][:name], 4, selected ? [252, 240, 160] : [140, 140, 140])
     end
     shadow_label(640, 120, 'PRESS START', 4, [255, 255, 255]) if (@mode_frames / 30) % 2 == 0
     shadow_label(640, 366, 'BOSS RUSH', 4, [232, 72, 64]) if @rush_armed
@@ -549,8 +549,8 @@ class Game
     if @in_start_down
       @mode = :paused
       sfx(:pause)
-      m = @args.audio[:music]
-      m[:paused] = true if m
+      track = @args.audio[:music]
+      track[:paused] = true if track
       vent_sounds
       return
     end
@@ -572,18 +572,18 @@ class Game
   end
 
   def draw_play
-    sh = shake_x
-    @camera_x += sh
+    shake = shake_x
+    @camera_x += shake
     draw_world(true)
-    @camera_x -= sh
+    @camera_x -= shake
   end
 
   def step_paused
     return unless @in_start_down
     @mode = :play
     sfx(:pause)
-    m = @args.audio[:music]
-    m[:paused] = false if m
+    track = @args.audio[:music]
+    track[:paused] = false if track
   end
 
   def draw_paused
@@ -602,8 +602,8 @@ class Game
     if @time == 100 && !@warned
       @warned = true
       sfx(:warn)
-      m = @args.audio[:music]
-      m[:pitch] = 1.15 if m
+      track = @args.audio[:music]
+      track[:pitch] = 1.15 if track
     end
     die if @time <= 0
   end
@@ -614,33 +614,33 @@ class Game
   # across the pit got cut short.
   JUMP_RISE = JUMP_VELOCITY_RUN**2 / (2 * GRAVITY_HOLD)
   def lower_pit_lift(lift, c, r)
-    cols = [c, c + 1]
-    return unless cols.all? { |cc| (r + 1...ROWS).none? { |rr| SOLID[cell(cc, rr)] } }
-    ceil = (0...r).to_a.reverse.find { |rr| cols.any? { |cc| SOLID[cell(cc, rr)] } }
+    columns = [c, c + 1]
+    return unless columns.all? { |column| (r + 1...ROWS).none? { |row| SOLID[cell(column, row)] } }
+    ceil = (0...r).to_a.reverse.find { |row| columns.any? { |column| SOLID[cell(column, row)] } }
     return unless ceil
     max_top = tile_bottom(ceil) - PLAYER_HEIGHT - JUMP_RISE
     top = lift.y + lift.h
     return if top + 2 * TILE <= max_top
-    d = lift.data
-    d[:amp] = TILE
-    d[:by] = max_top - TILE - lift.h
-    lift.y = d[:by]
+    data = lift.data
+    data[:amp] = TILE
+    data[:by] = max_top - TILE - lift.h
+    lift.y = data[:by]
   end
 
   def update_lifts
     @lifts.each do |lift|
-      d = lift.data
-      s = Math.sin(@frame * 6.2832 / 240 + d[:phase])
-      if d[:axis] == :x
-        nx = d[:bx] + s * d[:amp]
-        d[:dx] = nx - lift.x
-        d[:dy] = 0.0
-        lift.x = nx
+      data = lift.data
+      swing = Math.sin(@frame * 6.2832 / 240 + data[:phase])
+      if data[:axis] == :x
+        new_x = data[:bx] + swing * data[:amp]
+        data[:dx] = new_x - lift.x
+        data[:dy] = 0.0
+        lift.x = new_x
       else
-        ny = d[:by] + s * d[:amp]
-        d[:dy] = ny - lift.y
-        d[:dx] = 0.0
-        lift.y = ny
+        new_y = data[:by] + swing * data[:amp]
+        data[:dy] = new_y - lift.y
+        data[:dx] = 0.0
+        lift.y = new_y
       end
     end
   end
@@ -654,7 +654,7 @@ class Game
     player.prev_y = player.y
     dir = (@in_right ? 1 : 0) - (@in_left ? 1 : 0)
     run = @in_b
-    maxv = run ? RUN_MAX : WALK_MAX
+    max_speed = run ? RUN_MAX : WALK_MAX
     ground = player.on_ground
     player.skid = false
     if dir != 0
@@ -662,9 +662,9 @@ class Game
         player.vx += dir * (ground ? 0.5 : 0.3)
         player.skid = ground && player.vx.abs > 1.5
         dust(player.x + player.w / 2, player.y) if player.skid && @frame % 4 == 0
-      elsif player.vx.abs <= maxv
+      elsif player.vx.abs <= max_speed
         player.vx += dir * (ground ? (run ? 0.28 : 0.2) : 0.18)
-        player.vx = maxv * dir if player.vx.abs > maxv
+        player.vx = max_speed * dir if player.vx.abs > max_speed
       elsif ground
         player.vx -= dir * 0.12
       end
@@ -684,8 +684,8 @@ class Game
       player.riding = nil
       sfx(:jump)
     end
-    g = player.vy > 0 ? (player.jumping && @in_a ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
-    player.vy -= g
+    gravity = player.vy > 0 ? (player.jumping && @in_a ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
+    player.vy -= gravity
     player.vy = FALL_MAX if player.vy < FALL_MAX
 
     player.vx = 0.0 if move_x(player)
@@ -717,10 +717,10 @@ class Game
     end
 
     collect_nuts(player)
-    @vents.each do |v|
-      k = (@frame + v[:phase]) % 180
-      next unless k >= 130 && v[:h] > 0
-      hurt if rect_hit?(player, v[:c] * TILE + 14, tile_top(v[:r]), 36, v[:h] - 8)
+    @vents.each do |vent|
+      k = (@frame + vent[:phase]) % 180
+      next unless k >= 130 && vent[:h] > 0
+      hurt if rect_hit?(player, vent[:c] * TILE + 14, tile_top(vent[:r]), 36, vent[:h] - 8)
     end
     @cones.each_with_index do |cone, i|
       next if cone[:lit] || player.x < cone[:c] * TILE
@@ -743,16 +743,16 @@ class Game
   # counts only if you actually overlap it (it is 3 tiles tall).
   def goal_touched?(player)
     return false unless @goal
-    gx = @goal[:c] * TILE
-    return player.x + player.w > gx + 8 if player.x < gx
-    player.x < gx + TILE - 8 && player.y < tile_bottom(@goal[:r]) + 3 * TILE
+    goal_x = @goal[:c] * TILE
+    return player.x + player.w > goal_x + 8 if player.x < goal_x
+    player.x < goal_x + TILE - 8 && player.y < tile_bottom(@goal[:r]) + 3 * TILE
   end
 
   def collect_nuts(actor)
     r0 = row_at(actor.y + actor.h - 8)
     r1 = row_at(actor.y + 8)
-    c0 = col_at(actor.x + 6)
-    c1 = col_at(actor.x + actor.w - 6)
+    c0 = column_at(actor.x + 6)
+    c1 = column_at(actor.x + actor.w - 6)
     r0.upto(r1) do |r|
       next if r < 0 || r >= ROWS
       c0.upto(c1) do |c|
@@ -785,12 +785,12 @@ class Game
   end
 
   def bump(c, r)
-    ch = cell(c, r)
+    tile = cell(c, r)
     key = r * 10000 + c
     @bumps[key] = BUMP_ARC.size
     x = c * TILE
     top = tile_top(r)
-    case ch
+    case tile
     when 'C'
       @grid[r][c] = 'U'
       pop_nut(x, top)
@@ -983,14 +983,14 @@ class Game
       enemy.vx = -enemy.vx if move_x(enemy)
       move_y(enemy, false, false)
       if enemy.on_ground
-        fx = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2
-        below = cell(col_at(fx), row_at(enemy.y - 4))
+        front_x = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2
+        below = cell(column_at(front_x), row_at(enemy.y - 4))
         enemy.vx = -enemy.vx unless SOLID[below] || below == '-'
       end
       enemy.state = :dead if enemy.y < -100
-      @enemies.each do |o|
-        next if o.equal?(enemy) || !o.active || o.state != :walk
-        enemy.vx = -enemy.vx if overlap?(enemy, o) && ((o.x - enemy.x) * enemy.vx) > 0
+      @enemies.each do |other|
+        next if other.equal?(enemy) || !other.active || other.state != :walk
+        enemy.vx = -enemy.vx if overlap?(enemy, other) && ((other.x - enemy.x) * enemy.vx) > 0
       end
       next unless @mode == :play && overlap?(player, enemy)
       # full box for stomps, a smaller one for getting hurt (forgiving)
@@ -1046,12 +1046,12 @@ class Game
     else
       dx = (player.x + player.w / 2) - (wrench.x + wrench.w / 2)
       dy = (player.y + 40) - (wrench.y + wrench.h / 2)
-      d = Math.sqrt(dx * dx + dy * dy)
-      d = 1 if d < 1
-      sp = [wrench.vx.abs + wrench.vy.abs + 0.6, 13.0].min
-      wrench.vx = dx / d * sp
-      wrench.vy = dy / d * sp
-      if d < 40
+      distance = Math.sqrt(dx * dx + dy * dy)
+      distance = 1 if distance < 1
+      speed = [wrench.vx.abs + wrench.vy.abs + 0.6, 13.0].min
+      wrench.vx = dx / distance * speed
+      wrench.vy = dy / distance * speed
+      if distance < 40
         @wrench = nil
         return
       end
@@ -1127,8 +1127,8 @@ class Game
 
   def puff(x, y)
     6.times do |i|
-      a = i * 1.047
-      @particles << [x, y, Math.cos(a) * 3, Math.sin(a) * 3 + 1, 16, [236, 236, 236]]
+      angle = i * 1.047
+      @particles << [x, y, Math.cos(angle) * 3, Math.sin(angle) * 3 + 1, 16, [236, 236, 236]]
     end
   end
 
@@ -1138,24 +1138,24 @@ class Game
 
   def sparkle(x, y)
     4.times do |i|
-      a = i * 1.571 + 0.785
-      @particles << [x, y, Math.cos(a) * 4, Math.sin(a) * 4, 10, [252, 240, 160]]
+      angle = i * 1.571 + 0.785
+      @particles << [x, y, Math.cos(angle) * 4, Math.sin(angle) * 4, 10, [252, 240, 160]]
     end
   end
 
   def update_effects
-    @particles.each do |pt|
-      pt[0] += pt[2]
-      pt[1] += pt[3]
-      pt[3] -= 0.15
-      pt[4] -= 1
+    @particles.each do |particle|
+      particle[0] += particle[2]
+      particle[1] += particle[3]
+      particle[3] -= 0.15
+      particle[4] -= 1
     end
-    @particles.reject! { |pt| pt[4] <= 0 }
-    @popups.each do |pp|
-      pp[1] += 1.5
-      pp[3] += 1
+    @particles.reject! { |particle| particle[4] <= 0 }
+    @popups.each do |popup|
+      popup[1] += 1.5
+      popup[3] += 1
     end
-    @popups.reject! { |pp| pp[3] > 45 }
+    @popups.reject! { |popup| popup[3] > 45 }
     @bumps.keys.each do |k|
       @bumps[k] -= 1
       @bumps.delete(k) if @bumps[k] <= 0
@@ -1165,90 +1165,90 @@ class Game
   def update_camera
     player = @player
     target = player.x + player.w / 2 - 560 + player.facing * 90
-    target = max_cam if @boss_on
+    target = max_camera_x if @boss_on
     @camera_x += (target - @camera_x) * 0.1
     @camera_x = 0.0 if @camera_x < 0
-    @camera_x = max_cam.to_f if @camera_x > max_cam
+    @camera_x = max_camera_x.to_f if @camera_x > max_camera_x
   end
 
   # ── drawing ───────────────────────────────────────────────────────
-  def spr(path, x, y, w, h, sx, sy, sw, sh, flip = false, a = 255, angle = 0, flipv = false)
+  def spr(path, x, y, w, h, sx, sy, sw, sh, flip = false, alpha = 255, angle = 0, flipv = false)
     @outputs.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: sx, source_y: sy,
                                source_w: sw, source_h: sh, flip_horizontally: flip, flip_vertically: flipv,
-                               a: a, angle: angle }
+                               a: alpha, angle: angle }
   end
 
-  def rect(x, y, w, h, col, a = 255)
+  def rect(x, y, w, h, color, alpha = 255)
     @outputs.sprites << { x: x, y: y, w: w, h: h, path: 'sprites/px.png',
-                               r: col[0], g: col[1], b: col[2], a: a }
+                               r: color[0], g: color[1], b: color[2], a: alpha }
   end
 
-  def label(x, y, text, size, col, shadow = false)
+  def label(x, y, text, size, color, shadow = false)
     if shadow
       @outputs.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
     end
-    @outputs.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: col[0], g: col[1], b: col[2] }
+    @outputs.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: color[0], g: color[1], b: color[2] }
   end
 
-  def shadow_label(x, y, text, size, col)
-    label(x, y, text, size, col, true)
+  def shadow_label(x, y, text, size, color)
+    label(x, y, text, size, color, true)
   end
 
   def draw_background
-    th = @theme
-    o = @outputs
-    sky = th[:sky]
-    o.background_color = sky[0]
+    theme = @theme
+    outputs = @outputs
+    sky = theme[:sky]
+    outputs.background_color = sky[0]
     # outdoors the sky runs to the bottom of the screen, so pits show sky;
     # indoors the bottom 128 px stay a black alley (see the end)
-    floor = th[:indoor] ? 128 : 0
+    floor = theme[:indoor] ? 128 : 0
     if sky.size > 1
       band = 72
-      sky.each_with_index do |col, i|
+      sky.each_with_index do |color, i|
         top = PLAY_HEIGHT - i * band
         bottom = i == sky.size - 1 ? floor : top - band
-        o.solids << [0, bottom, VIEW_WIDTH, top - bottom, col[0], col[1], col[2]]
+        outputs.solids << [0, bottom, VIEW_WIDTH, top - bottom, color[0], color[1], color[2]]
       end
     else
-      o.solids << [0, floor, VIEW_WIDTH, PLAY_HEIGHT - floor, sky[0][0], sky[0][1], sky[0][2]]
+      outputs.solids << [0, floor, VIEW_WIDTH, PLAY_HEIGHT - floor, sky[0][0], sky[0][1], sky[0][2]]
     end
-    if th[:stars]
+    if theme[:stars]
       40.times do |i|
-        sx = ((i * 211 + 57) - @camera_x * 0.05) % VIEW_WIDTH
-        sy = 300 + (i * 97) % 330
-        tw = (@frame / 20 + i) % 7 == 0 ? 120 : 230
-        o.solids << [sx.to_i, sy, 8, 4, tw, tw, 255]
+        star_x = ((i * 211 + 57) - @camera_x * 0.05) % VIEW_WIDTH
+        star_y = 300 + (i * 97) % 330
+        brightness = (@frame / 20 + i) % 7 == 0 ? 120 : 230
+        outputs.solids << [star_x.to_i, star_y, 8, 4, brightness, brightness, 255]
       end
       [[6, 0], [10, 1], [12, 2], [12, 3], [12, 4], [10, 5], [6, 6]].each do |w, dy|
-        o.solids << [1040 - w * 4, 560 - dy * 8, w * 8, 8, 236, 232, 196]
+        outputs.solids << [1040 - w * 4, 560 - dy * 8, w * 8, 8, 236, 232, 196]
       end
     end
-    SUN_ROWS.each { |r| o.solids << r } if th[:sun]
-    cc = th[:cloud]
+    SUN_ROWS.each { |r| outputs.solids << r } if theme[:sun]
+    cloud = theme[:cloud]
     [[100, 560], [620, 600], [1050, 520], [1500, 580]].each do |cx, cy|
       x = (((cx - @camera_x * 0.25) % 1800) - 260).to_i
-      o.solids << [x + 32, cy, 64, 16, cc[0], cc[1], cc[2]]
-      o.solids << [x, cy - 16, 160, 16, cc[0], cc[1], cc[2]]
-      o.solids << [x - 16, cy - 32, 208, 16, cc[0], cc[1], cc[2]]
+      outputs.solids << [x + 32, cy, 64, 16, cloud[0], cloud[1], cloud[2]]
+      outputs.solids << [x, cy - 16, 160, 16, cloud[0], cloud[1], cloud[2]]
+      outputs.solids << [x - 16, cy - 32, 208, 16, cloud[0], cloud[1], cloud[2]]
     end
-    bush = th[:bush]
-    bd = th[:bush_dk]
+    bush = theme[:bush]
+    bush_dark = theme[:bush_dk]
     # trees of varying heights, trunks rising from the bottom of the screen
     # (indoors, from the floor) into blocky canopies; indoors they show
     # through the windows (y 192..384)
-    TREES.each do |bx, w, cy|
-      x = (((bx - @camera_x * 0.5) % 1600) - 160).to_i
-      tw = w >= 120 ? 24 : 16
-      o.solids << [x + w / 2 - tw / 2, floor, tw, cy + 8 - floor, 104, 68, 36]
-      o.solids << [x + w / 2 - tw / 2, floor, 8, cy + 8 - floor, 72, 44, 20]
-      o.solids << [x, cy, w, 16, bd[0], bd[1], bd[2]]
-      o.solids << [x - 8, cy + 16, w + 16, 40, bush[0], bush[1], bush[2]]
-      o.solids << [x, cy + 56, w, 24, bush[0], bush[1], bush[2]]
-      o.solids << [x + 16, cy + 80, w - 32, 16, bush[0], bush[1], bush[2]]
-      o.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, bush[0], bush[1], bush[2]]
+    TREES.each do |tree_x, w, cy|
+      x = (((tree_x - @camera_x * 0.5) % 1600) - 160).to_i
+      trunk_width = w >= 120 ? 24 : 16
+      outputs.solids << [x + w / 2 - trunk_width / 2, floor, trunk_width, cy + 8 - floor, 104, 68, 36]
+      outputs.solids << [x + w / 2 - trunk_width / 2, floor, 8, cy + 8 - floor, 72, 44, 20]
+      outputs.solids << [x, cy, w, 16, bush_dark[0], bush_dark[1], bush_dark[2]]
+      outputs.solids << [x - 8, cy + 16, w + 16, 40, bush[0], bush[1], bush[2]]
+      outputs.solids << [x, cy + 56, w, 24, bush[0], bush[1], bush[2]]
+      outputs.solids << [x + 16, cy + 80, w - 32, 16, bush[0], bush[1], bush[2]]
+      outputs.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, bush[0], bush[1], bush[2]]
     end
     # indoors, the dark below the floor
-    o.solids << [0, 0, VIEW_WIDTH, 128, 0, 0, 0] if th[:indoor]
+    outputs.solids << [0, 0, VIEW_WIDTH, 128, 0, 0, 0] if theme[:indoor]
   end
 
   # The sunset sun, vaporwave style: a whole disc in 8 px rows, yellow at the
@@ -1285,18 +1285,18 @@ class Game
   # [x, canopy width, canopy bottom y] for the background trees
   TREES = [[16, 96, 232], [240, 144, 296], [512, 80, 208], [784, 128, 272], [1056, 112, 312], [1300, 96, 248]]
   def window_at?(c)
-    m = c % 13
-    return false unless m == 6 || m == 7
-    left = c - (m - 6)
+    phase = c % 13
+    return false unless phase == 6 || phase == 7
+    left = c - (phase - 6)
     WINDOW_ROWS.all? { |r| !SOLID[cell(left, r)] && !SOLID[cell(left + 1, r)] }
   end
 
-  def draw_back_wall(cam, tiles, c0, c1)
+  def draw_back_wall(camera_x, tiles, c0, c1)
     c0.upto(c1 + 1) do |c|
-      win = window_at?(c)
-      x = c * TILE - cam
+      window = window_at?(c)
+      x = c * TILE - camera_x
       8.times do |r|
-        next if win && WINDOW_ROWS.include?(r)
+        next if window && WINDOW_ROWS.include?(r)
         spr(tiles, x, tile_bottom(r), TILE, TILE, 88, 0, 8, 16)
       end
     end
@@ -1304,55 +1304,55 @@ class Game
     sill = [196, 148, 92]
     c0.upto(c1 + 1) do |c|
       next unless c % 13 == 6 && window_at?(c)
-      x = c * TILE - cam
-      bot = tile_bottom(WINDOW_ROWS.last)
+      x = c * TILE - camera_x
+      bottom = tile_bottom(WINDOW_ROWS.last)
       top = tile_top(WINDOW_ROWS.first)
       w = 2 * TILE
-      rect(x, bot, w, 8, sill)                 # sill
-      rect(x - 8, bot - 8, w + 16, 8, wood)
+      rect(x, bottom, w, 8, sill)                 # sill
+      rect(x - 8, bottom - 8, w + 16, 8, wood)
       rect(x, top - 8, w, 8, wood)             # head
-      rect(x, bot, 8, top - bot, wood)         # jambs
-      rect(x + w - 8, bot, 8, top - bot, wood)
-      rect(x + TILE - 4, bot, 8, top - bot, wood) # mullion
-      rect(x, (bot + top) / 2 - 4, w, 8, wood) # transom bar
+      rect(x, bottom, 8, top - bottom, wood)         # jambs
+      rect(x + w - 8, bottom, 8, top - bottom, wood)
+      rect(x + TILE - 4, bottom, 8, top - bottom, wood) # mullion
+      rect(x, (bottom + top) / 2 - 4, w, 8, wood) # transom bar
     end
   end
 
   def draw_tiles
-    cam = @camera_x.to_i
+    camera_x = @camera_x.to_i
     tiles = @theme[:tiles]
-    c0 = [cam / TILE, 0].max
-    c1 = [(cam + VIEW_WIDTH) / TILE, @cols - 1].min
+    c0 = [camera_x / TILE, 0].max
+    c1 = [(camera_x + VIEW_WIDTH) / TILE, @cols - 1].min
     nut_f = (@frame / 8) % 4
-    draw_back_wall(cam, tiles, c0, c1) if @theme[:indoor]
+    draw_back_wall(camera_x, tiles, c0, c1) if @theme[:indoor]
     ROWS.times do |r|
       row = @grid[r]
       y = tile_bottom(r)
       c0.upto(c1) do |c|
-        ch = row[c]
-        next if ch == '.' || ch == 'I'
-        x = c * TILE - cam
+        tile = row[c]
+        next if tile == '.' || tile == 'I'
+        x = c * TILE - camera_x
         bump = @bumps[r * 10000 + c]
-        yy = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
-        case ch
-        when '#' then spr(tiles, x, yy, TILE, TILE, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
-        when 'F' then spr(tiles, x, yy, TILE, TILE, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
-        when '=' then spr(tiles, x, yy, TILE, TILE, 16, 0, 8, 16)
-        when 'C', 'W', 'M' then spr(tiles, x, yy, TILE, TILE, 24, 0, 8, 16)
-        when 'U' then spr(tiles, x, yy, TILE, TILE, 32, 0, 8, 16)
+        bumped_y = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
+        case tile
+        when '#' then spr(tiles, x, bumped_y, TILE, TILE, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
+        when 'F' then spr(tiles, x, bumped_y, TILE, TILE, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
+        when '=' then spr(tiles, x, bumped_y, TILE, TILE, 16, 0, 8, 16)
+        when 'C', 'W', 'M' then spr(tiles, x, bumped_y, TILE, TILE, 24, 0, 8, 16)
+        when 'U' then spr(tiles, x, bumped_y, TILE, TILE, 32, 0, 8, 16)
         when '-'
           # extend a stand up behind the pipe so it meets the pipe's underside
           spr(tiles, x, y, TILE, TILE, 56, 0, 8, 16) if cell(c, r + 1) == '|'
           if cell(c + 1, r) != '-'
-            spr(tiles, x, yy, TILE, TILE, 48, 0, 8, 16, true)
+            spr(tiles, x, bumped_y, TILE, TILE, 48, 0, 8, 16, true)
           elsif cell(c - 1, r) != '-' || c % 4 == 0
-            spr(tiles, x, yy, TILE, TILE, 48, 0, 8, 16)
+            spr(tiles, x, bumped_y, TILE, TILE, 48, 0, 8, 16)
           else
-            spr(tiles, x, yy, TILE, TILE, 40, 0, 8, 16)
+            spr(tiles, x, bumped_y, TILE, TILE, 40, 0, 8, 16)
           end
-        when '|' then spr(tiles, x, yy, TILE, TILE, 56, 0, 8, 16)
-        when 'S' then spr(tiles, x, yy, TILE, TILE, 64, 0, 8, 16)
-        when 'o' then spr('sprites/items.png', x, yy, TILE, TILE, nut_f * 8, 0, 8, 16)
+        when '|' then spr(tiles, x, bumped_y, TILE, TILE, 56, 0, 8, 16)
+        when 'S' then spr(tiles, x, bumped_y, TILE, TILE, 64, 0, 8, 16)
+        when 'o' then spr('sprites/items.png', x, bumped_y, TILE, TILE, nut_f * 8, 0, 8, 16)
         end
       end
     end
@@ -1361,48 +1361,48 @@ class Game
   # A vent on screen hisses as its plume shoots up. dx is the screen-shake
   # offset the world is drawn with this frame.
   def vent_sounds(dx = 0)
-    cam = @camera_x.to_i + dx
-    @vents.each do |v|
-      next unless (@frame + v[:phase]) % 180 == 130 && v[:h] > 0
-      x = v[:c] * TILE - cam
+    camera_x = @camera_x.to_i + dx
+    @vents.each do |vent|
+      next unless (@frame + vent[:phase]) % 180 == 130 && vent[:h] > 0
+      x = vent[:c] * TILE - camera_x
       sfx(:steam) unless x < -TILE || x > VIEW_WIDTH
     end
   end
 
   def draw_world(entities, hud = true)
     draw_background
-    cam = @camera_x.to_i
+    camera_x = @camera_x.to_i
     draw_tiles
     @lifts.each do |lift|
-      x = lift.x.to_i - cam
+      x = lift.x.to_i - camera_x
       spr(@theme[:tiles], x, lift.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
       spr(@theme[:tiles], x + TILE, lift.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
     end
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
-      spr('sprites/items.png', cone[:c] * TILE - cam, tile_bottom(cone[:r]), TILE, TILE, lit ? 56 : 48, 0, 8, 16)
+      spr('sprites/items.png', cone[:c] * TILE - camera_x, tile_bottom(cone[:r]), TILE, TILE, lit ? 56 : 48, 0, 8, 16)
     end
     if @goal
-      gx = @goal[:c] * TILE - cam
-      gy = tile_bottom(@goal[:r])
-      spr(@theme[:tiles], gx, gy, TILE, TILE, 72, 0, 8, 16)
-      spr(@theme[:tiles], gx, gy + TILE, TILE, TILE, 72, 0, 8, 16)
+      goal_x = @goal[:c] * TILE - camera_x
+      goal_y = tile_bottom(@goal[:r])
+      spr(@theme[:tiles], goal_x, goal_y, TILE, TILE, 72, 0, 8, 16)
+      spr(@theme[:tiles], goal_x, goal_y + TILE, TILE, TILE, 72, 0, 8, 16)
       unless @goal[:gone]
         f = (@goal[:turn] / 5) % 3
-        spr('sprites/items.png', gx, gy + 2 * TILE, TILE, TILE, 64 + f * 8, 0, 8, 16)
-        label(gx + 32, gy + 3 * TILE + 28, 'MAIN', 2, [255, 255, 255], true)
+        spr('sprites/items.png', goal_x, goal_y + 2 * TILE, TILE, TILE, 64 + f * 8, 0, 8, 16)
+        label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, [255, 255, 255], true)
       end
     end
-    @vents.each do |v|
-      k = (@frame + v[:phase]) % 180
-      next if k < 100 || v[:h] <= 0
-      x = v[:c] * TILE - cam
+    @vents.each do |vent|
+      k = (@frame + vent[:phase]) % 180
+      next if k < 100 || vent[:h] <= 0
+      x = vent[:c] * TILE - camera_x
       next if x < -TILE || x > VIEW_WIDTH
-      base = tile_top(v[:r])
+      base = tile_top(vent[:r])
       if k < 130
         rect(x + 24, base + (k % 10) * 2, 16, 8, [236, 236, 236], 180) if (k / 5).even?
       else
-        (v[:h] / 16).times do |i|
+        (vent[:h] / 16).times do |i|
           wob = ((i + @frame / 3) % 3 - 1) * 8
           w = 24 + (i * 3) % 16
           rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, [236, 236, 236], 200 - i * 6)
@@ -1411,7 +1411,7 @@ class Game
     end
     return unless entities
     @items.each do |item|
-      x = item.x.to_i - cam
+      x = item.x.to_i - camera_x
       case item.kind
       when :popnut then spr('sprites/items.png', x, item.y.to_i, TILE, TILE, ((item.t / 3) % 4) * 8, 0, 8, 16)
       when :wrench_item
@@ -1421,31 +1421,31 @@ class Game
       end
     end
     @enemies.each do |enemy|
-      x = enemy.x.to_i - cam
+      x = enemy.x.to_i - camera_x
       next if x < -TILE || x > VIEW_WIDTH + TILE
       if enemy.kind == :blob
         f = enemy.state == :flat ? 2 : (enemy.t / 10) % 2
         spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, enemy.vx > 0, 255, 0, enemy.state == :dead)
       else
         f = enemy.data[:spin] ? 5 + (enemy.t / 4) % 2 : 3 + (enemy.t / 12) % 2
-        a = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
-        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, false, a, 0, enemy.state == :dead)
+        alpha = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
+        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, false, alpha, 0, enemy.state == :dead)
       end
     end
-    draw_boss(cam) if @boss
+    draw_boss(camera_x) if @boss
     draw_player
     draw_boss_hud if @boss
     if @wrench
       wrench = @wrench
       # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
       f = (wrench.t / 2) % 7
-      spr('sprites/wrench.png', wrench.x.to_i - cam - 4, wrench.y.to_i - 14, 48, 48, f * 8, 0, 8, 16, wrench.facing < 0)
+      spr('sprites/wrench.png', wrench.x.to_i - camera_x - 4, wrench.y.to_i - 14, 48, 48, f * 8, 0, 8, 16, wrench.facing < 0)
     end
-    @particles.each do |pt|
-      rect(pt[0].to_i - cam, pt[1].to_i, 8, 8, pt[5], [pt[4] * 20, 255].min)
+    @particles.each do |particle|
+      rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
     end
-    @popups.each do |pp|
-      label(pp[0].to_i - cam + 20, pp[1].to_i, pp[2], 3, [255, 255, 255], true)
+    @popups.each do |popup|
+      label(popup[0].to_i - camera_x + 20, popup[1].to_i, popup[2], 3, [255, 255, 255], true)
     end
     draw_hud if hud
   end
@@ -1453,7 +1453,7 @@ class Game
   def draw_player
     player = @player
     return if player.invuln > 0 && (player.invuln / 3) % 2 == 0 && @mode == :play
-    cam = @camera_x.to_i
+    camera_x = @camera_x.to_i
     f = if @mode == :dying then 6
         elsif player.throw_t > 0 then 7
         elsif !player.on_ground then 4
@@ -1463,10 +1463,10 @@ class Game
         end
     flip = f == 5 ? player.facing > 0 : player.facing < 0
     flip = false if f == 6
-    x = player.x.to_i - cam - 12
+    x = player.x.to_i - camera_x - 12
     if player.powered && f != 6 && @wrench.nil?
-      wx = player.facing > 0 ? x - 6 : x + 22
-      spr('sprites/wrench.png', wx, player.y.to_i + 22, 40, 40, 56, 0, 8, 16, player.facing > 0)
+      wrench_x = player.facing > 0 ? x - 6 : x + 22
+      spr('sprites/wrench.png', wrench_x, player.y.to_i + 22, 40, 40, 56, 0, 8, 16, player.facing > 0)
     end
     spr(BROS[@bro][:path], x, player.y.to_i, 64, 80, f * 8, 0, 8, 20, flip)
   end
@@ -1474,15 +1474,15 @@ class Game
   def draw_hud
     rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, [16, 16, 16])
     rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, [60, 60, 60])
-    col = [236, 212, 64]
-    o = @outputs.labels
-    o << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: col[0], g: col[1], b: col[2] }
-    o << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
-    o << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: col[0], g: col[1], b: col[2] }
-    o << { x: 720, y: 700, text: @level_data[:name], size_px: 4, r: col[0], g: col[1], b: col[2] }
+    color = [236, 212, 64]
+    labels = @outputs.labels
+    labels << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: color[0], g: color[1], b: color[2] }
+    labels << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
+    labels << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }
+    labels << { x: 720, y: 700, text: @level_data[:name], size_px: 4, r: color[0], g: color[1], b: color[2] }
     shift_time = @time || SHIFT_LENGTH
-    tc = shift_time <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : col
-    o << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: tc[0], g: tc[1], b: tc[2] }
+    time_color = shift_time <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : color
+    labels << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: time_color[0], g: time_color[1], b: time_color[2] }
   end
 end
 

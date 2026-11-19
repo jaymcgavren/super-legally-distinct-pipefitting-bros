@@ -70,8 +70,8 @@ class Game
       sfx(:steam) if elapsed % every == 0
       n = elapsed / 40 + 1
       n.times do |i|
-        a = (elapsed * 37 + i * 101) % 360 * 0.01745
-        @steam << [vx + Math.cos(a) * 24, vy + 40 + Math.sin(a) * 24, Math.cos(a) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4]
+        angle = (elapsed * 37 + i * 101) % 360 * 0.01745
+        @steam << [vx + Math.cos(angle) * 24, vy + 40 + Math.sin(angle) * 24, Math.cos(angle) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4]
       end
       @end_shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
     elsif elapsed == END_BURST
@@ -81,8 +81,8 @@ class Game
       sfx(:blast)
       sfx(:pound)
       24.times do |i|
-        a = i * 0.2618
-        @steam << [vx, vy + 20, Math.cos(a) * 9, Math.sin(a).abs * 6 + 1, 40, 48]
+        angle = i * 0.2618
+        @steam << [vx, vy + 20, Math.cos(angle) * 9, Math.sin(angle).abs * 6 + 1, 40, 48]
       end
     end
     @end_shake -= 0.3 if elapsed > END_BURST && @end_shake > 0
@@ -99,9 +99,9 @@ class Game
           @locked = true
         end
         if @locked
-          nl = @flying_valve[:y] - END_LOCK_Y
-          @rise_speed = nl - @rise
-          @rise = nl
+          new_rise = @flying_valve[:y] - END_LOCK_Y
+          @rise_speed = new_rise - @rise
+          @rise = new_rise
         end
       else
         @rise_speed -= (@rise_speed - 1.5) * 0.04
@@ -118,14 +118,14 @@ class Game
     end
     @twinkle[:t] += 1 if @twinkle
 
-    @steam.each do |s|
-      s[0] += s[2]
-      s[1] += s[3]
-      s[2] *= 0.94
-      s[4] -= 1
-      s[5] += 1
+    @steam.each do |steam_puff|
+      steam_puff[0] += steam_puff[2]
+      steam_puff[1] += steam_puff[3]
+      steam_puff[2] *= 0.94
+      steam_puff[4] -= 1
+      steam_puff[5] += 1
     end
-    @steam.reject! { |s| s[4] <= 0 }
+    @steam.reject! { |steam_puff| steam_puff[4] <= 0 }
 
     if elapsed >= END_FIRE
       music(:clear, false) if elapsed == END_FIRE
@@ -153,8 +153,8 @@ class Game
   end
 
   def end_shake_x
-    amp = @end_shake
-    amp > 0 ? ((@frame % 4) < 2 ? amp : -amp).to_i : 0
+    amplitude = @end_shake
+    amplitude > 0 ? ((@frame % 4) < 2 ? amplitude : -amplitude).to_i : 0
   end
 
   def end_rand(n)
@@ -170,37 +170,37 @@ class Game
 
   def draw_ending
     elapsed = @mode_frames
-    amp = @end_shake
-    shx = end_shake_x
-    shy = amp > 0 ? ((@frame % 6) < 3 ? amp : -amp).to_i / 2 : 0
-    lift = @rise.to_i
+    amplitude = @end_shake
+    shake_x = end_shake_x
+    shake_y = amplitude > 0 ? ((@frame % 6) < 3 ? amplitude : -amplitude).to_i / 2 : 0
+    rise = @rise.to_i
     if elapsed < END_BURST
-      @camera_x += shx
+      @camera_x += shake_x
       draw_world(true)
-      @camera_x -= shx
+      @camera_x -= shake_x
     else
       draw_space
-      if lift < 720
-        rt = @args.outputs[:world]
-        rt.w = VIEW_WIDTH
-        rt.h = 720
-        @outputs = rt
+      if rise < 720
+        target = @args.outputs[:world]
+        target.w = VIEW_WIDTH
+        target.h = 720
+        @outputs = target
         draw_world(true, false)
         @outputs = @args.outputs
-        @outputs.sprites << { x: shx, y: shy - lift, w: VIEW_WIDTH, h: 720, path: :world }
+        @outputs.sprites << { x: shake_x, y: shake_y - rise, w: VIEW_WIDTH, h: 720, path: :world }
       end
     end
-    cam = @camera_x.to_i
-    @steam.each do |s|
-      x = s[0].to_i - cam + shx
-      y = s[1].to_i - lift + shy
+    camera_x = @camera_x.to_i
+    @steam.each do |steam_puff|
+      x = steam_puff[0].to_i - camera_x + shake_x
+      y = steam_puff[1].to_i - rise + shake_y
       next if y < -80 || y > 760
-      sz = s[5]
-      rect(x - sz / 2, y - sz / 2, sz, sz, [236, 236, 236], [s[4] * 5, 200].min)
+      size = steam_puff[5]
+      rect(x - size / 2, y - size / 2, size, size, [236, 236, 236], [steam_puff[4] * 5, 200].min)
     end
     if @flying_valve
-      x = @flying_valve[:x].to_i - cam + shx
-      y = @flying_valve[:y].to_i - lift + shy
+      x = @flying_valve[:x].to_i - camera_x + shake_x
+      y = @flying_valve[:y].to_i - rise + shake_y
       if y < 760
         f = elapsed % 3
         spr('sprites/items.png', x, y, TILE, TILE, 64 + f * 8, 0, 8, 16)
@@ -208,17 +208,17 @@ class Game
     end
     if @twinkle && @twinkle[:t] < 40
       k = @twinkle[:t]
-      s = k < 20 ? k * 2 : (40 - k) * 2
-      x = @twinkle[:x] - cam
-      rect(x - s, 690, s * 2 + 8, 8, [255, 255, 220])
-      rect(x, 690 - s, 8, s * 2 + 8, [255, 255, 220])
+      flare = k < 20 ? k * 2 : (40 - k) * 2
+      x = @twinkle[:x] - camera_x
+      rect(x - flare, 690, flare * 2 + 8, 8, [255, 255, 220])
+      rect(x, 690 - flare, 8, flare * 2 + 8, [255, 255, 220])
     end
     @fireworks.each { |f| draw_firework(f) }
     if elapsed >= RUSTY_FALL
-      ry = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
-      if ry > -140
+      rusty_y = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
+      if rusty_y > -140
         # dazed face, flipped upside-down, wobbling as he drops
-        spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, ry, 128, 112, 32, 0, 8, 28,
+        spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, 32, 0, 8, 28,
             (elapsed / 6).even?, 255, 0, true)
       end
     end
@@ -241,16 +241,16 @@ class Game
 
   # the night sky deepening into space, stars streaking past as the camera rises
   def draw_space
-    o = @outputs
+    outputs = @outputs
     k = [@rise / 4000.0, 1.0].min
-    o.background_color = [(8 - 6 * k).to_i, (12 - 10 * k).to_i, (48 - 36 * k).to_i]
-    v = @rise_speed
-    @end_stars.each do |sx, sy, d|
-      sp = 0.35 + d * 0.3
-      y = (sy - @rise * sp) % 760 - 20
-      len = [(v * sp * 0.9).to_i, 4].max
-      c = 150 + d * 50
-      o.solids << [sx, y.to_i, d == 2 ? 8 : 4, len, c, c, 255]
+    outputs.background_color = [(8 - 6 * k).to_i, (12 - 10 * k).to_i, (48 - 36 * k).to_i]
+    speed = @rise_speed
+    @end_stars.each do |sx, sy, depth|
+      star_speed = 0.35 + depth * 0.3
+      y = (sy - @rise * star_speed) % 760 - 20
+      length = [(speed * star_speed * 0.9).to_i, 4].max
+      c = 150 + depth * 50
+      outputs.solids << [sx, y.to_i, depth == 2 ? 8 : 4, length, c, c, 255]
     end
   end
 
@@ -258,19 +258,19 @@ class Game
   def draw_firework(f)
     k = f[:t]
     col = f[:col]
-    a = 150 - k * 2
-    return if a <= 0
+    alpha = 150 - k * 2
+    return if alpha <= 0
     if k < 5
       rect(f[:x] - 80, f[:y] - 80, 160, 160, [255, 255, 255], 200 - k * 30)
     end
     droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
-    [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |rf, off, sz|
-      r = (40 + k * 10) * rf
+    [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |radius_factor, offset, size|
+      r = (40 + k * 10) * radius_factor
       12.times do |i|
-        ang = i * 0.5236 + off
-        x = ((f[:x] + Math.cos(ang) * r) / 16).to_i * 16
-        y = ((f[:y] + Math.sin(ang) * r - droop) / 16).to_i * 16
-        rect(x - sz / 2, y - sz / 2, sz, sz, col, a)
+        angle = i * 0.5236 + offset
+        x = ((f[:x] + Math.cos(angle) * r) / 16).to_i * 16
+        y = ((f[:y] + Math.sin(angle) * r - droop) / 16).to_i * 16
+        rect(x - size / 2, y - size / 2, size, size, col, alpha)
       end
     end
   end

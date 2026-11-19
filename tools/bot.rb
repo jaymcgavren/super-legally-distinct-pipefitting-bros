@@ -18,8 +18,8 @@ def bot(level, frames: 5000, invuln: true)
     p.invuln = 5 if invuln
     s.set(:time, 300)
     fx = p.x + p.w + 30
-    wall = SOLID[g.cell(g.col_at(fx), g.row_at(p.y + 10))]
-    gc = g.col_at(p.x + p.w + 40)
+    wall = SOLID[g.cell(g.column_at(fx), g.row_at(p.y + 10))]
+    gc = g.column_at(p.x + p.w + 40)
     pit = !(0..9).any? { |r| SOLID[g.cell(gc, r)] || %w[-].include?(g.cell(gc, r)) } && p.on_ground
     pit ||= p.on_ground && g.row_at(p.y - 4) < 10 && !SOLID[g.cell(gc, g.row_at(p.y - 4))] && g.cell(gc, g.row_at(p.y - 4)) != '-'
     enemy = s.iv(:enemies).any? { |e| e.state == :walk && e.x > p.x && e.x - p.x < 160 && (e.y - p.y).abs < 40 }
