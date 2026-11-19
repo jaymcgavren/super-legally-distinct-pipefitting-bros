@@ -263,8 +263,21 @@ class Game
   end
 
   # ── level loading ─────────────────────────────────────────────────
-  def load_level(index, use_checkpoint) # rubocop:todo Metrics/AbcSize, Metrics/MethodLength
+  def load_level(index, use_checkpoint)
     @level = Level.new(index)
+    clear_world
+    start, boss_at = place_markers
+    spawn_boss(boss_at[0], boss_at[1], 1 + index * 31) if boss_at
+    start = player_start(index, start, use_checkpoint)
+    @player = Player.new(start[0] * TILE + 12, @level.tile_bottom(start[1]))
+    @player.powered = @run.powered if use_checkpoint
+    @player.powered = true if @run.rush?
+    @run.start_shift(@level.data[:time] || SHIFT_LENGTH)
+    @camera.jump_to(@player.x - 480)
+  end
+
+  # everything that lives in a level, emptied for a fresh one
+  def clear_world
     @enemies = []
     @lifts = []
     @vents = []
@@ -281,6 +294,11 @@ class Game
     @shots = []
     @camera = Camera.new(@level)
     @banner = 0
+  end
+
+  # Spawns what the level's marker letters stand for. Returns the player
+  # start and Big Rusty's spot (nil if none), as [column, row] pairs.
+  def place_markers
     boss_at = nil
     start = [2, 7]
     @level.each_marker do |tile, c, r|
@@ -302,7 +320,11 @@ class Game
         boss_at = [c, r]
       end
     end
-    spawn_boss(boss_at[0], boss_at[1], 1 + index * 31) if boss_at
+    [start, boss_at]
+  end
+
+  # the level start, or the last lit cone, or the arena door in a boss rush
+  def player_start(index, start, use_checkpoint)
     if use_checkpoint && @run.checkpoint && @run.checkpoint[0] == index
       cone = @cones[@run.checkpoint[1]]
       start = [cone.c, cone.r]
@@ -312,11 +334,7 @@ class Game
       start = [@arena_column + 1, 7]
       @enemies.reject! { |enemy| enemy.x < (@arena_column + 1) * TILE }
     end
-    @player = Player.new(start[0] * TILE + 12, @level.tile_bottom(start[1]))
-    @player.powered = @run.powered if use_checkpoint
-    @player.powered = true if @run.rush?
-    @run.start_shift(@level.data[:time] || SHIFT_LENGTH)
-    @camera.jump_to(@player.x - 480)
+    start
   end
 
   # ── gameplay ──────────────────────────────────────────────────────
@@ -350,8 +368,24 @@ class Game
     die if @run.time <= 0
   end
 
-  def update_player # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def update_player
     player = @player
+    move_player(player)
+    throw_wrench(player) if @controls.throw_pressed? && player.powered && @wrench.nil?
+    collect_nuts(player)
+    vent_burns(player)
+    pass_cones(player)
+    if goal_touched?(player)
+      player.x = @goal.x + 8 - player.w if player.x < @goal.x
+      player.vx = 0.0
+      start_clear
+      return
+    end
+    die if player.y < -140
+  end
+
+  # input, gravity and collision for one step
+  def move_player(player)
     player.ride_lift
     dir = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
     skidding = player.apply_input(dir, @controls.run_held?)
@@ -364,19 +398,24 @@ class Game
     player.land if player.on_ground
     bump_nearest(heads, player) unless heads.empty?
     player.animate
+  end
 
-    # throw the wrench
-    if @controls.throw_pressed? && player.powered && @wrench.nil?
-      @wrench = Wrench.new(player)
-      player.throw_wrench
-      @sound.play(:throw)
-    end
+  def throw_wrench(player)
+    @wrench = Wrench.new(player)
+    player.throw_wrench
+    @sound.play(:throw)
+  end
 
-    collect_nuts(player)
+  # a jetting steam vent hurts
+  def vent_burns(player)
     @vents.each do |vent|
       next unless vent.jetting?(@frame)
       hurt if rect_hit?(player, vent.x + 14, vent.top, 36, vent.height - 8)
     end
+  end
+
+  # walking past a cone lights it and makes it the checkpoint
+  def pass_cones(player)
     @cones.each_with_index do |cone, i|
       next if cone.lit? || player.x < cone.x
       cone.light
@@ -384,13 +423,6 @@ class Game
       @sound.play(:checkpoint)
       popup(cone.x, cone.y + TILE + 20, 'CHECKPOINT')
     end
-    if goal_touched?(player)
-      player.x = @goal.x + 8 - player.w if player.x < @goal.x
-      player.vx = 0.0
-      start_clear
-      return
-    end
-    die if player.y < -140
   end
 
   # A jump that hits more than one tile bumps the one nearest the
@@ -677,14 +709,26 @@ class Game
 
   # ── drawing ───────────────────────────────────────────────────────
 
-  def draw_background # rubocop:todo Metrics/AbcSize, Metrics/MethodLength
+  # Sky, stars and moon or sun, clouds and trees, back to front, in
+  # parallax with the camera.
+  def draw_background
     theme = @level.theme
     outputs = @screen.outputs
-    sky = theme[:sky]
-    outputs.background_color = sky[0]
     # outdoors the sky runs to the bottom of the screen, so pits show sky;
     # indoors the bottom 128 px stay a black alley (see the end)
     floor = theme[:indoor] ? 128 : 0
+    draw_sky(outputs, theme[:sky], floor)
+    draw_stars_and_moon(outputs) if theme[:stars]
+    SUN_ROWS.each { |r| outputs.solids << r } if theme[:sun]
+    draw_clouds(outputs, theme[:cloud])
+    draw_trees(outputs, theme[:bush], theme[:bush_dk], floor)
+    # indoors, the dark below the floor
+    outputs.solids << [0, 0, VIEW_WIDTH, 128, 0, 0, 0] if theme[:indoor]
+  end
+
+  # one colour, or bands of colour (a sunset) from the top down
+  def draw_sky(outputs, sky, floor)
+    outputs.background_color = sky[0]
     if sky.size > 1
       band = 72
       sky.each_with_index do |color, i|
@@ -695,43 +739,53 @@ class Game
     else
       outputs.solids << [0, floor, VIEW_WIDTH, PLAY_HEIGHT - floor, sky[0][0], sky[0][1], sky[0][2]]
     end
-    if theme[:stars]
-      40.times do |i|
-        star_x = ((i * 211 + 57) - @camera.x * 0.05) % VIEW_WIDTH
-        star_y = 300 + (i * 97) % 330
-        brightness = (@frame / 20 + i) % 7 == 0 ? 120 : 230
-        outputs.solids << [star_x.to_i, star_y, 8, 4, brightness, brightness, 255]
-      end
-      [[6, 0], [10, 1], [12, 2], [12, 3], [12, 4], [10, 5], [6, 6]].each do |w, dy|
-        outputs.solids << [1040 - w * 4, 560 - dy * 8, w * 8, 8, 236, 232, 196]
-      end
+  end
+
+  # twinkling stars, drifting slowly, and a blocky moon
+  def draw_stars_and_moon(outputs)
+    40.times do |i|
+      star_x = ((i * 211 + 57) - @camera.x * 0.05) % VIEW_WIDTH
+      star_y = 300 + (i * 97) % 330
+      brightness = (@frame / 20 + i) % 7 == 0 ? 120 : 230
+      outputs.solids << [star_x.to_i, star_y, 8, 4, brightness, brightness, 255]
     end
-    SUN_ROWS.each { |r| outputs.solids << r } if theme[:sun]
-    cloud = theme[:cloud]
+    [[6, 0], [10, 1], [12, 2], [12, 3], [12, 4], [10, 5], [6, 6]].each do |w, dy|
+      outputs.solids << [1040 - w * 4, 560 - dy * 8, w * 8, 8, 236, 232, 196]
+    end
+  end
+
+  def draw_clouds(outputs, cloud)
     [[100, 560], [620, 600], [1050, 520], [1500, 580]].each do |cx, cy|
       x = (((cx - @camera.x * 0.25) % 1800) - 260).to_i
       outputs.solids << [x + 32, cy, 64, 16, cloud[0], cloud[1], cloud[2]]
       outputs.solids << [x, cy - 16, 160, 16, cloud[0], cloud[1], cloud[2]]
       outputs.solids << [x - 16, cy - 32, 208, 16, cloud[0], cloud[1], cloud[2]]
     end
-    bush = theme[:bush]
-    bush_dark = theme[:bush_dk]
-    # trees of varying heights, trunks rising from the bottom of the screen
-    # (indoors, from the floor) into blocky canopies; indoors they show
-    # through the windows (y 192..384)
+  end
+
+  # trees of varying heights, trunks rising from the bottom of the screen
+  # (indoors, from the floor) into blocky canopies; indoors they show
+  # through the windows (y 192..384)
+  def draw_trees(outputs, bush, bush_dark, floor)
+    solids = outputs.solids
+    r = bush[0]
+    g = bush[1]
+    b = bush[2]
+    dark_r = bush_dark[0]
+    dark_g = bush_dark[1]
+    dark_b = bush_dark[2]
     TREES.each do |tree_x, w, cy|
       x = (((tree_x - @camera.x * 0.5) % 1600) - 160).to_i
       trunk_width = w >= 120 ? 24 : 16
-      outputs.solids << [x + w / 2 - trunk_width / 2, floor, trunk_width, cy + 8 - floor, 104, 68, 36]
-      outputs.solids << [x + w / 2 - trunk_width / 2, floor, 8, cy + 8 - floor, 72, 44, 20]
-      outputs.solids << [x, cy, w, 16, bush_dark[0], bush_dark[1], bush_dark[2]]
-      outputs.solids << [x - 8, cy + 16, w + 16, 40, bush[0], bush[1], bush[2]]
-      outputs.solids << [x, cy + 56, w, 24, bush[0], bush[1], bush[2]]
-      outputs.solids << [x + 16, cy + 80, w - 32, 16, bush[0], bush[1], bush[2]]
-      outputs.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, bush[0], bush[1], bush[2]]
+      trunk_x = x + w / 2 - trunk_width / 2
+      solids << [trunk_x, floor, trunk_width, cy + 8 - floor, 104, 68, 36]
+      solids << [trunk_x, floor, 8, cy + 8 - floor, 72, 44, 20]
+      solids << [x, cy, w, 16, dark_r, dark_g, dark_b]
+      solids << [x - 8, cy + 16, w + 16, 40, r, g, b]
+      solids << [x, cy + 56, w, 24, r, g, b]
+      solids << [x + 16, cy + 80, w - 32, 16, r, g, b]
+      solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, r, g, b]
     end
-    # indoors, the dark below the floor
-    outputs.solids << [0, 0, VIEW_WIDTH, 128, 0, 0, 0] if theme[:indoor]
   end
 
   # The sunset sun, vaporwave style: a whole disc in 8 px rows, yellow at the
@@ -801,14 +855,14 @@ class Game
     end
   end
 
-  def draw_tiles # rubocop:todo Metrics/AbcSize, Metrics/CyclomaticComplexity
+  def draw_tiles
     camera_x = @camera.x.to_i
     tiles = @level.theme[:tiles]
     c0 = [camera_x / TILE, 0].max
     c1 = [(camera_x + VIEW_WIDTH) / TILE, @level.columns - 1].min
     nut_f = (@frame / 8) % 4
     draw_back_wall(camera_x, tiles, c0, c1) if @level.theme[:indoor]
-    ROWS.times do |r| # rubocop:todo Metrics/BlockLength
+    ROWS.times do |r|
       row = @level.row(r)
       y = @level.tile_bottom(r)
       c0.upto(c1) do |c|
@@ -823,21 +877,25 @@ class Game
         when '=' then @screen.tile(tiles, x, bumped_y, FRAMES[:girder])
         when 'C', 'W', 'M' then @screen.tile(tiles, x, bumped_y, FRAMES[:crate])
         when 'U' then @screen.tile(tiles, x, bumped_y, FRAMES[:crate_used])
-        when '-'
-          # extend a stand up behind the pipe so it meets the pipe's underside
-          @screen.tile(tiles, x, y, FRAMES[:pipe_stand]) if @level.cell(c, r + 1) == '|'
-          if @level.cell(c + 1, r) != '-'
-            @screen.sprite(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange], flip: true)
-          elsif @level.cell(c - 1, r) != '-' || c % 4 == 0
-            @screen.tile(tiles, x, bumped_y, FRAMES[:pipe_flange])
-          else
-            @screen.tile(tiles, x, bumped_y, FRAMES[:pipe])
-          end
+        when '-' then draw_pipe(tiles, c, r, x, y, bumped_y)
         when '|' then @screen.tile(tiles, x, bumped_y, FRAMES[:pipe_stand])
         when 'S' then @screen.tile(tiles, x, bumped_y, FRAMES[:vent])
         when 'o' then @screen.tile('sprites/items.png', x, bumped_y, frame(:nut, nut_f))
         end
       end
+    end
+  end
+
+  # A one-way pipe tile: flanged at each end and every 4 tiles, with a stand
+  # extended up behind it to meet its underside.
+  def draw_pipe(tiles, c, r, x, y, bumped_y)
+    @screen.tile(tiles, x, y, FRAMES[:pipe_stand]) if @level.cell(c, r + 1) == '|'
+    if @level.cell(c + 1, r) != '-'
+      @screen.sprite(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange], flip: true)
+    elsif @level.cell(c - 1, r) != '-' || c % 4 == 0
+      @screen.tile(tiles, x, bumped_y, FRAMES[:pipe_flange])
+    else
+      @screen.tile(tiles, x, bumped_y, FRAMES[:pipe])
     end
   end
 

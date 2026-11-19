@@ -807,3 +807,19 @@ paths, anything the next session needs.)
   - ending trace (4000 steps, with draw hashes) and tests the same;
   - shots ALL SAME against HEAD;
   - ending bench: HEAD 0.408-0.466 vs new 0.411-0.441 ms/frame (5 runs).
+- 2026-11-19: split four Game methods in main.rb.
+  - load_level now reads as a list of steps: clear_world, place_markers
+    (returns the start and boss spot), spawn_boss, player_start
+    (checkpoint and boss rush), then the player, the shift and the camera.
+  - update_player: move_player (input, gravity, collision), throw_wrench,
+    collect_nuts, vent_burns, pass_cones, then the goal and the fall.
+  - draw_background: draw_sky, draw_stars_and_moon, the sun, draw_clouds,
+    draw_trees. draw_trees reads the bush colours once, not per tree.
+  - draw_tiles: only the pipe case moved out (draw_pipe), as tiles are
+    the hot path and a call per tile would cost.
+  Checked:
+  - boss trace (70,180) and ending trace the same, tests the same;
+  - reach and bot the same; shots ALL SAME against HEAD;
+  - benches: level 5 HEAD 0.751-0.793 vs new 0.752-0.779, level 2
+    0.337-0.340 vs 0.335-0.339, arena 7 0.385-0.389 vs 0.384-0.390.
+  Left: boss_vs_player and Physics#move_y.
