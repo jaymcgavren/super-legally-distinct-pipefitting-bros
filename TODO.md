@@ -92,7 +92,7 @@ refactor step will break some of them. Update them in the same commit.
 
 ### 0. Baseline
 - [x] Confirm `git branch --show-current` is `main` and the tree is clean.
-- [ ] Run the tests (ALL PASS) and note the run time.
+- [x] Run the tests (ALL PASS) and note the run time.
 - [ ] Performance baseline: a temp build that starts in a busy level (e.g. 7-D
       boss fight or 8-B) run headlessly for a fixed number of frames, timed
       (e.g. `time npx wasmcart x.wasc --frames 3000 --shot out.png`); record
@@ -211,3 +211,9 @@ paths, anything the next session needs.)
 
 - 2026-11-19: step 0 started. On `main`, tree clean, in sync with
   `origin/main` at d85377e.
+- 2026-11-19: tests baseline (Ruby 3.4.9, `ruby tools/sim.rb`): ALL PASS,
+  185 PASS lines, about 4.4 s wall time. Info lines printed, which should
+  stay identical through the refactor:
+  - `full jump 268 px (4.19 tiles), tap 136 px`
+  - `held jump: standing 268, walking 268, 80% run 268, full run 342 px`
+  - `firework gaps [8, 56, 37, 27, 14, 25, 9, 29]`
