@@ -55,16 +55,16 @@ class Game
     player.vy -= GRAVITY_FALL
     player.vx = 0.0
     move_y(player, true, false)
-    player.facing = @goal[:c] * TILE > player.x ? 1 : -1
+    player.facing = @goal.x > player.x ? 1 : -1
     update_effects
     update_wrench
-    vx = @goal[:c] * TILE + 32                  # valve centre, world x
-    vy = @level.tile_bottom(@goal[:r]) + 2 * TILE      # valve bottom, world y
+    vx = @goal.x + 32                  # valve centre, world x
+    vy = @goal.y + 2 * TILE      # valve bottom, world y
 
     if elapsed < END_BURST
       # spin up: frame phase speeds toward one frame per tick
       @spin += [0.2 + elapsed / 120.0, 1.0].min
-      @goal[:turn] = (@spin * 5).to_i
+      @goal.turn = (@spin * 5).to_i
       every = [36 - elapsed / 5, 4].max
       @sound.play(:steam) if elapsed % every == 0
       n = elapsed / 40 + 1
@@ -74,7 +74,7 @@ class Game
       end
       @end_shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
     elsif elapsed == END_BURST
-      @goal[:gone] = true
+      @goal.gone = true
       @flying_valve = { x: vx - 32, y: vy.to_f, v: 14.0 }
       @end_shake = 16.0
       @sound.play(:blast)

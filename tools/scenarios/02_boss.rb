@@ -77,8 +77,8 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
   s.step([], 1) until s.iv(:goal) || s.mode != :play
   g = s.iv(:goal)
   if name == :left
-    check 'boss valve sits between the girders', g && g[:c] == gc &&
-      (5..7).all? { |r| s.level.cell(g[:c], r) == '.' } && (6..13).all? { |k| s.level.cell(ac + k, 5) == '.' }
+    check 'boss valve sits between the girders', g && g.c == gc &&
+      (5..7).all? { |r| s.level.cell(g.c, r) == '.' } && (6..13).all? { |k| s.level.cell(ac + k, 5) == '.' }
   end
   if %i[right girder far_right].include?(name)
     s.step([], 30)

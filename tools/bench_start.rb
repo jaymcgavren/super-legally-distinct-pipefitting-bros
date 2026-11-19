@@ -47,7 +47,7 @@ class Game
       player.y = (ROWS - 1 - 7) * BENCH_TILE
     when :ending
       @boss = nil
-      @goal = { c: arena + 10, r: 7, turn: 0 }
+      @goal = Object.const_defined?(:Goal) ? Goal.new(@level, arena + 10, 7) : { c: arena + 10, r: 7, turn: 0 }
       player.x = (arena + 9) * BENCH_TILE + 12
       player.y = (ROWS - 1 - 7) * BENCH_TILE
       if instance_variable_defined?(:@camera)

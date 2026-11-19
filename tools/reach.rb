@@ -14,7 +14,8 @@ def analyze(index)
   g.instance_variable_set(:@lifts, [])
   g.instance_variable_set(:@vents, [])
   g.instance_variable_set(:@cones, [])
-  goal = g.instance_variable_get(:@goal) || { c: level.columns - 12 }  # boss: reach the arena
+  goal = g.instance_variable_get(:@goal)
+  goal_c = goal ? goal.c : level.columns - 12  # boss: reach the arena
   g.instance_variable_set(:@goal, nil)
   cols = level.columns
   standable = ->(c, r) { !SOLID[level.cell(c, r)] && (SOLID[level.cell(c, r + 1)] || level.cell(c, r + 1) == '-') && r < 9 }
@@ -53,7 +54,7 @@ def analyze(index)
       end
     end
   end
-  reached_goal = seen.keys.any? { |c, r| c >= goal[:c] - 1 }
+  reached_goal = seen.keys.any? { |c, r| c >= goal_c - 1 }
   # unreached standable surfaces (ignoring ones fully enclosed)
   missing = []
   cols.times { |c| 9.times { |r| missing << [c, r] if standable.(c, r) && !seen[[c, r]] } }

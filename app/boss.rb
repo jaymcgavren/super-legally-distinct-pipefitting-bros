@@ -76,9 +76,9 @@ class Game
       boss.vy -= 0.6
       boss.y += boss.vy
       if boss.t == 120
-        @goal = { c: @arena_column + 10, r: 7, turn: 0 }   # between the arena girders
+        @goal = Goal.new(@level, @arena_column + 10, 7)   # between the arena girders
         @sound.play(:appear)
-        popup(@goal[:c] * TILE, @level.tile_top(7) + 60, 'MAIN VALVE')
+        popup(@goal.x, @level.tile_top(7) + 60, 'MAIN VALVE')
       end
       update_shots
       return

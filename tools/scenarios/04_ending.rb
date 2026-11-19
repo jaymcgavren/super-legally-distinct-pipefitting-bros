@@ -6,7 +6,7 @@ def to_ending(rush = false)
   s.step([], 1) while s.iv(:warning) > 0
   s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
   g = s.iv(:goal)
-  s.put(g[:c] - 3)
+  s.put(g.c - 3)
   s.step([:right], 1) until s.mode != :play
   s
 end
@@ -20,7 +20,7 @@ check 'time bonus is paid at once', s.run.time == 0 && s.iv(:high_score).value =
 sp = []
 END_BURST.times { |i| t0 = s.iv(:spin); s.step([]); sp << s.iv(:spin) - t0 }
 check 'valve spins faster and faster', sp[10] < sp[60] && sp[60] < sp[-2] && s.iv(:steam).size > 0
-check 'steam blast launches the valve', s.iv(:goal)[:gone] && s.iv(:flying_valve) && s.sounds.include?('sounds/blast.wav')
+check 'steam blast launches the valve', s.iv(:goal).gone? && s.iv(:flying_valve) && s.sounds.include?('sounds/blast.wav')
 check 'blast shakes the screen', s.iv(:end_shake) > 10
 s.step([], 1) until s.iv(:locked)
 s.step([], 2)

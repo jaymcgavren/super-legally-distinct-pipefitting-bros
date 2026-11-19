@@ -173,7 +173,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       option). Update `tools/reach.rb`.
 - [x] Items: `PopNut`, `WrenchItem`, `Lunch` (from `update_items` /
       `draw_world`'s `case it.kind`).
-- [ ] Static props as small classes or Structs: `Vent`, `Cone`, `Goal`
+- [x] Static props as small classes or Structs: `Vent`, `Cone`, `Goal`
       (valve: `turn`, `gone`).
 - [ ] Enemies: `Enemy` base with walking/turning/gravity, `Blob`
       (flattens when stomped) and `Crab` (spiky cycle, `spiky?`, `warning?`,
@@ -499,3 +499,14 @@ paths, anything the next session needs.)
   steps on 4 levels against the previous commit (x, y, vx, state every
   step, wall bounces included): identical. Tests ALL PASS (185), shots
   ALL SAME, reach/bot unchanged; bench level 1 1.00-1.01 vs 1.00-1.01.
+- 2026-11-19: step 3, static props (app/props.rb): `Vent`, `Cone`, `Goal`
+  replace the `{ c:, r:, ... }` hashes. Each keeps `c`/`r` and works out
+  its world `x`/`y` once. Vent computes its jet height in `initialize`
+  (was a separate pass in load_level) and has `jetting?(frame)` /
+  `jet_starts?(frame)`, with the cycle numbers named (CYCLE, SPUTTER, JET).
+  Cone has `lit?`/`light`; Goal has `turn`, `gone?`. Each draws itself.
+  What touching them does (hurt, checkpoint, clear) stays in Game.
+  Tools: scenarios use `.c`/`.lit?`/`.gone?`; reach.rb reads `goal.c`;
+  bench_start builds a Goal when the class exists (old refs get the hash).
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
+  0.86-0.87 vs 0.84-0.87, 2-B arena 0.83 vs 0.82, ending start runs.

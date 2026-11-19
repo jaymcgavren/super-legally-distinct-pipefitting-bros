@@ -118,12 +118,12 @@ check 'back to intro', s.mode == :intro
 # --- checkpoint respawn ---
 s = Sim.new.start(0)
 cone = s.iv(:cones)[0]
-s.put(cone[:c] + 1)
+s.put(cone.c + 1)
 s.step([], 2)
-check 'checkpoint lit', cone[:lit]
+check 'checkpoint lit', cone.lit?
 s.g.send(:die); s.step([], 200)
 s.step([], 1) until s.mode == :play
-check 'respawn at checkpoint', (s.p.x - cone[:c] * TILE).abs < 64
+check 'respawn at checkpoint', (s.p.x - cone.c * TILE).abs < 64
 
 # --- timer runs out ---
 s = Sim.new.start(0)
@@ -134,10 +134,10 @@ check 'timer death', s.mode == :dying
 # --- vent steam hurts ---
 s = Sim.new.start(0)
 v = s.iv(:vents)[0]
-s.put(v[:c])
-s.p.x = v[:c] * TILE + 12
+s.put(v.c)
+s.p.x = v.c * TILE + 12
 hurt = false
-200.times { s.step([]); s.p.x = v[:c] * TILE + 12; (hurt = true; break) if s.mode == :dying }
+200.times { s.step([]); s.p.x = v.c * TILE + 12; (hurt = true; break) if s.mode == :dying }
 check 'vent steam hurts', hurt
 
 # --- lift carries the player ---
@@ -162,7 +162,7 @@ check 'no valve until the boss is beaten', s.iv(:goal).nil?
 # --- goal -> clear -> next level ---
 s = Sim.new.start(0).beat_boss
 g = s.iv(:goal)
-s.put(g[:c] - 3)
+s.put(g.c - 3)
 s.step([:right], 120)
 check 'goal triggers clear', s.mode == :clear
 s.step([], 600)
@@ -179,7 +179,7 @@ check 'back to title', s.mode == :title
 # --- win after last level ---
 s = Sim.new.start(LEVELS.size - 1).beat_boss
 g = s.iv(:goal)
-s.put(g[:c] - 3); s.step([:right], 120)
+s.put(g.c - 3); s.step([:right], 120)
 check 'last level plays the ending', s.mode == :ending
 
 # --- 50 nuts = 1UP ---
@@ -191,12 +191,12 @@ check '50 nuts gives 1UP', s.run.lives == l0 + 1 && s.run.nuts == 0
 # --- a thrown wrench that hits the main valve clears the level ---
 s = Sim.new.start(0).beat_boss
 g = s.iv(:goal)
-s.put(g[:c] - 5); s.p.powered = true; s.p.facing = 1
+s.put(g.c - 5); s.p.powered = true; s.p.facing = 1
 s.iv(:enemies).clear
 s.step([:b], 1)
 cleared = false
 40.times { s.step([]); (cleared = true; break) if s.mode == :clear }
-check 'wrench hitting the valve clears the level', cleared && s.p.x < g[:c] * TILE - 3 * TILE
+check 'wrench hitting the valve clears the level', cleared && s.p.x < g.c * TILE - 3 * TILE
 w = s.iv(:wrench)
 check 'wrench bounces off the valve', w && w.vx < 0
 back = false
@@ -266,7 +266,7 @@ check "1-A's wrench crate (row #{wc[1]}) can be landed on with a running jump", 
 
 # --- the coffee break freezes the world clock ---
 s = Sim.new.start(1)
-s.put(s.iv(:vents)[0][:c] - 4); s.step([], 2)
+s.put(s.iv(:vents)[0].c - 4); s.step([], 2)
 s.step([:start]); s.step([])
 f0 = s.iv(:frame); n0 = s.sounds.size
 s.step([], 400)

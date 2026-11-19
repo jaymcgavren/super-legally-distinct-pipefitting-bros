@@ -172,6 +172,7 @@ end
 # entities: their class bodies use the constants above
 require 'app/lift.rb'
 require 'app/items.rb'
+require 'app/props.rb'
 
 class Game
   include Physics
@@ -344,25 +345,20 @@ class Game
         @enemies << enemy
       when 'L', 'H'
         @lifts << Lift.new(@level, c, r, tile == 'H' ? :x : :y)
-      when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
+      when 'S' then @vents << Vent.new(@level, c, r)
       when 'K'
-        @cones << { c: c, r: r, lit: false }
+        @cones << Cone.new(@level, c, r)
       when 'G'
-        @goal = { c: c, r: r, turn: 0 }
+        @goal = Goal.new(@level, c, r)
       when 'B'
         boss_at = [c, r]
       end
     end
     spawn_boss(boss_at[0], boss_at[1]) if boss_at
-    @vents.each do |vent|
-      h = 0
-      h += 1 while h < 3 && !SOLID[@level.cell(vent[:c], vent[:r] - h - 1)]
-      vent[:h] = h * TILE
-    end
     if use_checkpoint && @run.checkpoint && @run.checkpoint[0] == index
       cone = @cones[@run.checkpoint[1]]
-      start = [cone[:c], cone[:r]]
-      cone[:lit] = true
+      start = [cone.c, cone.r]
+      cone.light
     end
     if @run.rush? && @boss
       start = [@arena_column + 1, 7]
@@ -555,19 +551,18 @@ class Game
 
     collect_nuts(player)
     @vents.each do |vent|
-      k = (@frame + vent[:phase]) % 180
-      next unless k >= 130 && vent[:h] > 0
-      hurt if rect_hit?(player, vent[:c] * TILE + 14, @level.tile_top(vent[:r]), 36, vent[:h] - 8)
+      next unless vent.jetting?(@frame)
+      hurt if rect_hit?(player, vent.x + 14, vent.top, 36, vent.height - 8)
     end
     @cones.each_with_index do |cone, i|
-      next if cone[:lit] || player.x < cone[:c] * TILE
-      cone[:lit] = true
+      next if cone.lit? || player.x < cone.x
+      cone.light
       @run.checkpoint = [@level_index, i]
       @sound.play(:checkpoint)
-      popup(cone[:c] * TILE, @level.tile_top(cone[:r]) + 20, 'CHECKPOINT')
+      popup(cone.x, cone.y + TILE + 20, 'CHECKPOINT')
     end
     if goal_touched?(player)
-      player.x = @goal[:c] * TILE + 8 - player.w if player.x < @goal[:c] * TILE
+      player.x = @goal.x + 8 - player.w if player.x < @goal.x
       player.vx = 0.0
       start_clear
       return
@@ -580,9 +575,9 @@ class Game
   # counts only if you actually overlap it (it is 3 tiles tall).
   def goal_touched?(player)
     return false unless @goal
-    goal_x = @goal[:c] * TILE
+    goal_x = @goal.x
     return player.x + player.w > goal_x + 8 if player.x < goal_x
-    player.x < goal_x + TILE - 8 && player.y < @level.tile_bottom(@goal[:r]) + 3 * TILE
+    player.x < goal_x + TILE - 8 && player.y < @goal.y + 3 * TILE
   end
 
   def collect_nuts(actor)
@@ -715,7 +710,7 @@ class Game
     player.vx = 0.0
     move_y(player, true, false)
     player.facing = 1
-    @goal[:turn] += 1 if @mode_frames < 100
+    @goal.turn += 1 if @mode_frames < 100
     if @mode_frames > 110 && @run.time > 0
       @run.bank_time(2)
       @sound.play(:tick) if @mode_frames % 4 == 0
@@ -893,14 +888,14 @@ class Game
     # a wrench that hits the main valve turns it: level clear. It bounces
     # off and flies back to the player while the level ends.
     if @goal && playing? &&
-       rect_hit?(wrench, @goal[:c] * TILE, @level.tile_bottom(@goal[:r]), TILE, 3 * TILE)
+       rect_hit?(wrench, @goal.x, @goal.y, TILE, 3 * TILE)
       wrench.vx = wrench.vx > 0 ? -7.0 : 7.0
       wrench.vy = 7.0
       wrench.data[:back] = true
       wrench.data[:bounce] = 14
       wrench.t = 0
       @sound.play(:bump)
-      popup(@goal[:c] * TILE, @level.tile_bottom(@goal[:r]) + 3 * TILE + 80, 'NICE SHOT')
+      popup(@goal.x, @goal.y + 3 * TILE + 80, 'NICE SHOT')
       start_clear
       return
     end
@@ -1139,8 +1134,8 @@ class Game
   def vent_sounds(dx = 0)
     camera_x = @camera.x.to_i + dx
     @vents.each do |vent|
-      next unless (@frame + vent[:phase]) % 180 == 130 && vent[:h] > 0
-      x = vent[:c] * TILE - camera_x
+      next unless vent.jet_starts?(@frame)
+      x = vent.x - camera_x
       @sound.play(:steam) unless x < -TILE || x > VIEW_WIDTH
     end
   end
@@ -1150,37 +1145,9 @@ class Game
     camera_x = @camera.x.to_i
     draw_tiles
     @lifts.each { |lift| lift.draw(@screen, camera_x, @level.theme[:tiles]) }
-    @cones.each do |cone|
-      lit = cone[:lit] && (@frame / 10) % 2 == 0
-      @screen.tile('sprites/items.png', cone[:c] * TILE - camera_x, @level.tile_bottom(cone[:r]), FRAMES[lit ? :cone_lit : :cone_off])
-    end
-    if @goal
-      goal_x = @goal[:c] * TILE - camera_x
-      goal_y = @level.tile_bottom(@goal[:r])
-      @screen.tile(@level.theme[:tiles], goal_x, goal_y, FRAMES[:standpipe])
-      @screen.tile(@level.theme[:tiles], goal_x, goal_y + TILE, FRAMES[:standpipe])
-      unless @goal[:gone]
-        f = (@goal[:turn] / 5) % 3
-        @screen.tile('sprites/items.png', goal_x, goal_y + 2 * TILE, frame(:valve, f))
-        @screen.label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, WHITE, true)
-      end
-    end
-    @vents.each do |vent|
-      k = (@frame + vent[:phase]) % 180
-      next if k < 100 || vent[:h] <= 0
-      x = vent[:c] * TILE - camera_x
-      next if x < -TILE || x > VIEW_WIDTH
-      base = @level.tile_top(vent[:r])
-      if k < 130
-        @screen.rect(x + 24, base + (k % 10) * 2, 16, 8, STEAM, 180) if (k / 5).even?
-      else
-        (vent[:h] / 16).times do |i|
-          wob = ((i + @frame / 3) % 3 - 1) * 8
-          w = 24 + (i * 3) % 16
-          @screen.rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, STEAM, 200 - i * 6)
-        end
-      end
-    end
+    @cones.each { |cone| cone.draw(@screen, camera_x, @frame) }
+    @goal&.draw(@screen, camera_x, @level.theme[:tiles])
+    @vents.each { |vent| vent.draw(@screen, camera_x, @frame) }
     return unless entities
     @items.each { |item| item.draw(@screen, camera_x, @frame) }
     @enemies.each do |enemy|
