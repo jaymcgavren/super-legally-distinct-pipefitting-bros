@@ -18,14 +18,14 @@ END_TEXT         = END_FIRE + 24    # CONGRATULATION!
 END_CREDITS      = END_TEXT + 240   # credits, one line at a time
 END_THANKS       = END_CREDITS + 400 # THANK YOU FOR PLAYING!!!
 END_PROMPT       = END_THANKS + 150 # final score + PRESS START
-CREDITS          = ['CODE: JAY MCGAVREN', 'CONCEPT: CPRO', 'WASMCART: LUIS MONTES']
+CREDITS          = ['CODE: JAY MCGAVREN', 'CONCEPT: CPRO', 'WASMCART: LUIS MONTES'].freeze
 CREDIT_GAP       = 90
 RUSTY_FALL       = END_THANKS + 40  # Big Rusty tumbles past, upside-down
 RUSTY_FALL_SPEED = 12               # px/frame: about 1.25 s to cross the screen
 END_TOP_SPEED    = 36.0             # the valve's top speed, px/frame
 END_LOCK_Y       = 380              # where the camera holds the valve on screen
 FIREWORK_GRAVITY = 0.14             # px/frame^2 pulling firework stars down
-FIREWORK_COLORS  = [[255, 48, 48], [48, 255, 96], [64, 112, 255]]
+FIREWORK_COLORS  = [[255, 48, 48], [48, 255, 96], [64, 112, 255]].freeze
 
 class Game
   def start_ending
@@ -196,7 +196,7 @@ class Game
       y = steam_puff[1].to_i - rise + shake_y
       next if y < -80 || y > 760
       size = steam_puff[5]
-      rect(x - size / 2, y - size / 2, size, size, [236, 236, 236], [steam_puff[4] * 5, 200].min)
+      rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff[4] * 5, 200].min)
     end
     if @flying_valve
       x = @flying_valve[:x].to_i - camera_x + shake_x
@@ -210,8 +210,8 @@ class Game
       k = @twinkle[:t]
       flare = k < 20 ? k * 2 : (40 - k) * 2
       x = @twinkle[:x] - camera_x
-      rect(x - flare, 690, flare * 2 + 8, 8, [255, 255, 220])
-      rect(x, 690 - flare, 8, flare * 2 + 8, [255, 255, 220])
+      rect(x - flare, 690, flare * 2 + 8, 8, TWINKLE)
+      rect(x, 690 - flare, 8, flare * 2 + 8, TWINKLE)
     end
     @fireworks.each { |f| draw_firework(f) }
     if elapsed >= RUSTY_FALL
@@ -223,19 +223,19 @@ class Game
       end
     end
     if elapsed >= END_THANKS
-      label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, [252, 240, 160], true)
+      label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, PALE_YELLOW, true)
     elsif elapsed >= END_CREDITS
       CREDITS.each_with_index do |c, i|
         next if elapsed < END_CREDITS + i * CREDIT_GAP
-        label(640, 500 - i * 110, c, 5, [255, 255, 255], true)
+        label(640, 500 - i * 110, c, 5, WHITE, true)
       end
     elsif elapsed >= END_TEXT
-      label(640, 470, 'CONGRATULATION!', 12, [252, 240, 160], true)
-      label(640, 330, 'JOB COMPLETE', 6, [255, 255, 255], true)
+      label(640, 470, 'CONGRATULATION!', 12, PALE_YELLOW, true)
+      label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
     end
     if elapsed > END_PROMPT
-      label(640, 200, "FINAL SCORE #{pad6(@score)}", 4, [255, 255, 255], true)
-      label(640, 130, 'PRESS START', 3, [255, 255, 255], true) if (@mode_frames / 30) % 2 == 0
+      label(640, 200, "FINAL SCORE #{pad6(@score)}", 4, WHITE, true)
+      label(640, 130, 'PRESS START', 3, WHITE, true) if (@mode_frames / 30) % 2 == 0
     end
   end
 
@@ -261,7 +261,7 @@ class Game
     alpha = 150 - k * 2
     return if alpha <= 0
     if k < 5
-      rect(f[:x] - 80, f[:y] - 80, 160, 160, [255, 255, 255], 200 - k * 30)
+      rect(f[:x] - 80, f[:y] - 80, 160, 160, WHITE, 200 - k * 30)
     end
     droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |radius_factor, offset, size|

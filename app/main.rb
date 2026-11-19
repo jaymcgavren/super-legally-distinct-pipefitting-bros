@@ -28,8 +28,23 @@ FALL_MAX          = -15.0
 SHIFT_LENGTH      = 300
 TICK_LENGTH       = 24                  # frames per SHIFT unit
 
-SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }
-COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000]
+# Colors used in more than one place (palette tables keep their own)
+WHITE          = [255, 255, 255].freeze   # PRESS START, scores, popups
+BLACK          = [0, 0, 0].freeze         # dimming overlays, backgrounds
+PALE_YELLOW    = [252, 240, 160].freeze   # headline labels
+ORANGE         = [244, 120, 24].freeze    # subtitles
+GOLD           = [236, 212, 64].freeze    # BROTHERS, HUD text
+ALERT_RED      = [232, 72, 64].freeze     # GAME OVER, BOSS RUSH, low time
+WARNING_RED    = [232, 40, 40].freeze     # Big Rusty's WARNING card, bolt markers
+WARNING_YELLOW = [252, 220, 40].freeze    # bolt markers, flashing
+STEAM          = [236, 236, 236].freeze   # steam and dust
+LIGHT_GRAY     = [200, 200, 200].freeze   # TOP score, skid dust
+DARK_GRAY      = [60, 60, 60].freeze      # HUD rule, unselected slots
+NEAR_BLACK     = [16, 16, 16].freeze      # HUD panel
+TWINKLE        = [255, 255, 220].freeze   # the valve's twinkle in the ending
+
+SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }.freeze
+COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000].freeze
 
 THEMES = {
   day:   { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
@@ -45,11 +60,12 @@ THEMES[:dusk][:sun] = true
 # inside a building, with the windows showing a sunset or the night sky
 THEMES[:indoor_dusk] = THEMES[:dusk].merge(tiles: 'sprites/tiles_indoor.png', indoor: true)
 THEMES[:indoor_night] = THEMES[:night].merge(tiles: 'sprites/tiles_indoor.png', indoor: true)
+THEMES.freeze
 BROS = [
   { name: 'DEZ',   path: 'sprites/dez.png' },
   { name: 'OZZIE', path: 'sprites/ozzie.png' },
-]
-BUMP_ARC = [0, 8, 13, 16, 14, 10, 6, 2]
+].freeze
+BUMP_ARC = [0, 8, 13, 16, 14, 10, 6, 2].freeze
 
 class Actor
   attr_accessor :kind, :x, :y, :w, :h, :vx, :vy, :on_ground, :state, :t, :facing,
@@ -114,7 +130,7 @@ class Game
   end
 
   # ── input / audio helpers ─────────────────────────────────────────
-  PRESS_KEYS = %i[a b x start up down left right]
+  PRESS_KEYS = %i[a b x start up down left right].freeze
 
   # Called every host frame. A press is held in @pressed until an update
   # reads it, so a press on a frame with no update isn't lost and a frame
@@ -148,10 +164,10 @@ class Game
 
   # Up Up Down Down Left Right Left Right on the title screen locks in
   # Boss Rush; the next game started is a Boss Rush run.
-  RUSH_CODE = %i[up up down down left right left right]
+  RUSH_CODE = %i[up up down down left right left right].freeze
 
   # nut chime climbing a major scale, one step per correct code press
-  CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12]
+  CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12].freeze
   def code_note(i)
     @args.audio[:code] = { input: 'sounds/nut.wav', gain: 1.0, pitch: 2.0**(CODE_STEPS[i] / 12.0) }
   end
@@ -507,22 +523,22 @@ class Game
 
   def draw_title
     draw_world(false)
-    rect(0, 0, VIEW_WIDTH, 720, [0, 0, 0], 120)
-    shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, [252, 240, 160])
-    shadow_label(640, 580, 'PIPEFITTING', 12, [244, 120, 24])
-    shadow_label(640, 470, 'BROTHERS', 12, [236, 212, 64])
+    rect(0, 0, VIEW_WIDTH, 720, BLACK, 120)
+    shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, PALE_YELLOW)
+    shadow_label(640, 580, 'PIPEFITTING', 12, ORANGE)
+    shadow_label(640, 470, 'BROTHERS', 12, GOLD)
     2.times do |i|
       x = 480 + i * 320
       selected = i == @bro
-      rect(x - 56, 196, 112, 120, selected ? [252, 240, 160] : [60, 60, 60])
+      rect(x - 56, 196, 112, 120, selected ? PALE_YELLOW : DARK_GRAY)
       rect(x - 48, 204, 96, 104, [20, 20, 40])
       f = selected ? 1 + (@mode_frames / 8) % 3 : 0
       spr(BROS[i][:path], x - 32, 216, 64, 80, f * 8, 0, 8, 20, i == 1)
-      shadow_label(x, 180, BROS[i][:name], 4, selected ? [252, 240, 160] : [140, 140, 140])
+      shadow_label(x, 180, BROS[i][:name], 4, selected ? PALE_YELLOW : [140, 140, 140])
     end
-    shadow_label(640, 120, 'PRESS START', 4, [255, 255, 255]) if (@mode_frames / 30) % 2 == 0
-    shadow_label(640, 366, 'BOSS RUSH', 4, [232, 72, 64]) if @rush_armed
-    shadow_label(640, 70, "TOP #{pad6(@high_score)}", 3, [200, 200, 200])
+    shadow_label(640, 120, 'PRESS START', 4, WHITE) if (@mode_frames / 30) % 2 == 0
+    shadow_label(640, 366, 'BOSS RUSH', 4, ALERT_RED) if @rush_armed
+    shadow_label(640, 70, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
     shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
   end
 
@@ -535,13 +551,13 @@ class Game
   end
 
   def draw_intro
-    @args.outputs.background_color = [0, 0, 0]
+    @args.outputs.background_color = BLACK
     draw_hud
-    label(640, 440, @level_data[:name], 6, [252, 240, 160])
-    label(640, 370, @level_data[:title], 4, [244, 120, 24])
-    label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, [232, 72, 64]) if @rush
+    label(640, 440, @level_data[:name], 6, PALE_YELLOW)
+    label(640, 370, @level_data[:title], 4, ORANGE)
+    label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
     spr(BROS[@bro][:path], 560, 210, 64, 80, 0, 0, 8, 20)
-    label(680, 270, "x #{@lives}", 5, [255, 255, 255])
+    label(680, 270, "x #{@lives}", 5, WHITE)
   end
 
   # ── gameplay ──────────────────────────────────────────────────────
@@ -588,9 +604,9 @@ class Game
 
   def draw_paused
     draw_world(true)
-    rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, [0, 0, 0], 140)
-    label(640, 380, 'COFFEE BREAK', 7, [252, 240, 160])
-    label(640, 300, 'PRESS START', 3, [255, 255, 255])
+    rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, BLACK, 140)
+    label(640, 380, 'COFFEE BREAK', 7, PALE_YELLOW)
+    label(640, 300, 'PRESS START', 3, WHITE)
   end
 
   def update_timer
@@ -914,8 +930,8 @@ class Game
 
   def draw_clear
     draw_world(true)
-    label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
-    label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_frames > 110
+    label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, PALE_YELLOW, true)
+    label(640, 420, 'TIME BONUS', 3, WHITE, true) if @mode_frames > 110
   end
 
   def step_end
@@ -923,18 +939,18 @@ class Game
   end
 
   def draw_end(kind)
-    @args.outputs.background_color = [0, 0, 0]
+    @args.outputs.background_color = BLACK
     draw_hud
     if kind == :gameover
-      label(640, 440, 'GAME OVER', 8, [232, 72, 64])
-      label(640, 350, 'YOU ARE FIRED', 4, [255, 255, 255])
+      label(640, 440, 'GAME OVER', 8, ALERT_RED)
+      label(640, 350, 'YOU ARE FIRED', 4, WHITE)
     else
-      label(640, 500, @rush ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, [252, 240, 160])
-      label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, [244, 120, 24])
-      label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, [255, 255, 255])
+      label(640, 500, @rush ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, PALE_YELLOW)
+      label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, ORANGE)
+      label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, WHITE)
     end
-    label(640, 260, "TOP #{pad6(@high_score)}", 3, [200, 200, 200])
-    label(640, 160, 'PRESS START', 3, [255, 255, 255]) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
+    label(640, 260, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
+    label(640, 160, 'PRESS START', 3, WHITE) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
   end
 
   def save_hiscore
@@ -1128,18 +1144,18 @@ class Game
   def puff(x, y)
     6.times do |i|
       angle = i * 1.047
-      @particles << [x, y, Math.cos(angle) * 3, Math.sin(angle) * 3 + 1, 16, [236, 236, 236]]
+      @particles << [x, y, Math.cos(angle) * 3, Math.sin(angle) * 3 + 1, 16, STEAM]
     end
   end
 
   def dust(x, y)
-    @particles << [x, y + 4, -@player.facing * 1.5, 1.0, 12, [200, 200, 200]]
+    @particles << [x, y + 4, -@player.facing * 1.5, 1.0, 12, LIGHT_GRAY]
   end
 
   def sparkle(x, y)
     4.times do |i|
       angle = i * 1.571 + 0.785
-      @particles << [x, y, Math.cos(angle) * 4, Math.sin(angle) * 4, 10, [252, 240, 160]]
+      @particles << [x, y, Math.cos(angle) * 4, Math.sin(angle) * 4, 10, PALE_YELLOW]
     end
   end
 
@@ -1254,8 +1270,8 @@ class Game
   # The sunset sun, vaporwave style: a whole disc in 8 px rows, yellow at the
   # top through orange to magenta, with slits across the lower half that get
   # closer together toward the bottom. Built once as solids.
-  SUN_GAPS = [3, 6, 9, 11, 13, 15, 17, 19]   # 8 px rows below the centre left out
-  SUN_RAMP = [[255, 236, 112], [255, 176, 72], [248, 88, 136], [216, 32, 168]]
+  SUN_GAPS = [3, 6, 9, 11, 13, 15, 17, 19].freeze   # 8 px rows below the centre left out
+  SUN_RAMP = [[255, 236, 112], [255, 176, 72], [248, 88, 136], [216, 32, 168]].freeze
   SUN_ROWS = begin
     cx = 900
     cy = 340
@@ -1277,13 +1293,13 @@ class Game
       rows << [cx - hw, y, hw * 2, 8, col[0], col[1], col[2]]
     end
     rows
-  end
+  end.freeze
 
   # Indoors: a brick back wall over the sky, with occasional windows (holes
   # in the wall) that show the parallax sky, clouds and trees outside.
   WINDOW_ROWS = (4..6)
   # [x, canopy width, canopy bottom y] for the background trees
-  TREES = [[16, 96, 232], [240, 144, 296], [512, 80, 208], [784, 128, 272], [1056, 112, 312], [1300, 96, 248]]
+  TREES = [[16, 96, 232], [240, 144, 296], [512, 80, 208], [784, 128, 272], [1056, 112, 312], [1300, 96, 248]].freeze
   def window_at?(c)
     phase = c % 13
     return false unless phase == 6 || phase == 7
@@ -1390,7 +1406,7 @@ class Game
       unless @goal[:gone]
         f = (@goal[:turn] / 5) % 3
         spr('sprites/items.png', goal_x, goal_y + 2 * TILE, TILE, TILE, 64 + f * 8, 0, 8, 16)
-        label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, [255, 255, 255], true)
+        label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, WHITE, true)
       end
     end
     @vents.each do |vent|
@@ -1400,12 +1416,12 @@ class Game
       next if x < -TILE || x > VIEW_WIDTH
       base = tile_top(vent[:r])
       if k < 130
-        rect(x + 24, base + (k % 10) * 2, 16, 8, [236, 236, 236], 180) if (k / 5).even?
+        rect(x + 24, base + (k % 10) * 2, 16, 8, STEAM, 180) if (k / 5).even?
       else
         (vent[:h] / 16).times do |i|
           wob = ((i + @frame / 3) % 3 - 1) * 8
           w = 24 + (i * 3) % 16
-          rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, [236, 236, 236], 200 - i * 6)
+          rect(x + 32 - w / 2 + wob, base + i * 16, w, 16, STEAM, 200 - i * 6)
         end
       end
     end
@@ -1445,7 +1461,7 @@ class Game
       rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
     end
     @popups.each do |popup|
-      label(popup[0].to_i - camera_x + 20, popup[1].to_i, popup[2], 3, [255, 255, 255], true)
+      label(popup[0].to_i - camera_x + 20, popup[1].to_i, popup[2], 3, WHITE, true)
     end
     draw_hud if hud
   end
@@ -1472,16 +1488,16 @@ class Game
   end
 
   def draw_hud
-    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, [16, 16, 16])
-    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, [60, 60, 60])
-    color = [236, 212, 64]
+    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, NEAR_BLACK)
+    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, DARK_GRAY)
+    color = GOLD
     labels = @outputs.labels
     labels << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: color[0], g: color[1], b: color[2] }
     labels << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     labels << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }
     labels << { x: 720, y: 700, text: @level_data[:name], size_px: 4, r: color[0], g: color[1], b: color[2] }
     shift_time = @time || SHIFT_LENGTH
-    time_color = shift_time <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : color
+    time_color = shift_time <= 100 && (@frame / 15) % 2 == 0 ? ALERT_RED : color
     labels << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: time_color[0], g: time_color[1], b: time_color[2] }
   end
 end

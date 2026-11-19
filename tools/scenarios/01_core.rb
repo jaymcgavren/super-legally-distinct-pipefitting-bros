@@ -230,9 +230,14 @@ check "running jump from the 1-B pit lift's highest point peaks below the ceilin
 rows = LEVELS[lv_of['JOBSITE 1-B']][:rows].map(&:dup)
 fc = (20...150).find { |c| (1..7).all? { |r| rows[r][c, 2] == '..' } && rows[8][c, 2] == 'FF' }
 rows[6][fc] = 'L'
-LEVELS << LEVELS[lv_of['JOBSITE 1-B']].merge(rows: rows)
+# LEVELS is frozen, so swap in a copy with the extra level for this start
+levels = LEVELS
+extra = levels[lv_of['JOBSITE 1-B']].merge(rows: rows)
+Object.send(:remove_const, :LEVELS)
+Object.const_set(:LEVELS, (levels + [extra]).freeze)
 s = Sim.new.start(LEVELS.size - 1)
-LEVELS.pop
+Object.send(:remove_const, :LEVELS)
+Object.const_set(:LEVELS, levels)
 check 'indoor lift over the floor keeps its full swing',
       s.iv(:lifts).any? { |lf| (lf.data[:bx] / TILE).to_i == fc && lf.data[:amp] == 2 * TILE }
 out = LEVELS.index { |l| !THEMES[l[:theme]][:indoor] && l[:rows].any? { |r| r =~ /[LH]/ } }

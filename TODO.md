@@ -128,7 +128,7 @@ refactor step will break some of them. Update them in the same commit.
       `it` -> `item`, `t` -> `time`/`frames` where it helps. Rename `T` (tile
       size) to `TILE` everywhere at once.
 - [x] Replace abbreviations. E.g. `gravity`, not `grav`.
-- [ ] Name the colours used more than once (`WHITE = [255, 255, 255]`,
+- [x] Name the colours used more than once (`WHITE = [255, 255, 255]`,
       steam `[236, 236, 236]`, label yellow `[252, 240, 160]`, ...). Freeze
       constant arrays/hashes.
 - [ ] Name sprite-sheet frames: a `FRAMES` hash, e.g.
@@ -337,3 +337,14 @@ paths, anything the next session needs.)
   comparing banners (checked by re-introducing a FrozenError: it stopped).
   Re-run against un-refactored on the current tree: ALL SAME with 11
   distinct real images, which covers all of those commits at once.
+- 2026-11-19: step 1, named colours + frozen constants. 13 colours used more
+  than once are constants at the top of main.rb (WHITE, BLACK, PALE_YELLOW,
+  ORANGE, GOLD, ALERT_RED, WARNING_RED, WARNING_YELLOW, STEAM, LIGHT_GRAY,
+  DARK_GRAY, NEAR_BLACK, TWINKLE), frozen. The THEMES/BROS palette tables
+  keep their literals (they're sprite/theme data). Top-level freeze (not
+  deep) on every array/hash constant: LEVELS, SOLID, COMBO, THEMES (after
+  the indoor_* entries are added), BROS, BUMP_ARC, PRESS_KEYS, RUSH_CODE,
+  CODE_STEPS, SUN_*, TREES, BOSS_MOVES, CREDITS, FIREWORK_COLORS. The 1-B
+  lift scenario used to push a level onto LEVELS; it now swaps the constant
+  for a frozen copy. Tests ALL PASS (185), shots ALL SAME (real images),
+  reach/bot unchanged, 2-B bench 0.68 ms/frame vs 0.70 for un-refactored.
