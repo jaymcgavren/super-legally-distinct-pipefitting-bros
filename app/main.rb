@@ -140,24 +140,6 @@ class Actor
   def gone? = @state == :gone
 end
 
-class Player < Actor
-  attr_accessor :powered, :invuln, :coyote, :buffer, :jumping, :combo, :anim, :skid, :throw_t
-  def initialize(x, y)
-    super(:player, x, y, 40, PLAYER_HEIGHT)
-    @facing = 1
-    @powered = false
-    @invuln = 0
-    @coyote = 0
-    @buffer = 0
-    @jumping = false
-    @combo = 0
-    @anim = 0.0
-    @skid = false
-    @throw_t = 0
-  end
-
-  def invulnerable? = @invuln > 0
-end
 
 def pad6(n)
   digits = n.to_i.to_s
@@ -170,6 +152,7 @@ def pad3(n)
 end
 
 # entities: their class bodies use the constants above
+require 'app/player.rb'
 require 'app/lift.rb'
 require 'app/items.rb'
 require 'app/props.rb'
@@ -480,68 +463,23 @@ class Game
 
   def update_player
     player = @player
-    if player.riding
-      player.x += player.riding.dx
-      player.y += player.riding.dy
-    end
-    player.prev_y = player.y
+    player.ride_lift
     dir = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
-    run = @controls.run_held?
-    max_speed = run ? RUN_MAX : WALK_MAX
-    ground = player.on_ground
-    player.skid = false
-    if dir != 0
-      if player.vx * dir < 0
-        player.vx += dir * (ground ? 0.5 : 0.3)
-        player.skid = ground && player.vx.abs > 1.5
-        dust(player.x + player.w / 2, player.y) if player.skid && @frame % 4 == 0
-      elsif player.vx.abs <= max_speed
-        player.vx += dir * (ground ? (run ? 0.28 : 0.2) : 0.18)
-        player.vx = max_speed * dir if player.vx.abs > max_speed
-      elsif ground
-        player.vx -= dir * 0.12
-      end
-      player.facing = dir
-    else
-      f = ground ? 0.25 : 0.04
-      player.vx = player.vx.abs <= f ? 0.0 : player.vx - f * (player.vx > 0 ? 1 : -1)
-    end
-
-    player.buffer = @controls.jump_pressed? ? 7 : player.buffer - 1
-    player.coyote = ground ? 6 : player.coyote - 1
-    if player.buffer > 0 && player.coyote > 0
-      player.vy = player.vx.abs >= RUN_JUMP_SPEED ? JUMP_VELOCITY_RUN : JUMP_VELOCITY
-      player.buffer = 0
-      player.coyote = 0
-      player.jumping = true
-      player.riding = nil
-      @sound.play(:jump)
-    end
-    gravity = player.vy > 0 ? (player.jumping && @controls.jump_held? ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
-    player.vy -= gravity
-    player.vy = FALL_MAX if player.vy < FALL_MAX
+    skidding = player.apply_input(dir, @controls.run_held?)
+    dust(player.x + player.w / 2, player.y) if skidding && @frame % 4 == 0
+    @sound.play(:jump) if player.jump(@controls.jump_pressed?)
+    player.apply_gravity(@controls.jump_held?)
 
     player.vx = 0.0 if move_x(player)
     heads = move_y(player, true, true)
-    if player.on_ground
-      player.jumping = false
-      player.combo = 0
-    end
-    unless heads.empty?
-      cx = player.x + player.w / 2
-      best = heads[0]
-      heads.each { |h| best = h if ((h[0] * TILE + TILE / 2) - cx).abs < ((best[0] * TILE + TILE / 2) - cx).abs }
-      bump(best[0], best[1])
-    end
-
-    player.anim += player.vx.abs * 0.05 if player.vx.abs > 0.3 && player.on_ground
-    player.invuln -= 1 if player.invuln > 0
-    player.throw_t -= 1 if player.throw_t > 0
+    player.land if player.on_ground
+    bump_nearest(heads, player) unless heads.empty?
+    player.animate
 
     # throw the wrench
     if @controls.throw_pressed? && player.powered && @wrench.nil?
       @wrench = Wrench.new(player)
-      player.throw_t = 12
+      player.throw_wrench
       @sound.play(:throw)
     end
 
@@ -564,6 +502,15 @@ class Game
       return
     end
     die if player.y < -140
+  end
+
+  # A jump that hits more than one tile bumps the one nearest the
+  # player's middle.
+  def bump_nearest(heads, player)
+    cx = player.x + player.w / 2
+    best = heads[0]
+    heads.each { |h| best = h if ((h[0] * TILE + TILE / 2) - cx).abs < ((best[0] * TILE + TILE / 2) - cx).abs }
+    bump(best[0], best[1])
   end
 
   # Walking in from the left stops you at the valve. The boss valve can also

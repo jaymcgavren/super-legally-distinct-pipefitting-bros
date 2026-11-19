@@ -179,7 +179,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       (flattens when stomped) and `Crab` (spiky cycle, `spiky?`, `warning?`,
       double score). `stomp`/`knock` become methods on the enemy.
 - [x] `Wrench` (boomerang) from `update_wrench`.
-- [ ] `Player` gets its own update split out of the 89-line
+- [x] `Player` gets its own update split out of the 89-line
       `update_player`: `apply_input`, `apply_gravity`, `jump`, `land`,
       `ride_lift`, `animate`.
 - [ ] Effects: `Particle` Struct for puff/dust/sparkle/steam; `Popup` for
@@ -539,3 +539,17 @@ paths, anything the next session needs.)
   every 37 steps both ways; wrench x/y/vx/vy/t, enemies, score, nuts):
   identical. Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged;
   bench level 1 0.85 vs 0.85-0.93, arena 0.84 vs 0.85-0.86.
+- 2026-11-19: step 3, `Player` moved to app/player.rb with its own steps:
+  `ride_lift` (also sets prev_y), `apply_input(dir, run)` (returns true
+  when skidding; Game makes the dust), `jump(pressed)` (buffer + coyote;
+  returns true when a jump starts; Game plays the sound),
+  `apply_gravity(jump_held)`, `land`, `throw_wrench`, `animate`. The
+  tuning numbers are named (ACCEL_*, FRICTION, JUMP_BUFFER, COYOTE_TIME,
+  ...). `Game#update_player` is now the order of those steps plus
+  collision, `bump_nearest` (the head-bump pick), the throw and touching
+  props (vents, cones, valve), ~40 lines. Traced against the previous
+  commit (8 levels x 2000 steps, run/walk, direction changes with skids,
+  jumps, throws; player x/y/vx/vy/anim/skid/coyote/buffer/jumping/
+  throw_t/invuln/combo/facing, score, lives, particles, sounds):
+  identical. Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged;
+  bench level 1 0.87 vs 0.86 (+2%), arena 0.85-0.86 vs 0.85-0.88.
