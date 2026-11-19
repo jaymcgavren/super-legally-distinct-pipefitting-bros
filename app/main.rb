@@ -326,15 +326,15 @@ class Game
           @enemies << Actor.new(:blob, c * TILE + 8, tile_bottom(r), 48, 40)
           row[c] = '.'
         when 'v'
-          e = Actor.new(:crab, c * TILE + 6, tile_bottom(r), 52, 44)
-          e.data[:cycle] = (c * 29) % 200
-          @enemies << e
+          enemy = Actor.new(:crab, c * TILE + 6, tile_bottom(r), 52, 44)
+          enemy.data[:cycle] = (c * 29) % 200
+          @enemies << enemy
           row[c] = '.'
         when 'L', 'H'
-          l = Actor.new(:lift, c * TILE, tile_top(r) - 16, 128, 16)
-          l.data = { bx: l.x, by: l.y, amp: 2 * TILE, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
-          lower_pit_lift(l, c, r) if ch == 'L'
-          @lifts << l
+          lift = Actor.new(:lift, c * TILE, tile_top(r) - 16, 128, 16)
+          lift.data = { bx: lift.x, by: lift.y, amp: 2 * TILE, axis: ch == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
+          lower_pit_lift(lift, c, r) if ch == 'L'
+          @lifts << lift
           row[c] = '.'
         when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
         when 'K'
@@ -362,7 +362,7 @@ class Game
     end
     if @rush && @boss
       start = [@arena_c + 1, 7]
-      @enemies.reject! { |e| e.x < (@arena_c + 1) * TILE }
+      @enemies.reject! { |enemy| enemy.x < (@arena_c + 1) * TILE }
     end
     @p = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
     @p.powered = @powered if use_checkpoint
@@ -399,27 +399,27 @@ class Game
     a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
   end
 
-  def rect_hit?(a, x, y, w, h)
-    a.x < x + w && a.x + a.w > x && a.y < y + h && a.y + a.h > y
+  def rect_hit?(actor, x, y, w, h)
+    actor.x < x + w && actor.x + actor.w > x && actor.y < y + h && actor.y + actor.h > y
   end
 
   # horizontal move with tile collision; returns true on wall hit
-  def move_x(a)
-    a.x += a.vx
-    r0 = row_at(a.y + a.h - 0.01)
-    r1 = row_at(a.y + 0.01)
-    if a.vx > 0
-      c = col_at(a.x + a.w - 0.01)
+  def move_x(actor)
+    actor.x += actor.vx
+    r0 = row_at(actor.y + actor.h - 0.01)
+    r1 = row_at(actor.y + 0.01)
+    if actor.vx > 0
+      c = col_at(actor.x + actor.w - 0.01)
       r0.upto(r1) do |r|
         next unless SOLID[cell(c, r)]
-        a.x = c * TILE - a.w
+        actor.x = c * TILE - actor.w
         return true
       end
-    elsif a.vx < 0
-      c = col_at(a.x)
+    elsif actor.vx < 0
+      c = col_at(actor.x)
       r0.upto(r1) do |r|
         next unless SOLID[cell(c, r)]
-        a.x = (c + 1) * TILE
+        actor.x = (c + 1) * TILE
         return true
       end
     end
@@ -428,40 +428,40 @@ class Game
 
   # vertical move; lands on solids, one-way pipes and lifts. Returns the
   # list of [col, row] cells hit by the head (empty if none).
-  def move_y(a, use_lifts, corner_fix)
-    prev = a.y
-    a.y += a.vy
-    a.on_ground = false
-    a.riding = nil
-    c0 = col_at(a.x + 0.01)
-    c1 = col_at(a.x + a.w - 0.01)
-    if a.vy <= 0
-      r = row_at(a.y)
+  def move_y(actor, use_lifts, corner_fix)
+    prev = actor.y
+    actor.y += actor.vy
+    actor.on_ground = false
+    actor.riding = nil
+    c0 = col_at(actor.x + 0.01)
+    c1 = col_at(actor.x + actor.w - 0.01)
+    if actor.vy <= 0
+      r = row_at(actor.y)
       top = tile_top(r)
       c0.upto(c1) do |c|
         ch = cell(c, r)
         if SOLID[ch] || (ch == '-' && prev >= top - 0.01)
-          a.y = top
-          a.vy = 0.0
-          a.on_ground = true
+          actor.y = top
+          actor.vy = 0.0
+          actor.on_ground = true
           break
         end
       end
-      if use_lifts && !a.on_ground
-        @lifts.each do |l|
-          lt = l.y + l.h
-          if a.x + a.w > l.x + 4 && a.x < l.x + l.w - 4 && a.y <= lt && prev >= lt - 14
-            a.y = lt
-            a.vy = 0.0
-            a.on_ground = true
-            a.riding = l
+      if use_lifts && !actor.on_ground
+        @lifts.each do |lift|
+          lt = lift.y + lift.h
+          if actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4 && actor.y <= lt && prev >= lt - 14
+            actor.y = lt
+            actor.vy = 0.0
+            actor.on_ground = true
+            actor.riding = lift
             break
           end
         end
       end
       return []
     end
-    r = row_at(a.y + a.h)
+    r = row_at(actor.y + actor.h)
     hits = []
     c0.upto(c1) do |c|
       ch = cell(c, r)
@@ -469,22 +469,22 @@ class Game
     end
     return hits if hits.empty?
     # a hidden crate only blocks if the head started below it
-    hits = hits.select { |c| cell(c, r) != 'I' || prev + a.h <= tile_bottom(r) + 0.01 }
+    hits = hits.select { |c| cell(c, r) != 'I' || prev + actor.h <= tile_bottom(r) + 0.01 }
     return hits if hits.empty?
     if corner_fix && hits.size == 1
       c = hits[0]
-      left_over = a.x + a.w - c * TILE
-      right_over = (c + 1) * TILE - a.x
-      if left_over <= 18 && box_free?(a.x - left_over, a.y, a.w, a.h)
-        a.x -= left_over
+      left_over = actor.x + actor.w - c * TILE
+      right_over = (c + 1) * TILE - actor.x
+      if left_over <= 18 && box_free?(actor.x - left_over, actor.y, actor.w, actor.h)
+        actor.x -= left_over
         return []
-      elsif right_over <= 18 && box_free?(a.x + right_over, a.y, a.w, a.h)
-        a.x += right_over
+      elsif right_over <= 18 && box_free?(actor.x + right_over, actor.y, actor.w, actor.h)
+        actor.x += right_over
         return []
       end
     end
-    a.y = tile_bottom(r) - a.h
-    a.vy = 0.0
+    actor.y = tile_bottom(r) - actor.h
+    actor.vy = 0.0
     hits.map { |c| [c, r] }
   end
 
@@ -613,146 +613,146 @@ class Game
   # standard +/-2 tile swing put the lift so close to the roof that jumps
   # across the pit got cut short.
   JUMP_RISE = JUMP_V_RUN**2 / (2 * GRAV_HOLD)
-  def lower_pit_lift(l, c, r)
+  def lower_pit_lift(lift, c, r)
     cols = [c, c + 1]
     return unless cols.all? { |cc| (r + 1...ROWS).none? { |rr| SOLID[cell(cc, rr)] } }
     ceil = (0...r).to_a.reverse.find { |rr| cols.any? { |cc| SOLID[cell(cc, rr)] } }
     return unless ceil
     max_top = tile_bottom(ceil) - PLAYER_H - JUMP_RISE
-    top = l.y + l.h
+    top = lift.y + lift.h
     return if top + 2 * TILE <= max_top
-    d = l.data
+    d = lift.data
     d[:amp] = TILE
-    d[:by] = max_top - TILE - l.h
-    l.y = d[:by]
+    d[:by] = max_top - TILE - lift.h
+    lift.y = d[:by]
   end
 
   def update_lifts
-    @lifts.each do |l|
-      d = l.data
+    @lifts.each do |lift|
+      d = lift.data
       s = Math.sin(@frame * 6.2832 / 240 + d[:phase])
       if d[:axis] == :x
         nx = d[:bx] + s * d[:amp]
-        d[:dx] = nx - l.x
+        d[:dx] = nx - lift.x
         d[:dy] = 0.0
-        l.x = nx
+        lift.x = nx
       else
         ny = d[:by] + s * d[:amp]
-        d[:dy] = ny - l.y
+        d[:dy] = ny - lift.y
         d[:dx] = 0.0
-        l.y = ny
+        lift.y = ny
       end
     end
   end
 
   def update_player
-    p = @p
-    if p.riding
-      p.x += p.riding.data[:dx]
-      p.y += p.riding.data[:dy]
+    player = @p
+    if player.riding
+      player.x += player.riding.data[:dx]
+      player.y += player.riding.data[:dy]
     end
-    p.prev_y = p.y
+    player.prev_y = player.y
     dir = (@in_right ? 1 : 0) - (@in_left ? 1 : 0)
     run = @in_b
     maxv = run ? RUN_MAX : WALK_MAX
-    ground = p.on_ground
-    p.skid = false
+    ground = player.on_ground
+    player.skid = false
     if dir != 0
-      if p.vx * dir < 0
-        p.vx += dir * (ground ? 0.5 : 0.3)
-        p.skid = ground && p.vx.abs > 1.5
-        dust(p.x + p.w / 2, p.y) if p.skid && @frame % 4 == 0
-      elsif p.vx.abs <= maxv
-        p.vx += dir * (ground ? (run ? 0.28 : 0.2) : 0.18)
-        p.vx = maxv * dir if p.vx.abs > maxv
+      if player.vx * dir < 0
+        player.vx += dir * (ground ? 0.5 : 0.3)
+        player.skid = ground && player.vx.abs > 1.5
+        dust(player.x + player.w / 2, player.y) if player.skid && @frame % 4 == 0
+      elsif player.vx.abs <= maxv
+        player.vx += dir * (ground ? (run ? 0.28 : 0.2) : 0.18)
+        player.vx = maxv * dir if player.vx.abs > maxv
       elsif ground
-        p.vx -= dir * 0.12
+        player.vx -= dir * 0.12
       end
-      p.facing = dir
+      player.facing = dir
     else
       f = ground ? 0.25 : 0.04
-      p.vx = p.vx.abs <= f ? 0.0 : p.vx - f * (p.vx > 0 ? 1 : -1)
+      player.vx = player.vx.abs <= f ? 0.0 : player.vx - f * (player.vx > 0 ? 1 : -1)
     end
 
-    p.buffer = @in_a_down ? 7 : p.buffer - 1
-    p.coyote = ground ? 6 : p.coyote - 1
-    if p.buffer > 0 && p.coyote > 0
-      p.vy = p.vx.abs >= RUN_JUMP_SPEED ? JUMP_V_RUN : JUMP_V
-      p.buffer = 0
-      p.coyote = 0
-      p.jumping = true
-      p.riding = nil
+    player.buffer = @in_a_down ? 7 : player.buffer - 1
+    player.coyote = ground ? 6 : player.coyote - 1
+    if player.buffer > 0 && player.coyote > 0
+      player.vy = player.vx.abs >= RUN_JUMP_SPEED ? JUMP_V_RUN : JUMP_V
+      player.buffer = 0
+      player.coyote = 0
+      player.jumping = true
+      player.riding = nil
       sfx(:jump)
     end
-    g = p.vy > 0 ? (p.jumping && @in_a ? GRAV_HOLD : GRAV_CUT) : GRAV_FALL
-    p.vy -= g
-    p.vy = FALL_MAX if p.vy < FALL_MAX
+    g = player.vy > 0 ? (player.jumping && @in_a ? GRAV_HOLD : GRAV_CUT) : GRAV_FALL
+    player.vy -= g
+    player.vy = FALL_MAX if player.vy < FALL_MAX
 
-    p.vx = 0.0 if move_x(p)
-    heads = move_y(p, true, true)
-    if p.on_ground
-      p.jumping = false
-      p.combo = 0
+    player.vx = 0.0 if move_x(player)
+    heads = move_y(player, true, true)
+    if player.on_ground
+      player.jumping = false
+      player.combo = 0
     end
     unless heads.empty?
-      cx = p.x + p.w / 2
+      cx = player.x + player.w / 2
       best = heads[0]
       heads.each { |h| best = h if ((h[0] * TILE + TILE / 2) - cx).abs < ((best[0] * TILE + TILE / 2) - cx).abs }
       bump(best[0], best[1])
     end
 
-    p.anim += p.vx.abs * 0.05 if p.vx.abs > 0.3 && p.on_ground
-    p.invuln -= 1 if p.invuln > 0
-    p.throw_t -= 1 if p.throw_t > 0
+    player.anim += player.vx.abs * 0.05 if player.vx.abs > 0.3 && player.on_ground
+    player.invuln -= 1 if player.invuln > 0
+    player.throw_t -= 1 if player.throw_t > 0
 
     # throw the wrench
-    if @in_b_down && p.powered && @wrench.nil?
-      w = Actor.new(:wrench, p.x + (p.facing > 0 ? p.w : -40), p.y + 36, 40, 20)
-      w.vx = p.facing * 16.0 + p.vx * 0.5
-      w.facing = p.facing
-      w.data[:back] = false
-      @wrench = w
-      p.throw_t = 12
+    if @in_b_down && player.powered && @wrench.nil?
+      wrench = Actor.new(:wrench, player.x + (player.facing > 0 ? player.w : -40), player.y + 36, 40, 20)
+      wrench.vx = player.facing * 16.0 + player.vx * 0.5
+      wrench.facing = player.facing
+      wrench.data[:back] = false
+      @wrench = wrench
+      player.throw_t = 12
       sfx(:throw)
     end
 
-    collect_nuts(p)
+    collect_nuts(player)
     @vents.each do |v|
       k = (@frame + v[:phase]) % 180
       next unless k >= 130 && v[:h] > 0
-      hurt if rect_hit?(p, v[:c] * TILE + 14, tile_top(v[:r]), 36, v[:h] - 8)
+      hurt if rect_hit?(player, v[:c] * TILE + 14, tile_top(v[:r]), 36, v[:h] - 8)
     end
     @cones.each_with_index do |cone, i|
-      next if cone[:lit] || p.x < cone[:c] * TILE
+      next if cone[:lit] || player.x < cone[:c] * TILE
       cone[:lit] = true
       @checkpoint = [@level, i]
       sfx(:checkpoint)
       popup(cone[:c] * TILE, tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
-    if goal_touched?(p)
-      p.x = @goal[:c] * TILE + 8 - p.w if p.x < @goal[:c] * TILE
-      p.vx = 0.0
+    if goal_touched?(player)
+      player.x = @goal[:c] * TILE + 8 - player.w if player.x < @goal[:c] * TILE
+      player.vx = 0.0
       start_clear
       return
     end
-    die if p.y < -140
+    die if player.y < -140
   end
 
   # Walking in from the left stops you at the valve. The boss valve can also
   # appear on top of you, or you can walk back into it from the right: that
   # counts only if you actually overlap it (it is 3 tiles tall).
-  def goal_touched?(p)
+  def goal_touched?(player)
     return false unless @goal
     gx = @goal[:c] * TILE
-    return p.x + p.w > gx + 8 if p.x < gx
-    p.x < gx + TILE - 8 && p.y < tile_bottom(@goal[:r]) + 3 * TILE
+    return player.x + player.w > gx + 8 if player.x < gx
+    player.x < gx + TILE - 8 && player.y < tile_bottom(@goal[:r]) + 3 * TILE
   end
 
-  def collect_nuts(a)
-    r0 = row_at(a.y + a.h - 8)
-    r1 = row_at(a.y + 8)
-    c0 = col_at(a.x + 6)
-    c1 = col_at(a.x + a.w - 6)
+  def collect_nuts(actor)
+    r0 = row_at(actor.y + actor.h - 8)
+    r1 = row_at(actor.y + 8)
+    c0 = col_at(actor.x + 6)
+    c1 = col_at(actor.x + actor.w - 6)
     r0.upto(r1) do |r|
       next if r < 0 || r >= ROWS
       c0.upto(c1) do |c|
@@ -801,42 +801,42 @@ class Game
       @grid[r][c] = 'U' if n - 1 <= 0
     when 'W'
       @grid[r][c] = 'U'
-      it = Actor.new(:wrench_item, x + 4, top - 64, 56, 56)
-      it.data[:rise] = 64
-      @items << it
+      item = Actor.new(:wrench_item, x + 4, top - 64, 56, 56)
+      item.data[:rise] = 64
+      @items << item
       sfx(:appear)
     when 'I'
       @grid[r][c] = 'U'
-      it = Actor.new(:lunch, x + 4, top - 64, 56, 56)
-      it.data[:rise] = 64
-      it.vx = 2.5
-      @items << it
+      item = Actor.new(:lunch, x + 4, top - 64, 56, 56)
+      item.data[:rise] = 64
+      item.vx = 2.5
+      @items << item
       sfx(:appear)
     else
       sfx(:bump)
     end
     # knock out enemies standing on the bumped tile
-    @enemies.each do |e|
-      next unless e.active && e.state == :walk
-      next unless (e.y - top).abs < 6 && e.x + e.w > x && e.x < x + TILE
-      knock(e, x + 32 < e.x + e.w / 2 ? 1 : -1)
-      add_score(200, e.x, e.y + 60)
+    @enemies.each do |enemy|
+      next unless enemy.active && enemy.state == :walk
+      next unless (enemy.y - top).abs < 6 && enemy.x + enemy.w > x && enemy.x < x + TILE
+      knock(enemy, x + 32 < enemy.x + enemy.w / 2 ? 1 : -1)
+      add_score(200, enemy.x, enemy.y + 60)
     end
   end
 
   def pop_nut(x, top)
-    it = Actor.new(:popnut, x, top, 64, 64)
-    it.vy = 16.0
-    @items << it
+    item = Actor.new(:popnut, x, top, 64, 64)
+    item.vy = 16.0
+    @items << item
     add_nut
   end
 
   def hurt
-    p = @p
-    return if p.invuln > 0 || @mode != :play
-    if p.powered
-      p.powered = false
-      p.invuln = 120
+    player = @p
+    return if player.invuln > 0 || @mode != :play
+    if player.powered
+      player.powered = false
+      player.invuln = 120
       sfx(:hurt)
     else
       die
@@ -854,11 +854,11 @@ class Game
   end
 
   def step_dying
-    p = @p
+    player = @p
     if @mode_t > 30
-      p.vy = 15.0 if @mode_t == 31
-      p.vy -= 0.8
-      p.y += p.vy
+      player.vy = 15.0 if @mode_t == 31
+      player.vy -= 0.8
+      player.y += player.vy
     end
     update_effects
     vent_sounds
@@ -883,11 +883,11 @@ class Game
   end
 
   def step_clear
-    p = @p
-    p.vy -= GRAV_FALL
-    p.vx = 0.0
-    move_y(p, true, false)
-    p.facing = 1
+    player = @p
+    player.vy -= GRAV_FALL
+    player.vx = 0.0
+    move_y(player, true, false)
+    player.facing = 1
     @goal[:turn] += 1 if @mode_t < 100
     if @mode_t > 110 && @time > 0
       n = [@time, 2].min
@@ -944,180 +944,180 @@ class Game
   end
 
   # ── enemies ───────────────────────────────────────────────────────
-  def knock(e, dir)
-    e.state = :dead
-    e.vy = 12.0
-    e.vx = dir * 2.0
+  def knock(enemy, dir)
+    enemy.state = :dead
+    enemy.vy = 12.0
+    enemy.vx = dir * 2.0
     sfx(:kick)
   end
 
   def update_enemies
-    p = @p
-    @enemies.each do |e|
-      unless e.active
-        next if e.x > @cam + VW + 48
-        e.active = true
-        e.vx = e.kind == :crab ? -1.2 : -1.0
+    player = @p
+    @enemies.each do |enemy|
+      unless enemy.active
+        next if enemy.x > @cam + VW + 48
+        enemy.active = true
+        enemy.vx = enemy.kind == :crab ? -1.2 : -1.0
       end
-      e.t += 1
-      if e.state == :dead
-        e.vy -= 0.8
-        e.x += e.vx
-        e.y += e.vy
+      enemy.t += 1
+      if enemy.state == :dead
+        enemy.vy -= 0.8
+        enemy.x += enemy.vx
+        enemy.y += enemy.vy
         next
       end
-      next if e.state != :walk
-      next if e.x < @cam - 900 || e.x > @cam + VW + 600
+      next if enemy.state != :walk
+      next if enemy.x < @cam - 900 || enemy.x > @cam + VW + 600
       spiky = false
       speed = 1.0
-      if e.kind == :crab
-        k = (e.t + e.data[:cycle]) % 220
+      if enemy.kind == :crab
+        k = (enemy.t + enemy.data[:cycle]) % 220
         spiky = k >= 150
-        e.data[:spin] = spiky
-        e.data[:warn] = k >= 120 && k < 150
+        enemy.data[:spin] = spiky
+        enemy.data[:warn] = k >= 120 && k < 150
         speed = spiky ? 2.6 : 1.2
       end
-      e.vx = (e.vx < 0 ? -1 : 1) * speed
-      e.vy -= GRAV_FALL
-      e.vy = FALL_MAX if e.vy < FALL_MAX
-      e.vx = -e.vx if move_x(e)
-      move_y(e, false, false)
-      if e.on_ground
-        fx = e.vx > 0 ? e.x + e.w + 2 : e.x - 2
-        below = cell(col_at(fx), row_at(e.y - 4))
-        e.vx = -e.vx unless SOLID[below] || below == '-'
+      enemy.vx = (enemy.vx < 0 ? -1 : 1) * speed
+      enemy.vy -= GRAV_FALL
+      enemy.vy = FALL_MAX if enemy.vy < FALL_MAX
+      enemy.vx = -enemy.vx if move_x(enemy)
+      move_y(enemy, false, false)
+      if enemy.on_ground
+        fx = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2
+        below = cell(col_at(fx), row_at(enemy.y - 4))
+        enemy.vx = -enemy.vx unless SOLID[below] || below == '-'
       end
-      e.state = :dead if e.y < -100
+      enemy.state = :dead if enemy.y < -100
       @enemies.each do |o|
-        next if o.equal?(e) || !o.active || o.state != :walk
-        e.vx = -e.vx if overlap?(e, o) && ((o.x - e.x) * e.vx) > 0
+        next if o.equal?(enemy) || !o.active || o.state != :walk
+        enemy.vx = -enemy.vx if overlap?(enemy, o) && ((o.x - enemy.x) * enemy.vx) > 0
       end
-      next unless @mode == :play && overlap?(p, e)
+      next unless @mode == :play && overlap?(player, enemy)
       # full box for stomps, a smaller one for getting hurt (forgiving)
-      if p.vy < 0 && p.prev_y >= e.y + e.h * 0.4 && !spiky
-        stomp(e)
-      elsif rect_hit?(p, e.x + 8, e.y, e.w - 16, e.h - 8)
+      if player.vy < 0 && player.prev_y >= enemy.y + enemy.h * 0.4 && !spiky
+        stomp(enemy)
+      elsif rect_hit?(player, enemy.x + 8, enemy.y, enemy.w - 16, enemy.h - 8)
         hurt
       end
     end
-    @enemies.each do |e|
-      next unless e.state == :flat
-      e.data[:flat_t] = (e.data[:flat_t] || 0) + 1
-      e.state = :gone if e.data[:flat_t] > 30
+    @enemies.each do |enemy|
+      next unless enemy.state == :flat
+      enemy.data[:flat_t] = (enemy.data[:flat_t] || 0) + 1
+      enemy.state = :gone if enemy.data[:flat_t] > 30
     end
-    @enemies.reject! { |e| e.state == :gone || (e.state == :dead && e.y < -200) }
+    @enemies.reject! { |enemy| enemy.state == :gone || (enemy.state == :dead && enemy.y < -200) }
   end
 
-  def stomp(e)
-    p = @p
-    if p.combo >= COMBO.size
-      one_up(e.x, e.y + 60)
+  def stomp(enemy)
+    player = @p
+    if player.combo >= COMBO.size
+      one_up(enemy.x, enemy.y + 60)
     else
-      add_score(COMBO[p.combo] * (e.kind == :crab ? 2 : 1), e.x + 20, e.y + 60)
+      add_score(COMBO[player.combo] * (enemy.kind == :crab ? 2 : 1), enemy.x + 20, enemy.y + 60)
     end
-    p.combo += 1
-    p.vy = @in_a ? 17.0 : 10.0
-    p.jumping = @in_a
-    puff(e.x + e.w / 2, e.y + 10)
+    player.combo += 1
+    player.vy = @in_a ? 17.0 : 10.0
+    player.jumping = @in_a
+    puff(enemy.x + enemy.w / 2, enemy.y + 10)
     sfx(:stomp)
-    if e.kind == :blob
-      e.state = :flat
+    if enemy.kind == :blob
+      enemy.state = :flat
     else
-      knock(e, p.facing)
+      knock(enemy, player.facing)
     end
   end
 
   # ── wrench boomerang ──────────────────────────────────────────────
   def update_wrench
-    w = @wrench
-    return unless w
-    p = @p
-    w.t += 1
-    if (b = w.data[:bounce]) && b > 0
+    wrench = @wrench
+    return unless wrench
+    player = @p
+    wrench.t += 1
+    if (bounce = wrench.data[:bounce]) && bounce > 0
       # knocked back off the main valve: a short arc before it heads home
-      w.data[:bounce] = b - 1
-      w.vy -= 0.7
-      w.x += w.vx
-      w.y += w.vy
+      wrench.data[:bounce] = bounce - 1
+      wrench.vy -= 0.7
+      wrench.x += wrench.vx
+      wrench.y += wrench.vy
       return
-    elsif !w.data[:back]
-      w.vx -= w.facing * 0.5
-      w.data[:back] = true if w.vx * w.facing <= 0
+    elsif !wrench.data[:back]
+      wrench.vx -= wrench.facing * 0.5
+      wrench.data[:back] = true if wrench.vx * wrench.facing <= 0
     else
-      dx = (p.x + p.w / 2) - (w.x + w.w / 2)
-      dy = (p.y + 40) - (w.y + w.h / 2)
+      dx = (player.x + player.w / 2) - (wrench.x + wrench.w / 2)
+      dy = (player.y + 40) - (wrench.y + wrench.h / 2)
       d = Math.sqrt(dx * dx + dy * dy)
       d = 1 if d < 1
-      sp = [w.vx.abs + w.vy.abs + 0.6, 13.0].min
-      w.vx = dx / d * sp
-      w.vy = dy / d * sp
+      sp = [wrench.vx.abs + wrench.vy.abs + 0.6, 13.0].min
+      wrench.vx = dx / d * sp
+      wrench.vy = dy / d * sp
       if d < 40
         @wrench = nil
         return
       end
     end
-    w.x += w.vx
-    w.y += w.vy
-    collect_nuts(w)
-    @enemies.each do |e|
-      next unless e.active && e.state == :walk && overlap?(w, e)
-      knock(e, w.vx > 0 ? 1 : -1)
-      add_score(200, e.x, e.y + 60)
+    wrench.x += wrench.vx
+    wrench.y += wrench.vy
+    collect_nuts(wrench)
+    @enemies.each do |enemy|
+      next unless enemy.active && enemy.state == :walk && overlap?(wrench, enemy)
+      knock(enemy, wrench.vx > 0 ? 1 : -1)
+      add_score(200, enemy.x, enemy.y + 60)
     end
-    if @boss && @boss_on && overlap?(w, @boss) && !w.data[:back]
+    if @boss && @boss_on && overlap?(wrench, @boss) && !wrench.data[:back]
       boss_hit(1)
-      w.data[:back] = true
+      wrench.data[:back] = true
     end
     # a wrench that hits the main valve turns it: level clear. It bounces
     # off and flies back to the player while the level ends.
     if @goal && @mode == :play &&
-       rect_hit?(w, @goal[:c] * TILE, tile_bottom(@goal[:r]), TILE, 3 * TILE)
-      w.vx = w.vx > 0 ? -7.0 : 7.0
-      w.vy = 7.0
-      w.data[:back] = true
-      w.data[:bounce] = 14
-      w.t = 0
+       rect_hit?(wrench, @goal[:c] * TILE, tile_bottom(@goal[:r]), TILE, 3 * TILE)
+      wrench.vx = wrench.vx > 0 ? -7.0 : 7.0
+      wrench.vy = 7.0
+      wrench.data[:back] = true
+      wrench.data[:bounce] = 14
+      wrench.t = 0
       sfx(:bump)
       popup(@goal[:c] * TILE, tile_bottom(@goal[:r]) + 3 * TILE + 80, 'NICE SHOT')
       start_clear
       return
     end
-    @wrench = nil if w.t > 150
+    @wrench = nil if wrench.t > 150
   end
 
   # ── items ─────────────────────────────────────────────────────────
   def update_items
-    p = @p
-    @items.each do |it|
-      it.t += 1
-      if it.kind == :popnut
-        it.vy -= 1.2
-        it.y += it.vy
-        it.state = :gone if it.t > 26
+    player = @p
+    @items.each do |item|
+      item.t += 1
+      if item.kind == :popnut
+        item.vy -= 1.2
+        item.y += item.vy
+        item.state = :gone if item.t > 26
         next
       end
-      if it.data[:rise] > 0
-        it.data[:rise] -= 2
-        it.y += 2
+      if item.data[:rise] > 0
+        item.data[:rise] -= 2
+        item.y += 2
         next
       end
-      if it.kind == :lunch
-        it.vy -= GRAV_FALL
-        it.vx = -it.vx if move_x(it)
-        move_y(it, false, false)
-        it.state = :gone if it.y < -100
+      if item.kind == :lunch
+        item.vy -= GRAV_FALL
+        item.vx = -item.vx if move_x(item)
+        move_y(item, false, false)
+        item.state = :gone if item.y < -100
       end
-      next unless overlap?(p, it)
-      it.state = :gone
-      if it.kind == :lunch
-        one_up(it.x, it.y + 70)
+      next unless overlap?(player, item)
+      item.state = :gone
+      if item.kind == :lunch
+        one_up(item.x, item.y + 70)
       else
-        add_score(1000, it.x, it.y + 70)
-        p.powered = true
+        add_score(1000, item.x, item.y + 70)
+        player.powered = true
         sfx(:powerup)
       end
     end
-    @items.reject! { |it| it.state == :gone }
+    @items.reject! { |item| item.state == :gone }
   end
 
   # ── effects ───────────────────────────────────────────────────────
@@ -1163,8 +1163,8 @@ class Game
   end
 
   def update_camera
-    p = @p
-    target = p.x + p.w / 2 - 560 + p.facing * 90
+    player = @p
+    target = player.x + player.w / 2 - 560 + player.facing * 90
     target = max_cam if @boss_on
     @cam += (target - @cam) * 0.1
     @cam = 0.0 if @cam < 0
@@ -1231,7 +1231,7 @@ class Game
       o.solids << [x, cy - 16, 160, 16, cc[0], cc[1], cc[2]]
       o.solids << [x - 16, cy - 32, 208, 16, cc[0], cc[1], cc[2]]
     end
-    b = th[:bush]
+    bush = th[:bush]
     bd = th[:bush_dk]
     # trees of varying heights, trunks rising from the bottom of the screen
     # (indoors, from the floor) into blocky canopies; indoors they show
@@ -1242,10 +1242,10 @@ class Game
       o.solids << [x + w / 2 - tw / 2, floor, tw, cy + 8 - floor, 104, 68, 36]
       o.solids << [x + w / 2 - tw / 2, floor, 8, cy + 8 - floor, 72, 44, 20]
       o.solids << [x, cy, w, 16, bd[0], bd[1], bd[2]]
-      o.solids << [x - 8, cy + 16, w + 16, 40, b[0], b[1], b[2]]
-      o.solids << [x, cy + 56, w, 24, b[0], b[1], b[2]]
-      o.solids << [x + 16, cy + 80, w - 32, 16, b[0], b[1], b[2]]
-      o.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, b[0], b[1], b[2]]
+      o.solids << [x - 8, cy + 16, w + 16, 40, bush[0], bush[1], bush[2]]
+      o.solids << [x, cy + 56, w, 24, bush[0], bush[1], bush[2]]
+      o.solids << [x + 16, cy + 80, w - 32, 16, bush[0], bush[1], bush[2]]
+      o.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, bush[0], bush[1], bush[2]]
     end
     # indoors, the dark below the floor
     o.solids << [0, 0, VW, 128, 0, 0, 0] if th[:indoor]
@@ -1267,13 +1267,13 @@ class Game
       next if dy < 0 && SUN_GAPS.include?(-dy / 8)
       hw = (Math.sqrt([r * r - dy * dy, 0].max) / 8).floor * 8
       next if hw <= 0
-      t = ((1 - (dy + r) / (2.0 * r)) * 8).floor / 7.0
-      sc = t * (SUN_RAMP.size - 1)
+      shade = ((1 - (dy + r) / (2.0 * r)) * 8).floor / 7.0
+      sc = shade * (SUN_RAMP.size - 1)
       i = [sc.floor, SUN_RAMP.size - 2].min
-      a = SUN_RAMP[i]
-      b = SUN_RAMP[i + 1]
+      from = SUN_RAMP[i]
+      to = SUN_RAMP[i + 1]
       k = sc - i
-      col = (0..2).map { |j| (a[j] + (b[j] - a[j]) * k).round }
+      col = (0..2).map { |j| (from[j] + (to[j] - from[j]) * k).round }
       rows << [cx - hw, y, hw * 2, 8, col[0], col[1], col[2]]
     end
     rows
@@ -1332,8 +1332,8 @@ class Game
         ch = row[c]
         next if ch == '.' || ch == 'I'
         x = c * TILE - cam
-        b = @bumps[r * 10000 + c]
-        yy = b ? y + BUMP_ARC[BUMP_ARC.size - b] : y
+        bump = @bumps[r * 10000 + c]
+        yy = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
         case ch
         when '#' then spr(tiles, x, yy, TILE, TILE, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
         when 'F' then spr(tiles, x, yy, TILE, TILE, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
@@ -1373,10 +1373,10 @@ class Game
     draw_background
     cam = @cam.to_i
     draw_tiles
-    @lifts.each do |l|
-      x = l.x.to_i - cam
-      spr(@theme[:tiles], x, l.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
-      spr(@theme[:tiles], x + TILE, l.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
+    @lifts.each do |lift|
+      x = lift.x.to_i - cam
+      spr(@theme[:tiles], x, lift.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
+      spr(@theme[:tiles], x + TILE, lift.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
     end
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
@@ -1410,36 +1410,36 @@ class Game
       end
     end
     return unless entities
-    @items.each do |it|
-      x = it.x.to_i - cam
-      case it.kind
-      when :popnut then spr('sprites/items.png', x, it.y.to_i, TILE, TILE, ((it.t / 3) % 4) * 8, 0, 8, 16)
+    @items.each do |item|
+      x = item.x.to_i - cam
+      case item.kind
+      when :popnut then spr('sprites/items.png', x, item.y.to_i, TILE, TILE, ((item.t / 3) % 4) * 8, 0, 8, 16)
       when :wrench_item
-        bob = it.data[:rise] > 0 ? 0 : ((@frame / 12) % 2) * 4
-        spr('sprites/items.png', x - 4, it.y.to_i + bob, TILE, TILE, 32, 0, 8, 16)
-      when :lunch then spr('sprites/items.png', x - 4, it.y.to_i, TILE, TILE, 40, 0, 8, 16)
+        bob = item.data[:rise] > 0 ? 0 : ((@frame / 12) % 2) * 4
+        spr('sprites/items.png', x - 4, item.y.to_i + bob, TILE, TILE, 32, 0, 8, 16)
+      when :lunch then spr('sprites/items.png', x - 4, item.y.to_i, TILE, TILE, 40, 0, 8, 16)
       end
     end
-    @enemies.each do |e|
-      x = e.x.to_i - cam
+    @enemies.each do |enemy|
+      x = enemy.x.to_i - cam
       next if x < -TILE || x > VW + TILE
-      if e.kind == :blob
-        f = e.state == :flat ? 2 : (e.t / 10) % 2
-        spr('sprites/enemies.png', x - 8, e.y.to_i, TILE, 48, f * 8, 0, 8, 12, e.vx > 0, 255, 0, e.state == :dead)
+      if enemy.kind == :blob
+        f = enemy.state == :flat ? 2 : (enemy.t / 10) % 2
+        spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, enemy.vx > 0, 255, 0, enemy.state == :dead)
       else
-        f = e.data[:spin] ? 5 + (e.t / 4) % 2 : 3 + (e.t / 12) % 2
-        a = e.data[:warn] && (e.t / 3).even? ? 110 : 255
-        spr('sprites/enemies.png', x - 6, e.y.to_i, TILE, 48, f * 8, 0, 8, 12, false, a, 0, e.state == :dead)
+        f = enemy.data[:spin] ? 5 + (enemy.t / 4) % 2 : 3 + (enemy.t / 12) % 2
+        a = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
+        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, false, a, 0, enemy.state == :dead)
       end
     end
     draw_boss(cam) if @boss
     draw_player
     draw_boss_hud if @boss
     if @wrench
-      w = @wrench
+      wrench = @wrench
       # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
-      f = (w.t / 2) % 7
-      spr('sprites/wrench.png', w.x.to_i - cam - 4, w.y.to_i - 14, 48, 48, f * 8, 0, 8, 16, w.facing < 0)
+      f = (wrench.t / 2) % 7
+      spr('sprites/wrench.png', wrench.x.to_i - cam - 4, wrench.y.to_i - 14, 48, 48, f * 8, 0, 8, 16, wrench.facing < 0)
     end
     @particles.each do |pt|
       rect(pt[0].to_i - cam, pt[1].to_i, 8, 8, pt[5], [pt[4] * 20, 255].min)
@@ -1451,24 +1451,24 @@ class Game
   end
 
   def draw_player
-    p = @p
-    return if p.invuln > 0 && (p.invuln / 3) % 2 == 0 && @mode == :play
+    player = @p
+    return if player.invuln > 0 && (player.invuln / 3) % 2 == 0 && @mode == :play
     cam = @cam.to_i
     f = if @mode == :dying then 6
-        elsif p.throw_t > 0 then 7
-        elsif !p.on_ground then 4
-        elsif p.skid then 5
-        elsif p.vx.abs > 0.3 then [1, 2, 3, 2][p.anim.to_i % 4]
+        elsif player.throw_t > 0 then 7
+        elsif !player.on_ground then 4
+        elsif player.skid then 5
+        elsif player.vx.abs > 0.3 then [1, 2, 3, 2][player.anim.to_i % 4]
         else 0
         end
-    flip = f == 5 ? p.facing > 0 : p.facing < 0
+    flip = f == 5 ? player.facing > 0 : player.facing < 0
     flip = false if f == 6
-    x = p.x.to_i - cam - 12
-    if p.powered && f != 6 && @wrench.nil?
-      wx = p.facing > 0 ? x - 6 : x + 22
-      spr('sprites/wrench.png', wx, p.y.to_i + 22, 40, 40, 56, 0, 8, 16, p.facing > 0)
+    x = player.x.to_i - cam - 12
+    if player.powered && f != 6 && @wrench.nil?
+      wx = player.facing > 0 ? x - 6 : x + 22
+      spr('sprites/wrench.png', wx, player.y.to_i + 22, 40, 40, 56, 0, 8, 16, player.facing > 0)
     end
-    spr(BROS[@bro][:path], x, p.y.to_i, 64, 80, f * 8, 0, 8, 20, flip)
+    spr(BROS[@bro][:path], x, player.y.to_i, 64, 80, f * 8, 0, 8, 20, flip)
   end
 
   def draw_hud
@@ -1480,9 +1480,9 @@ class Game
     o << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     o << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: col[0], g: col[1], b: col[2] }
     o << { x: 720, y: 700, text: @lv[:name], size_px: 4, r: col[0], g: col[1], b: col[2] }
-    t = @time || SHIFT_LEN
-    tc = t <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : col
-    o << { x: 1256, y: 700, text: "SHIFT #{pad3(t)}", size_px: 4, alignment_enum: 2, r: tc[0], g: tc[1], b: tc[2] }
+    shift_time = @time || SHIFT_LEN
+    tc = shift_time <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : col
+    o << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: tc[0], g: tc[1], b: tc[2] }
   end
 end
 

@@ -119,7 +119,7 @@ refactor step will break some of them. Update them in the same commit.
       more in boss.rb/ending.rb). Keep short `def x; ...; end` one-liners only
       if they stay readable (or convert to normal defs). Done: no `;` tokens
       left in app/; one-liner helpers became endless defs.
-- [ ] Descriptive local names: `p` -> `player` (it also shadows Kernel#p),
+- [x] Descriptive local names: `p` -> `player` (it also shadows Kernel#p),
       `b` -> `boss`, `e` -> `enemy`, `l` -> `lift`, `w` -> `wrench`,
       `it` -> `item`, `t` -> `time`/`frames` where it helps. Rename `T` (tile
       size) to `TILE` everywhere at once.
@@ -282,3 +282,10 @@ paths, anything the next session needs.)
   `tools/reach.rb` / `tools/bot.rb` output byte-identical to `un-refactored`
   (extract it with `git archive un-refactored app tools | tar -x -C <dir>`
   and run the tools there).
+- 2026-11-19: step 1, descriptive local names done. Token-based (Ripper)
+  per-method renames: `p`->`player`, `b`->`boss` (also `bounce`, `bump`,
+  `bush` where `b` meant those), `e`->`enemy`, `l`->`lift`, `w`->`wrench`
+  (widths stay `w`), `it`->`item`, `a`->`actor` in move_x/move_y/
+  collect_nuts/rect_hit?, `t`->`elapsed` (ending), `shift_time` (HUD),
+  `shade` (sun ramp, with `from`/`to`). `overlap?(a, b)` keeps a/b: it's a
+  symmetric pair. Checks: tests ALL PASS (same info lines), shots ALL SAME.

@@ -51,30 +51,30 @@ class Game
   end
 
   def step_ending
-    t = @mode_t
-    p = @p
-    p.vy -= GRAV_FALL
-    p.vx = 0.0
-    move_y(p, true, false)
-    p.facing = @goal[:c] * TILE > p.x ? 1 : -1
+    elapsed = @mode_t
+    player = @p
+    player.vy -= GRAV_FALL
+    player.vx = 0.0
+    move_y(player, true, false)
+    player.facing = @goal[:c] * TILE > player.x ? 1 : -1
     update_effects
     update_wrench
     vx = @goal[:c] * TILE + 32                  # valve centre, world x
     vy = tile_bottom(@goal[:r]) + 2 * TILE      # valve bottom, world y
 
-    if t < END_BURST
+    if elapsed < END_BURST
       # spin up: frame phase speeds toward one frame per tick
-      @spin += [0.2 + t / 120.0, 1.0].min
+      @spin += [0.2 + elapsed / 120.0, 1.0].min
       @goal[:turn] = (@spin * 5).to_i
-      every = [36 - t / 5, 4].max
-      sfx(:steam) if t % every == 0
-      n = t / 40 + 1
+      every = [36 - elapsed / 5, 4].max
+      sfx(:steam) if elapsed % every == 0
+      n = elapsed / 40 + 1
       n.times do |i|
-        a = (t * 37 + i * 101) % 360 * 0.01745
-        @steam << [vx + Math.cos(a) * 24, vy + 40 + Math.sin(a) * 24, Math.cos(a) * 2.5, 1.5 + (i % 3), 24, 8 + (t % 3) * 4]
+        a = (elapsed * 37 + i * 101) % 360 * 0.01745
+        @steam << [vx + Math.cos(a) * 24, vy + 40 + Math.sin(a) * 24, Math.cos(a) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4]
       end
-      @end_shake = t > 80 ? (t - 80) / 14.0 : 0.0
-    elsif t == END_BURST
+      @end_shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
+    elsif elapsed == END_BURST
       @goal[:gone] = true
       @rk = { x: vx - 32, y: vy.to_f, v: 14.0 }
       @end_shake = 16.0
@@ -85,16 +85,16 @@ class Game
         @steam << [vx, vy + 20, Math.cos(a) * 9, Math.sin(a).abs * 6 + 1, 40, 48]
       end
     end
-    @end_shake -= 0.3 if t > END_BURST && @end_shake > 0
+    @end_shake -= 0.3 if elapsed > END_BURST && @end_shake > 0
 
     if @rk
       @rk[:v] = [@rk[:v] + 2.2, END_TOP_V].min
       @rk[:y] += @rk[:v]
       # steam trail
       if @rk[:y] - @lift < 800
-        @steam << [@rk[:x] + 32 + (t % 3 - 1) * 6, @rk[:y] - 8, (t % 5 - 2) * 0.6, -@rk[:v] * 0.15, 18, 32]
+        @steam << [@rk[:x] + 32 + (elapsed % 3 - 1) * 6, @rk[:y] - 8, (elapsed % 5 - 2) * 0.6, -@rk[:v] * 0.15, 18, 32]
       end
-      if t < END_SLOW
+      if elapsed < END_SLOW
         if !@locked && @rk[:y] - @lift > END_LOCK_Y
           @locked = true
         end
@@ -112,7 +112,7 @@ class Game
         end
       end
       @rk = nil if @rk[:y] - @lift > 1600
-    elsif t > END_BURST
+    elsif elapsed > END_BURST
       @lift_v -= (@lift_v - 1.5) * 0.04
       @lift += @lift_v
     end
@@ -127,27 +127,27 @@ class Game
     end
     @steam.reject! { |s| s[4] <= 0 }
 
-    if t >= END_FIRE
-      music(:clear, false) if t == END_FIRE
-      music(:theme) if t > END_FIRE + 30 && @args.audio[:music].nil?
-      if t >= @fw_next
+    if elapsed >= END_FIRE
+      music(:clear, false) if elapsed == END_FIRE
+      music(:theme) if elapsed > END_FIRE + 30 && @args.audio[:music].nil?
+      if elapsed >= @fw_next
         # irregular cadence: quick doubles, short gaps and longer lulls
         (end_rand(4) == 0 ? 2 : 1).times { spawn_firework }
         r = end_rand(10)
-        @fw_next = t + (r < 3 ? 8 + end_rand(10) : r < 8 ? 22 + end_rand(26) : 55 + end_rand(30))
+        @fw_next = elapsed + (r < 3 ? 8 + end_rand(10) : r < 8 ? 22 + end_rand(26) : 55 + end_rand(30))
       end
       @fw.each { |f| f[:t] += 1 }
       @fw.reject! { |f| f[:t] > 72 }
     end
 
     # the level's vents still hiss while it is on screen
-    if t < END_BURST
+    if elapsed < END_BURST
       vent_sounds(end_shake_x)
     elsif @lift.to_i < 720
       vent_sounds
     end
-    sfx(:hurt) if t == RUSTY_FALL + 6
-    if t > END_PROMPT && (@in_start_down || @in_a_down)
+    sfx(:hurt) if elapsed == RUSTY_FALL + 6
+    if elapsed > END_PROMPT && (@in_start_down || @in_a_down)
       to_title
     end
   end
@@ -169,12 +169,12 @@ class Game
   end
 
   def draw_ending
-    t = @mode_t
+    elapsed = @mode_t
     amp = @end_shake
     shx = end_shake_x
     shy = amp > 0 ? ((@frame % 6) < 3 ? amp : -amp).to_i / 2 : 0
     lift = @lift.to_i
-    if t < END_BURST
+    if elapsed < END_BURST
       @cam += shx
       draw_world(true)
       @cam -= shx
@@ -202,7 +202,7 @@ class Game
       x = @rk[:x].to_i - cam + shx
       y = @rk[:y].to_i - lift + shy
       if y < 760
-        f = t % 3
+        f = elapsed % 3
         spr('sprites/items.png', x, y, TILE, TILE, 64 + f * 8, 0, 8, 16)
       end
     end
@@ -214,26 +214,26 @@ class Game
       rect(x, 690 - s, 8, s * 2 + 8, [255, 255, 220])
     end
     @fw.each { |f| draw_firework(f) }
-    if t >= RUSTY_FALL
-      ry = 760 - (t - RUSTY_FALL) * RUSTY_FALL_V
+    if elapsed >= RUSTY_FALL
+      ry = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_V
       if ry > -140
         # dazed face, flipped upside-down, wobbling as he drops
-        spr('sprites/rusty.png', 576 + ((t / 3) % 2) * 8 - 4, ry, 128, 112, 32, 0, 8, 28,
-            (t / 6).even?, 255, 0, true)
+        spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, ry, 128, 112, 32, 0, 8, 28,
+            (elapsed / 6).even?, 255, 0, true)
       end
     end
-    if t >= END_THANKS
+    if elapsed >= END_THANKS
       label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, [252, 240, 160], true)
-    elsif t >= END_CREDITS
+    elsif elapsed >= END_CREDITS
       CREDITS.each_with_index do |c, i|
-        next if t < END_CREDITS + i * CREDIT_GAP
+        next if elapsed < END_CREDITS + i * CREDIT_GAP
         label(640, 500 - i * 110, c, 5, [255, 255, 255], true)
       end
-    elsif t >= END_TEXT
+    elsif elapsed >= END_TEXT
       label(640, 470, 'CONGRATULATION!', 12, [252, 240, 160], true)
       label(640, 330, 'JOB COMPLETE', 6, [255, 255, 255], true)
     end
-    if t > END_PROMPT
+    if elapsed > END_PROMPT
       label(640, 200, "FINAL SCORE #{pad6(@score)}", 4, [255, 255, 255], true)
       label(640, 130, 'PRESS START', 3, [255, 255, 255], true) if (@mode_t / 30) % 2 == 0
     end
