@@ -178,7 +178,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] Enemies: `Enemy` base with walking/turning/gravity, `Blob`
       (flattens when stomped) and `Crab` (spiky cycle, `spiky?`, `warning?`,
       double score). `stomp`/`knock` become methods on the enemy.
-- [ ] `Wrench` (boomerang) from `update_wrench`.
+- [x] `Wrench` (boomerang) from `update_wrench`.
 - [ ] `Player` gets its own update split out of the 89-line
       `update_player`: `apply_input`, `apply_gravity`, `jump`, `land`,
       `ride_lift`, `animate`.
@@ -528,3 +528,14 @@ paths, anything the next session needs.)
   commit: identical. Tests ALL PASS (185), shots ALL SAME, reach/bot
   unchanged; bench level 1 0.83-0.84 vs 0.82-0.88, arena 0.82 vs 0.77
   (noise band).
+- 2026-11-19: step 3, `Wrench` (app/wrench.rb, `< Actor`). `Wrench.new(player)`
+  is the throw; `update(player)` flies it (out, drag, turn, home in) and
+  returns true when it's in free flight and can hit things; `caught?`,
+  `expired?`, `back?`, `heading`; `turn_back` (hit Rusty) and `bounce_off`
+  (hit the valve) replace the `data[:back]`/`data[:bounce]` writes. The
+  numbers are named (THROW_SPEED, DRAG, HOME_MAX, LIFETIME, ...). What it
+  hits (nuts, enemies, Rusty, the valve, globs) stays in Game. Traced
+  against the previous commit (8 levels x 1500 steps, powered, throwing
+  every 37 steps both ways; wrench x/y/vx/vy/t, enemies, score, nuts):
+  identical. Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged;
+  bench level 1 0.85 vs 0.85-0.93, arena 0.84 vs 0.85-0.86.

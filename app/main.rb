@@ -174,6 +174,7 @@ require 'app/lift.rb'
 require 'app/items.rb'
 require 'app/props.rb'
 require 'app/enemies.rb'
+require 'app/wrench.rb'
 
 class Game
   include Physics
@@ -539,11 +540,7 @@ class Game
 
     # throw the wrench
     if @controls.throw_pressed? && player.powered && @wrench.nil?
-      wrench = Actor.new(:wrench, player.x + (player.facing > 0 ? player.w : -40), player.y + 36, 40, 20)
-      wrench.vx = player.facing * 16.0 + player.vx * 0.5
-      wrench.facing = player.facing
-      wrench.data[:back] = false
-      @wrench = wrench
+      @wrench = Wrench.new(player)
       player.throw_t = 12
       @sound.play(:throw)
     end
@@ -802,58 +799,30 @@ class Game
   def update_wrench
     wrench = @wrench
     return unless wrench
-    player = @player
-    wrench.t += 1
-    if (bounce = wrench.data[:bounce]) && bounce > 0
-      # knocked back off the main valve: a short arc before it heads home
-      wrench.data[:bounce] = bounce - 1
-      wrench.vy -= 0.7
-      wrench.x += wrench.vx
-      wrench.y += wrench.vy
-      return
-    elsif !wrench.data[:back]
-      wrench.vx -= wrench.facing * 0.5
-      wrench.data[:back] = true if wrench.vx * wrench.facing <= 0
-    else
-      dx = (player.x + player.w / 2) - (wrench.x + wrench.w / 2)
-      dy = (player.y + 40) - (wrench.y + wrench.h / 2)
-      distance = Math.sqrt(dx * dx + dy * dy)
-      distance = 1 if distance < 1
-      speed = [wrench.vx.abs + wrench.vy.abs + 0.6, 13.0].min
-      wrench.vx = dx / distance * speed
-      wrench.vy = dy / distance * speed
-      if distance < 40
-        @wrench = nil
-        return
-      end
-    end
-    wrench.x += wrench.vx
-    wrench.y += wrench.vy
+    flying = wrench.update(@player)
+    return @wrench = nil if wrench.caught?
+    return unless flying
     collect_nuts(wrench)
     @enemies.each do |enemy|
       next unless enemy.active && enemy.walking? && overlap?(wrench, enemy)
-      knock(enemy, wrench.vx > 0 ? 1 : -1)
+      knock(enemy, wrench.heading)
       add_score(200, enemy.x, enemy.y + 60)
     end
-    if @boss && @boss_on && overlap?(wrench, @boss) && !wrench.data[:back]
+    if @boss && @boss_on && overlap?(wrench, @boss) && !wrench.back?
       boss_hit(1)
-      wrench.data[:back] = true
+      wrench.turn_back
     end
     # a wrench that hits the main valve turns it: level clear. It bounces
     # off and flies back to the player while the level ends.
     if @goal && playing? &&
        rect_hit?(wrench, @goal.x, @goal.y, TILE, 3 * TILE)
-      wrench.vx = wrench.vx > 0 ? -7.0 : 7.0
-      wrench.vy = 7.0
-      wrench.data[:back] = true
-      wrench.data[:bounce] = 14
-      wrench.t = 0
+      wrench.bounce_off
       @sound.play(:bump)
       popup(@goal.x, @goal.y + 3 * TILE + 80, 'NICE SHOT')
       start_clear
       return
     end
-    @wrench = nil if wrench.t > 150
+    @wrench = nil if wrench.expired?
   end
 
   # ── items ─────────────────────────────────────────────────────────
@@ -1112,10 +1081,7 @@ class Game
     draw_player
     draw_boss_hud if @boss
     if @wrench
-      wrench = @wrench
-      # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
-      f = (wrench.t / 2) % 7
-      @screen.sprite('sprites/wrench.png', wrench.x.to_i - camera_x - 4, wrench.y.to_i - 14, 48, 48, frame(:wrench_spin, f), flip: wrench.facing < 0)
+      @wrench.draw(@screen, camera_x)
     end
     @particles.each do |particle|
       @screen.rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
