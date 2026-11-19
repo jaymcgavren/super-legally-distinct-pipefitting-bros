@@ -116,8 +116,8 @@ refactor step will break some of them. Update them in the same commit.
       if they stay readable (or convert to normal defs).
 - [ ] Descriptive local names: `p` -> `player` (it also shadows Kernel#p),
       `b` -> `boss`, `e` -> `enemy`, `l` -> `lift`, `w` -> `wrench`,
-      `it` -> `item`, `t` -> `time`/`frames` where it helps. Keep `T` (tile
-      size) or rename to `TILE` everywhere at once.
+      `it` -> `item`, `t` -> `time`/`frames` where it helps. Rename `T` (tile
+      size) to `TILE` everywhere at once.
 - [ ] Name the colours used more than once (`WHITE = [255, 255, 255]`,
       steam `[236, 236, 236]`, label yellow `[252, 240, 160]`, ...). Freeze
       constant arrays/hashes.
