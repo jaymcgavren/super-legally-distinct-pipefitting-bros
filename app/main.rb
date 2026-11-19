@@ -162,6 +162,9 @@ def pad3(n)
   digits.size >= 3 ? digits : ('0' * (3 - digits.size)) + digits
 end
 
+# entities: their class bodies use the constants above
+require 'app/lift.rb'
+
 class Game
   include Physics
 
@@ -332,10 +335,7 @@ class Game
         enemy.data[:cycle] = (c * 29) % 200
         @enemies << enemy
       when 'L', 'H'
-        lift = Actor.new(:lift, c * TILE, @level.tile_top(r) - 16, 128, 16)
-        lift.data = { bx: lift.x, by: lift.y, amp: 2 * TILE, axis: tile == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
-        lower_pit_lift(lift, c, r) if tile == 'L'
-        @lifts << lift
+        @lifts << Lift.new(@level, c, r, tile == 'H' ? :x : :y)
       when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
       when 'K'
         @cones << { c: c, r: r, lit: false }
@@ -433,7 +433,7 @@ class Game
       return
     end
     update_timer
-    update_lifts
+    @lifts.each { |lift| lift.update(@frame) }
     update_player
     update_enemies if playing?
     update_boss if @boss && playing?
@@ -474,48 +474,11 @@ class Game
     die if @run.time <= 0
   end
 
-  # A vertical lift over a pit with a ceiling above swings lower, and half as
-  # far, so a full running jump off it never hits the ceiling: indoors the
-  # standard +/-2 tile swing put the lift so close to the roof that jumps
-  # across the pit got cut short.
-  JUMP_RISE = JUMP_VELOCITY_RUN**2 / (2 * GRAVITY_HOLD)
-  def lower_pit_lift(lift, c, r)
-    columns = [c, c + 1]
-    return unless columns.all? { |column| (r + 1...ROWS).none? { |row| SOLID[@level.cell(column, row)] } }
-    ceil = (0...r).to_a.reverse.find { |row| columns.any? { |column| SOLID[@level.cell(column, row)] } }
-    return unless ceil
-    max_top = @level.tile_bottom(ceil) - PLAYER_HEIGHT - JUMP_RISE
-    top = lift.y + lift.h
-    return if top + 2 * TILE <= max_top
-    data = lift.data
-    data[:amp] = TILE
-    data[:by] = max_top - TILE - lift.h
-    lift.y = data[:by]
-  end
-
-  def update_lifts
-    @lifts.each do |lift|
-      data = lift.data
-      swing = Math.sin(@frame * 6.2832 / 240 + data[:phase])
-      if data[:axis] == :x
-        new_x = data[:bx] + swing * data[:amp]
-        data[:dx] = new_x - lift.x
-        data[:dy] = 0.0
-        lift.x = new_x
-      else
-        new_y = data[:by] + swing * data[:amp]
-        data[:dy] = new_y - lift.y
-        data[:dx] = 0.0
-        lift.y = new_y
-      end
-    end
-  end
-
   def update_player
     player = @player
     if player.riding
-      player.x += player.riding.data[:dx]
-      player.y += player.riding.data[:dy]
+      player.x += player.riding.dx
+      player.y += player.riding.dy
     end
     player.prev_y = player.y
     dir = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
@@ -1208,11 +1171,7 @@ class Game
     draw_background
     camera_x = @camera.x.to_i
     draw_tiles
-    @lifts.each do |lift|
-      x = lift.x.to_i - camera_x
-      @screen.tile(@level.theme[:tiles], x, lift.y.to_i - 48, FRAMES[:lift])
-      @screen.tile(@level.theme[:tiles], x + TILE, lift.y.to_i - 48, FRAMES[:lift])
-    end
+    @lifts.each { |lift| lift.draw(@screen, camera_x, @level.theme[:tiles]) }
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
       @screen.tile('sprites/items.png', cone[:c] * TILE - camera_x, @level.tile_bottom(cone[:r]), FRAMES[lit ? :cone_lit : :cone_off])

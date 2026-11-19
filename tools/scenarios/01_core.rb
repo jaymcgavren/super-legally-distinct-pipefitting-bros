@@ -209,22 +209,22 @@ check 'wrench clear advances to 1-B', s.iv(:level_index) == 1
 lv_of = ->(name) { LEVELS.index { |l| l[:name] == name } }
 ceil_bottom = Sim.new.level.tile_bottom(0)
 s = Sim.new.start(lv_of['JOBSITE 1-B'])
-pit = s.iv(:lifts).select { |l| [165, 170].include?((l.data[:bx] / TILE).to_i) }
+pit = s.iv(:lifts).select { |l| [165, 170].include?((l.base_x / TILE).to_i) }
 check '1-B has its two pit lifts', pit.size == 2
-check '1-B pit lifts swing half as far', pit.all? { |l| l.data[:amp] == TILE }
+check '1-B pit lifts swing half as far', pit.all? { |l| l.amplitude == TILE }
 check '1-B pit lifts never come within a full jump of the ceiling',
-      pit.all? { |l| l.data[:by] + l.h + l.data[:amp] + PLAYER_HEIGHT + Game::JUMP_RISE <= ceil_bottom }
-check '1-B pit lifts stay above the death line', pit.all? { |l| l.data[:by] - l.data[:amp] > -140 + PLAYER_HEIGHT }
+      pit.all? { |l| l.base_y + l.h + l.amplitude + PLAYER_HEIGHT + Lift::JUMP_RISE <= ceil_bottom }
+check '1-B pit lifts stay above the death line', pit.all? { |l| l.base_y - l.amplitude > -140 + PLAYER_HEIGHT }
 # jump off the first lift at the top of its swing, running: the head never touches the ceiling
 l = pit[0]
-top = l.data[:by] + l.h + l.data[:amp]
+top = l.base_y + l.h + l.amplitude
 s.set(:lifts, [])
 s.p.x = l.x + 40; s.p.y = top; s.p.vx = RUN_MAX; s.p.vy = 0.0; s.p.on_ground = true; s.snap
 peak = top
 s.step([:right, :b, :a], 1)
 60.times { s.step([:right, :b, :a]); peak = [peak, s.p.y].max; break if s.p.vy < 0 }
 check "running jump from the 1-B pit lift's highest point peaks below the ceiling (#{peak.to_i} + #{PLAYER_HEIGHT} < #{ceil_bottom})",
-      peak + PLAYER_HEIGHT < ceil_bottom && peak > top + Game::JUMP_RISE * 0.9
+      peak + PLAYER_HEIGHT < ceil_bottom && peak > top + Lift::JUMP_RISE * 0.9
 # lifts elsewhere keep the full swing: a lift over floor indoors (no level has
 # one, so try it in a copy of 1-B), and outdoor lifts
 rows = LEVELS[lv_of['JOBSITE 1-B']][:rows].map(&:dup)
@@ -239,10 +239,10 @@ s = Sim.new.start(LEVELS.size - 1)
 Object.send(:remove_const, :LEVELS)
 Object.const_set(:LEVELS, levels)
 check 'indoor lift over the floor keeps its full swing',
-      s.iv(:lifts).any? { |lf| (lf.data[:bx] / TILE).to_i == fc && lf.data[:amp] == 2 * TILE }
+      s.iv(:lifts).any? { |lf| (lf.base_x / TILE).to_i == fc && lf.amplitude == 2 * TILE }
 out = LEVELS.index { |l| !THEMES[l[:theme]][:indoor] && l[:rows].any? { |r| r =~ /[LH]/ } }
 s = Sim.new.start(out)
-check 'outdoor lifts keep their full swing', !s.iv(:lifts).empty? && s.iv(:lifts).all? { |lf| lf.data[:amp] == 2 * TILE }
+check 'outdoor lifts keep their full swing', !s.iv(:lifts).empty? && s.iv(:lifts).all? { |lf| lf.amplitude == 2 * TILE }
 
 # --- a full-speed running jump can land on top of 1-A's wrench crate ---
 wc = LEVELS[0][:rows].each_with_index.map { |r, i| [r.index('W'), i] }.find(&:first)
@@ -274,4 +274,4 @@ check 'pause stops the world clock', s.mode == :paused && s.iv(:frame) == f0
 check 'vents stay quiet during the pause', !s.sounds[n0..].include?('sounds/steam.wav')
 s.step([:start]); s.step([])
 check 'lifts carry on smoothly after the pause', s.mode == :play &&
-  s.iv(:lifts).all? { |l| l.data[:dx].abs < 5 && l.data[:dy].abs < 5 }
+  s.iv(:lifts).all? { |l| l.dx.abs < 5 && l.dy.abs < 5 }

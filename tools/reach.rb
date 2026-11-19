@@ -8,7 +8,7 @@ def analyze(index)
   level = s.level
   g.instance_variable_get(:@lifts).each do |l|
     c = (l.x / TILE).round; r = level.row_at(l.y + l.h - 1)
-    offs = l.data[:axis] == :x ? [-2, 0, 2].map { |d| [c + d, r] } : [-2, 0, 2].map { |d| [c, r + d] }
+    offs = l.axis == :x ? [-2, 0, 2].map { |d| [c + d, r] } : [-2, 0, 2].map { |d| [c, r + d] }
     offs.each { |cc, rr| [cc, cc + 1].each { |k| level.set_cell(k, rr, '=') if rr.between?(0, 9) && level.cell(k, rr) == '.' } }
   end
   g.instance_variable_set(:@lifts, [])

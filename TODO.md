@@ -168,7 +168,7 @@ delegating methods at first if that keeps the diff small, then callers move.
 Replace `Actor` + `kind` symbols + `data` hashes with classes that each own
 `update(world)` and `draw(screen, cam)`. `world` = whatever object exposes
 level, player, physics, sound, effects (probably the Play scene or Game).
-- [ ] `Lift` (vertical/horizontal; `amp`, `phase`, base position, `dx/dy`
+- [x] `Lift` (vertical/horizontal; `amp`, `phase`, base position, `dx/dy`
       for riders; `lower_pit_lift` logic becomes a class method or initializer
       option). Update `tools/reach.rb`.
 - [ ] Items: `PopNut`, `WrenchItem`, `Lunch` (from `update_items` /
@@ -470,3 +470,18 @@ paths, anything the next session needs.)
   bench_start.rb sets `@run.lives` (old refs: `@lives`).
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
   0.92 vs 0.91-0.92, 2-B 0.93 vs 0.91-0.92 (noise).
+- 2026-11-19: step 3, `Lift` (app/lift.rb). `Lift.new(level, c, r, axis)`
+  replaces `Actor.new(:lift, ...)` plus its data hash; the old data keys are
+  readers: `base_x`, `base_y`, `amplitude`, `phase`, `axis`, `dx`, `dy`
+  (riders follow `riding.dx/dy`). `lower_pit_lift` is the private
+  `fit_under_ceiling`, run by the initializer for vertical lifts, and
+  JUMP_RISE moved with it (`Lift::JUMP_RISE`). `update(frame)` was
+  `update_lifts`'s loop body; `draw(screen, camera_x, tiles)` was in
+  `draw_world`. Swing size and period are named (SWING, PERIOD).
+  Interface note for the rest of step 3: plain arguments (`frame`,
+  `screen`, `camera_x`) rather than a `world` object until an entity needs
+  more than two or three things from Game.
+  main.rb requires entity files after its constants, since their class
+  bodies use them. Scenarios and reach.rb read the new readers.
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
+  0.98-1.03 vs 0.98-0.99 at HEAD (machine slower this run; noise).
