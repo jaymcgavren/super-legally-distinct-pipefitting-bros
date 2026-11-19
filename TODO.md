@@ -131,7 +131,7 @@ refactor step will break some of them. Update them in the same commit.
 - [x] Name the colours used more than once (`WHITE = [255, 255, 255]`,
       steam `[236, 236, 236]`, label yellow `[252, 240, 160]`, ...). Freeze
       constant arrays/hashes.
-- [ ] Name sprite-sheet frames: a `FRAMES` hash, e.g.
+- [x] Name sprite-sheet frames: a `FRAMES` hash, e.g.
       `valve: [64, 0, 8, 16]`, so draw calls say what they draw.
 - [ ] Predicate methods instead of repeated comparisons where it reads better
       (`playing?` for `@mode == :play`, etc.).
@@ -144,6 +144,7 @@ delegating methods at first if that keeps the diff small, then callers move.
       holds the current outputs (today `@o`, switched to a render target by the
       ending). Use keyword args for the long `spr` signature:
       `sprite(path, x, y, w:, h:, frame:, flip: false, alpha: 255, angle: 0, flip_v: false)`.
+      (`spr` already takes the frame as one array, `source`.)
 - [ ] `Sound` (app/sound.rb): `sfx`, `music`, `stop_music`; owns the
       once-per-frame dedupe (`@played`).
 - [ ] `Controls` (app/controls.rb): replaces `poll_input`/`read_input` and the
@@ -348,3 +349,16 @@ paths, anything the next session needs.)
   lift scenario used to push a level onto LEVELS; it now swaps the constant
   for a frozen copy. Tests ALL PASS (185), shots ALL SAME (real images),
   reach/bot unchanged, 2-B bench 0.68 ms/frame vs 0.70 for un-refactored.
+- 2026-11-19: step 1, FRAMES. `FRAMES` (main.rb, frozen) names every
+  sprite-sheet frame used, with the names from tools/make-assets.mjs
+  (brick, brick_top, girder, crate, ..., nut, valve, blob, crab_spin,
+  bro_run, wrench_spin, rusty_hurt, glob, bolt). `frame(name, index)` gives
+  frame `index` of an animation strip. `spr` now takes the source rect as
+  one array (`spr(path, x, y, w, h, source, flip, ...)`) instead of
+  sx/sy/sw/sh. The player, Big Rusty, enemy and title pose logic now
+  picks named poses instead of numbers (`pose = :bro_skid`, not `f = 5`).
+  PERF NOTE: a first version splatted (`*FRAMES[:brick]`) into the old
+  signature and the 2-B fight went from ~0.87 to ~1.06 ms/frame (+20%,
+  mruby splat calls are slow). Passing the array removed it: 0.85-0.92
+  vs 0.87-0.89 for un-refactored, interleaved. Avoid splats in draw code.
+  Tests ALL PASS (185), shots ALL SAME.

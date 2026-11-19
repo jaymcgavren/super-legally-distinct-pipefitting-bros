@@ -332,7 +332,7 @@ class Game
           h = 36 - i * 10 + ((shot[:t] / 3 + i) % 2) * 6
           rect(x + i * 12 - (shot[:vx] > 0 ? 0 : 12), 128, 16, h, STEAM, 220 - i * 50)
         end
-      when :glob then spr('sprites/shots.png', x, shot[:y].to_i, 32, 32, 0, 0, 8, 16)
+      when :glob then spr('sprites/shots.png', x, shot[:y].to_i, 32, 32, FRAMES[:glob])
       when :bolt
         if shot[:t] < BOLT_WARNING
           # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
@@ -345,26 +345,26 @@ class Game
           rect(cx - w / 2, 130, w, 14, BLACK, 235)
           label(cx, 236, '!', 6, flash ? WARNING_YELLOW : WARNING_RED, true) if k > 0
         else
-          spr('sprites/shots.png', x - 8, shot[:y].to_i, 48, 48, 8, 0, 8, 16)
+          spr('sprites/shots.png', x - 8, shot[:y].to_i, 48, 48, FRAMES[:bolt])
         end
       end
     end
     return if data[:inv] > 0 && (data[:inv] / 3).even? && boss.state != :dead
-    f = case boss.state
-        when :dead, :stunned then 4
-        when :pound then boss.t < 20 ? 2 : 3
-        when :hop then boss.on_ground ? 2 : 3
-        when :spit, :summon then 5
-        when :charge then boss.t < 45 ? 2 : 6
-        else data[:angry] ? 6 : (boss.t / 12) % 2
-        end
-    f = 4 if data[:inv] > 0 && boss.state != :dead
+    source = case boss.state
+             when :dead, :stunned then FRAMES[:rusty_hurt]
+             when :pound then FRAMES[boss.t < 20 ? :rusty_crouch : :rusty_air]
+             when :hop then FRAMES[boss.on_ground ? :rusty_crouch : :rusty_air]
+             when :spit, :summon then FRAMES[:rusty_mouth]
+             when :charge then FRAMES[boss.t < 45 ? :rusty_crouch : :rusty_angry]
+             else data[:angry] ? FRAMES[:rusty_angry] : frame(:rusty_walk, (boss.t / 12) % 2)
+             end
+    source = FRAMES[:rusty_hurt] if data[:inv] > 0 && boss.state != :dead
     x = boss.x.to_i - camera_x - 8
     shake = boss.state == :charge && boss.t < 45 ? ((boss.t / 2) % 2) * 8 - 4 : 0
     alpha = 255
-    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, f * 8, 0, 8, 28, boss.facing > 0, alpha, 0, boss.state == :dead)
+    spr('sprites/rusty.png', x + shake, boss.y.to_i, 128, 112, source, boss.facing > 0, alpha, 0, boss.state == :dead)
     if data[:spiky] > 0 || (data[:warn_spiky] > 0 && (data[:warn_spiky] / 4).even?)
-      spr('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, 56, 0, 8, 28, false)
+      spr('sprites/rusty.png', x + shake, boss.y.to_i + 24, 128, 112, FRAMES[:rusty_crown], false)
     end
   end
 

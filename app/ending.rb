@@ -203,7 +203,7 @@ class Game
       y = @flying_valve[:y].to_i - rise + shake_y
       if y < 760
         f = elapsed % 3
-        spr('sprites/items.png', x, y, TILE, TILE, 64 + f * 8, 0, 8, 16)
+        spr('sprites/items.png', x, y, TILE, TILE, frame(:valve, f))
       end
     end
     if @twinkle && @twinkle[:t] < 40
@@ -218,7 +218,7 @@ class Game
       rusty_y = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
       if rusty_y > -140
         # dazed face, flipped upside-down, wobbling as he drops
-        spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, 32, 0, 8, 28,
+        spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt],
             (elapsed / 6).even?, 255, 0, true)
       end
     end

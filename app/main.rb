@@ -43,6 +43,43 @@ DARK_GRAY      = [60, 60, 60].freeze      # HUD rule, unselected slots
 NEAR_BLACK     = [16, 16, 16].freeze      # HUD panel
 TWINKLE        = [255, 255, 220].freeze   # the valve's twinkle in the ending
 
+# Sprite-sheet frames: [source_x, source_y, source_w, source_h]. Every sheet
+# is a horizontal strip of equal frames (see tools/make-assets.mjs), so an
+# animation is its first frame here plus an index: `frame(:nut, 2)`.
+FRAMES = {
+  # tiles_<theme>.png
+  brick: [0, 0, 8, 16], brick_top: [8, 0, 8, 16], girder: [16, 0, 8, 16],
+  crate: [24, 0, 8, 16], crate_used: [32, 0, 8, 16], pipe: [40, 0, 8, 16],
+  pipe_flange: [48, 0, 8, 16], pipe_stand: [56, 0, 8, 16], vent: [64, 0, 8, 16],
+  standpipe: [72, 0, 8, 16], lift: [80, 0, 8, 16], back_wall: [88, 0, 8, 16],
+  wood_floor: [96, 0, 8, 16], subfloor: [104, 0, 8, 16],
+  # items.png
+  nut: [0, 0, 8, 16],             # 4 frames: a spinning nut
+  wrench_item: [32, 0, 8, 16], lunchbox: [40, 0, 8, 16],
+  cone_off: [48, 0, 8, 16], cone_lit: [56, 0, 8, 16],
+  valve: [64, 0, 8, 16],          # 3 frames: the handwheel turning
+  # enemies.png
+  blob: [0, 0, 8, 12],            # 2 walk frames
+  blob_flat: [16, 0, 8, 12],
+  crab: [24, 0, 8, 12],           # 2 walk frames
+  crab_spin: [40, 0, 8, 12],      # 2 frames
+  # dez.png / ozzie.png
+  bro_stand: [0, 0, 8, 20],
+  bro_run: [8, 0, 8, 20],         # 3 frames
+  bro_jump: [32, 0, 8, 20], bro_skid: [40, 0, 8, 20], bro_die: [48, 0, 8, 20],
+  bro_throw: [56, 0, 8, 20],
+  # wrench.png
+  wrench_spin: [0, 0, 8, 16],     # 7 frames
+  wrench_back: [56, 0, 8, 16],    # slung on the player's back
+  # rusty.png
+  rusty_walk: [0, 0, 8, 28],      # 2 frames
+  rusty_crouch: [16, 0, 8, 28], rusty_air: [24, 0, 8, 28], rusty_hurt: [32, 0, 8, 28],
+  rusty_mouth: [40, 0, 8, 28], rusty_angry: [48, 0, 8, 28], rusty_crown: [56, 0, 8, 28],
+  # shots.png
+  glob: [0, 0, 8, 16], bolt: [8, 0, 8, 16],
+}.freeze
+FRAMES.each_value(&:freeze)
+
 SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }.freeze
 COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000].freeze
 
@@ -532,8 +569,8 @@ class Game
       selected = i == @bro
       rect(x - 56, 196, 112, 120, selected ? PALE_YELLOW : DARK_GRAY)
       rect(x - 48, 204, 96, 104, [20, 20, 40])
-      f = selected ? 1 + (@mode_frames / 8) % 3 : 0
-      spr(BROS[i][:path], x - 32, 216, 64, 80, f * 8, 0, 8, 20, i == 1)
+      source = selected ? frame(:bro_run, (@mode_frames / 8) % 3) : FRAMES[:bro_stand]
+      spr(BROS[i][:path], x - 32, 216, 64, 80, source, i == 1)
       shadow_label(x, 180, BROS[i][:name], 4, selected ? PALE_YELLOW : [140, 140, 140])
     end
     shadow_label(640, 120, 'PRESS START', 4, WHITE) if (@mode_frames / 30) % 2 == 0
@@ -556,7 +593,7 @@ class Game
     label(640, 440, @level_data[:name], 6, PALE_YELLOW)
     label(640, 370, @level_data[:title], 4, ORANGE)
     label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
-    spr(BROS[@bro][:path], 560, 210, 64, 80, 0, 0, 8, 20)
+    spr(BROS[@bro][:path], 560, 210, 64, 80, FRAMES[:bro_stand])
     label(680, 270, "x #{@lives}", 5, WHITE)
   end
 
@@ -1188,9 +1225,17 @@ class Game
   end
 
   # ── drawing ───────────────────────────────────────────────────────
-  def spr(path, x, y, w, h, sx, sy, sw, sh, flip = false, alpha = 255, angle = 0, flipv = false)
-    @outputs.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: sx, source_y: sy,
-                               source_w: sw, source_h: sh, flip_horizontally: flip, flip_vertically: flipv,
+  # FRAMES[name], or frame `index` of the animation starting there
+  def frame(name, index = 0)
+    base = FRAMES[name]
+    return base if index == 0
+    [base[0] + index * base[2], base[1], base[2], base[3]]
+  end
+
+  # `source` is a sprite-sheet frame: FRAMES[name] or frame(name, index)
+  def spr(path, x, y, w, h, source, flip = false, alpha = 255, angle = 0, flipv = false)
+    @outputs.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: source[0], source_y: source[1],
+                               source_w: source[2], source_h: source[3], flip_horizontally: flip, flip_vertically: flipv,
                                a: alpha, angle: angle }
   end
 
@@ -1313,7 +1358,7 @@ class Game
       x = c * TILE - camera_x
       8.times do |r|
         next if window && WINDOW_ROWS.include?(r)
-        spr(tiles, x, tile_bottom(r), TILE, TILE, 88, 0, 8, 16)
+        spr(tiles, x, tile_bottom(r), TILE, TILE, FRAMES[:back_wall])
       end
     end
     wood = [140, 88, 44]
@@ -1351,24 +1396,24 @@ class Game
         bump = @bumps[r * 10000 + c]
         bumped_y = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
         case tile
-        when '#' then spr(tiles, x, bumped_y, TILE, TILE, r == 0 || SOLID[cell(c, r - 1)] ? 0 : 8, 0, 8, 16)
-        when 'F' then spr(tiles, x, bumped_y, TILE, TILE, cell(c, r - 1) == 'F' ? 104 : 96, 0, 8, 16)
-        when '=' then spr(tiles, x, bumped_y, TILE, TILE, 16, 0, 8, 16)
-        when 'C', 'W', 'M' then spr(tiles, x, bumped_y, TILE, TILE, 24, 0, 8, 16)
-        when 'U' then spr(tiles, x, bumped_y, TILE, TILE, 32, 0, 8, 16)
+        when '#' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[r == 0 || SOLID[cell(c, r - 1)] ? :brick : :brick_top])
+        when 'F' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[cell(c, r - 1) == 'F' ? :subfloor : :wood_floor])
+        when '=' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:girder])
+        when 'C', 'W', 'M' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:crate])
+        when 'U' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:crate_used])
         when '-'
           # extend a stand up behind the pipe so it meets the pipe's underside
-          spr(tiles, x, y, TILE, TILE, 56, 0, 8, 16) if cell(c, r + 1) == '|'
+          spr(tiles, x, y, TILE, TILE, FRAMES[:pipe_stand]) if cell(c, r + 1) == '|'
           if cell(c + 1, r) != '-'
-            spr(tiles, x, bumped_y, TILE, TILE, 48, 0, 8, 16, true)
+            spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange], true)
           elsif cell(c - 1, r) != '-' || c % 4 == 0
-            spr(tiles, x, bumped_y, TILE, TILE, 48, 0, 8, 16)
+            spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange])
           else
-            spr(tiles, x, bumped_y, TILE, TILE, 40, 0, 8, 16)
+            spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe])
           end
-        when '|' then spr(tiles, x, bumped_y, TILE, TILE, 56, 0, 8, 16)
-        when 'S' then spr(tiles, x, bumped_y, TILE, TILE, 64, 0, 8, 16)
-        when 'o' then spr('sprites/items.png', x, bumped_y, TILE, TILE, nut_f * 8, 0, 8, 16)
+        when '|' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_stand])
+        when 'S' then spr(tiles, x, bumped_y, TILE, TILE, FRAMES[:vent])
+        when 'o' then spr('sprites/items.png', x, bumped_y, TILE, TILE, frame(:nut, nut_f))
         end
       end
     end
@@ -1391,21 +1436,21 @@ class Game
     draw_tiles
     @lifts.each do |lift|
       x = lift.x.to_i - camera_x
-      spr(@theme[:tiles], x, lift.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
-      spr(@theme[:tiles], x + TILE, lift.y.to_i - 48, TILE, TILE, 80, 0, 8, 16)
+      spr(@theme[:tiles], x, lift.y.to_i - 48, TILE, TILE, FRAMES[:lift])
+      spr(@theme[:tiles], x + TILE, lift.y.to_i - 48, TILE, TILE, FRAMES[:lift])
     end
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
-      spr('sprites/items.png', cone[:c] * TILE - camera_x, tile_bottom(cone[:r]), TILE, TILE, lit ? 56 : 48, 0, 8, 16)
+      spr('sprites/items.png', cone[:c] * TILE - camera_x, tile_bottom(cone[:r]), TILE, TILE, FRAMES[lit ? :cone_lit : :cone_off])
     end
     if @goal
       goal_x = @goal[:c] * TILE - camera_x
       goal_y = tile_bottom(@goal[:r])
-      spr(@theme[:tiles], goal_x, goal_y, TILE, TILE, 72, 0, 8, 16)
-      spr(@theme[:tiles], goal_x, goal_y + TILE, TILE, TILE, 72, 0, 8, 16)
+      spr(@theme[:tiles], goal_x, goal_y, TILE, TILE, FRAMES[:standpipe])
+      spr(@theme[:tiles], goal_x, goal_y + TILE, TILE, TILE, FRAMES[:standpipe])
       unless @goal[:gone]
         f = (@goal[:turn] / 5) % 3
-        spr('sprites/items.png', goal_x, goal_y + 2 * TILE, TILE, TILE, 64 + f * 8, 0, 8, 16)
+        spr('sprites/items.png', goal_x, goal_y + 2 * TILE, TILE, TILE, frame(:valve, f))
         label(goal_x + 32, goal_y + 3 * TILE + 28, 'MAIN', 2, WHITE, true)
       end
     end
@@ -1429,23 +1474,23 @@ class Game
     @items.each do |item|
       x = item.x.to_i - camera_x
       case item.kind
-      when :popnut then spr('sprites/items.png', x, item.y.to_i, TILE, TILE, ((item.t / 3) % 4) * 8, 0, 8, 16)
+      when :popnut then spr('sprites/items.png', x, item.y.to_i, TILE, TILE, frame(:nut, (item.t / 3) % 4))
       when :wrench_item
         bob = item.data[:rise] > 0 ? 0 : ((@frame / 12) % 2) * 4
-        spr('sprites/items.png', x - 4, item.y.to_i + bob, TILE, TILE, 32, 0, 8, 16)
-      when :lunch then spr('sprites/items.png', x - 4, item.y.to_i, TILE, TILE, 40, 0, 8, 16)
+        spr('sprites/items.png', x - 4, item.y.to_i + bob, TILE, TILE, FRAMES[:wrench_item])
+      when :lunch then spr('sprites/items.png', x - 4, item.y.to_i, TILE, TILE, FRAMES[:lunchbox])
       end
     end
     @enemies.each do |enemy|
       x = enemy.x.to_i - camera_x
       next if x < -TILE || x > VIEW_WIDTH + TILE
       if enemy.kind == :blob
-        f = enemy.state == :flat ? 2 : (enemy.t / 10) % 2
-        spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, enemy.vx > 0, 255, 0, enemy.state == :dead)
+        source = enemy.state == :flat ? FRAMES[:blob_flat] : frame(:blob, (enemy.t / 10) % 2)
+        spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, source, enemy.vx > 0, 255, 0, enemy.state == :dead)
       else
-        f = enemy.data[:spin] ? 5 + (enemy.t / 4) % 2 : 3 + (enemy.t / 12) % 2
+        source = enemy.data[:spin] ? frame(:crab_spin, (enemy.t / 4) % 2) : frame(:crab, (enemy.t / 12) % 2)
         alpha = enemy.data[:warn] && (enemy.t / 3).even? ? 110 : 255
-        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, false, alpha, 0, enemy.state == :dead)
+        spr('sprites/enemies.png', x - 6, enemy.y.to_i, TILE, 48, source, false, alpha, 0, enemy.state == :dead)
       end
     end
     draw_boss(camera_x) if @boss
@@ -1455,7 +1500,7 @@ class Game
       wrench = @wrench
       # 7 hand-drawn spin frames; mirroring reverses the spin for left throws
       f = (wrench.t / 2) % 7
-      spr('sprites/wrench.png', wrench.x.to_i - camera_x - 4, wrench.y.to_i - 14, 48, 48, f * 8, 0, 8, 16, wrench.facing < 0)
+      spr('sprites/wrench.png', wrench.x.to_i - camera_x - 4, wrench.y.to_i - 14, 48, 48, frame(:wrench_spin, f), wrench.facing < 0)
     end
     @particles.each do |particle|
       rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
@@ -1470,21 +1515,22 @@ class Game
     player = @player
     return if player.invuln > 0 && (player.invuln / 3) % 2 == 0 && @mode == :play
     camera_x = @camera_x.to_i
-    f = if @mode == :dying then 6
-        elsif player.throw_t > 0 then 7
-        elsif !player.on_ground then 4
-        elsif player.skid then 5
-        elsif player.vx.abs > 0.3 then [1, 2, 3, 2][player.anim.to_i % 4]
-        else 0
-        end
-    flip = f == 5 ? player.facing > 0 : player.facing < 0
-    flip = false if f == 6
+    pose = if @mode == :dying then :bro_die
+           elsif player.throw_t > 0 then :bro_throw
+           elsif !player.on_ground then :bro_jump
+           elsif player.skid then :bro_skid
+           elsif player.vx.abs > 0.3 then :bro_run
+           else :bro_stand
+           end
+    run_frame = pose == :bro_run ? [0, 1, 2, 1][player.anim.to_i % 4] : 0
+    flip = pose == :bro_skid ? player.facing > 0 : player.facing < 0
+    flip = false if pose == :bro_die
     x = player.x.to_i - camera_x - 12
-    if player.powered && f != 6 && @wrench.nil?
+    if player.powered && pose != :bro_die && @wrench.nil?
       wrench_x = player.facing > 0 ? x - 6 : x + 22
-      spr('sprites/wrench.png', wrench_x, player.y.to_i + 22, 40, 40, 56, 0, 8, 16, player.facing > 0)
+      spr('sprites/wrench.png', wrench_x, player.y.to_i + 22, 40, 40, FRAMES[:wrench_back], player.facing > 0)
     end
-    spr(BROS[@bro][:path], x, player.y.to_i, 64, 80, f * 8, 0, 8, 20, flip)
+    spr(BROS[@bro][:path], x, player.y.to_i, 64, 80, frame(pose, run_frame), flip)
   end
 
   def draw_hud
