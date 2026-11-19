@@ -8,25 +8,25 @@
 
 require 'app/levels.rb'
 
-TILE    = 64
-ROWS    = 10
-VW      = 1280
-PLAY_H  = 640
+TILE        = 64
+ROWS        = 10
+VIEW_WIDTH  = 1280
+PLAY_HEIGHT = 640
 
-WALK_MAX  = 4.2
-RUN_MAX   = 6.8
-PLAYER_H  = 72
+WALK_MAX          = 4.2
+RUN_MAX           = 6.8
+PLAYER_HEIGHT     = 72
 # Two jump heights: the full one only at (almost) top running speed, a lower
 # one at any other speed, standing and walking included
-JUMP_V     = 19.0           # ~4.2 tiles held
-JUMP_V_RUN = 21.4           # ~5.4 tiles held
-RUN_JUMP_SPEED = RUN_MAX * 0.9
-GRAV_HOLD = 0.65
-GRAV_CUT  = 1.6
-GRAV_FALL = 1.0
-FALL_MAX  = -15.0
-SHIFT_LEN = 300
-TICK_LEN  = 24      # frames per SHIFT unit
+JUMP_VELOCITY     = 19.0                # ~4.2 tiles held
+JUMP_VELOCITY_RUN = 21.4                # ~5.4 tiles held
+RUN_JUMP_SPEED    = RUN_MAX * 0.9
+GRAVITY_HOLD      = 0.65
+GRAVITY_CUT       = 1.6
+GRAVITY_FALL      = 1.0
+FALL_MAX          = -15.0
+SHIFT_LENGTH      = 300
+TICK_LENGTH       = 24                  # frames per SHIFT unit
 
 SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' => true, 'U' => true, 'S' => true }
 COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000]
@@ -76,7 +76,7 @@ end
 class Player < Actor
   attr_accessor :powered, :invuln, :coyote, :buffer, :jumping, :combo, :anim, :skid, :throw_t
   def initialize(x, y)
-    super(:player, x, y, 40, PLAYER_H)
+    super(:player, x, y, 40, PLAYER_HEIGHT)
     @facing = 1
     @powered = false
     @invuln = 0
@@ -367,7 +367,7 @@ class Game
     @p = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
     @p.powered = @powered if use_checkpoint
     @p.powered = true if @rush
-    @time = lv[:time] || SHIFT_LEN
+    @time = lv[:time] || SHIFT_LENGTH
     @time_acc = 0
     @warned = false
     @cam = [[@p.x - 480, 0].max, max_cam].min.to_f
@@ -384,7 +384,7 @@ class Game
   def row_at(y) = ROWS - 1 - (y / TILE).floor
   def tile_bottom(r) = (ROWS - 1 - r) * TILE
   def tile_top(r) = (ROWS - r) * TILE
-  def max_cam = @cols * TILE - VW
+  def max_cam = @cols * TILE - VIEW_WIDTH
 
   def box_free?(x, y, w, h)
     r0 = row_at(y + h - 0.01)
@@ -507,7 +507,7 @@ class Game
 
   def draw_title
     draw_world(false)
-    rect(0, 0, VW, 720, [0, 0, 0], 120)
+    rect(0, 0, VIEW_WIDTH, 720, [0, 0, 0], 120)
     shadow_label(640, 640, 'SUPER LEGALLY DISTINCT', 5, [252, 240, 160])
     shadow_label(640, 580, 'PIPEFITTING', 12, [244, 120, 24])
     shadow_label(640, 470, 'BROTHERS', 12, [236, 212, 64])
@@ -588,7 +588,7 @@ class Game
 
   def draw_paused
     draw_world(true)
-    rect(0, 0, VW, PLAY_H, [0, 0, 0], 140)
+    rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, [0, 0, 0], 140)
     label(640, 380, 'COFFEE BREAK', 7, [252, 240, 160])
     label(640, 300, 'PRESS START', 3, [255, 255, 255])
   end
@@ -596,7 +596,7 @@ class Game
   def update_timer
     return if @boss && @boss.state == :dead   # the clock stops once the boss falls
     @time_acc += 1
-    return if @time_acc < TICK_LEN
+    return if @time_acc < TICK_LENGTH
     @time_acc = 0
     @time -= 1
     if @time == 100 && !@warned
@@ -612,13 +612,13 @@ class Game
   # far, so a full running jump off it never hits the ceiling: indoors the
   # standard +/-2 tile swing put the lift so close to the roof that jumps
   # across the pit got cut short.
-  JUMP_RISE = JUMP_V_RUN**2 / (2 * GRAV_HOLD)
+  JUMP_RISE = JUMP_VELOCITY_RUN**2 / (2 * GRAVITY_HOLD)
   def lower_pit_lift(lift, c, r)
     cols = [c, c + 1]
     return unless cols.all? { |cc| (r + 1...ROWS).none? { |rr| SOLID[cell(cc, rr)] } }
     ceil = (0...r).to_a.reverse.find { |rr| cols.any? { |cc| SOLID[cell(cc, rr)] } }
     return unless ceil
-    max_top = tile_bottom(ceil) - PLAYER_H - JUMP_RISE
+    max_top = tile_bottom(ceil) - PLAYER_HEIGHT - JUMP_RISE
     top = lift.y + lift.h
     return if top + 2 * TILE <= max_top
     d = lift.data
@@ -677,14 +677,14 @@ class Game
     player.buffer = @in_a_down ? 7 : player.buffer - 1
     player.coyote = ground ? 6 : player.coyote - 1
     if player.buffer > 0 && player.coyote > 0
-      player.vy = player.vx.abs >= RUN_JUMP_SPEED ? JUMP_V_RUN : JUMP_V
+      player.vy = player.vx.abs >= RUN_JUMP_SPEED ? JUMP_VELOCITY_RUN : JUMP_VELOCITY
       player.buffer = 0
       player.coyote = 0
       player.jumping = true
       player.riding = nil
       sfx(:jump)
     end
-    g = player.vy > 0 ? (player.jumping && @in_a ? GRAV_HOLD : GRAV_CUT) : GRAV_FALL
+    g = player.vy > 0 ? (player.jumping && @in_a ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
     player.vy -= g
     player.vy = FALL_MAX if player.vy < FALL_MAX
 
@@ -884,7 +884,7 @@ class Game
 
   def step_clear
     player = @p
-    player.vy -= GRAV_FALL
+    player.vy -= GRAVITY_FALL
     player.vx = 0.0
     move_y(player, true, false)
     player.facing = 1
@@ -955,7 +955,7 @@ class Game
     player = @p
     @enemies.each do |enemy|
       unless enemy.active
-        next if enemy.x > @cam + VW + 48
+        next if enemy.x > @cam + VIEW_WIDTH + 48
         enemy.active = true
         enemy.vx = enemy.kind == :crab ? -1.2 : -1.0
       end
@@ -967,7 +967,7 @@ class Game
         next
       end
       next if enemy.state != :walk
-      next if enemy.x < @cam - 900 || enemy.x > @cam + VW + 600
+      next if enemy.x < @cam - 900 || enemy.x > @cam + VIEW_WIDTH + 600
       spiky = false
       speed = 1.0
       if enemy.kind == :crab
@@ -978,7 +978,7 @@ class Game
         speed = spiky ? 2.6 : 1.2
       end
       enemy.vx = (enemy.vx < 0 ? -1 : 1) * speed
-      enemy.vy -= GRAV_FALL
+      enemy.vy -= GRAVITY_FALL
       enemy.vy = FALL_MAX if enemy.vy < FALL_MAX
       enemy.vx = -enemy.vx if move_x(enemy)
       move_y(enemy, false, false)
@@ -1102,7 +1102,7 @@ class Game
         next
       end
       if item.kind == :lunch
-        item.vy -= GRAV_FALL
+        item.vy -= GRAVITY_FALL
         item.vx = -item.vx if move_x(item)
         move_y(item, false, false)
         item.state = :gone if item.y < -100
@@ -1205,16 +1205,16 @@ class Game
     if sky.size > 1
       band = 72
       sky.each_with_index do |col, i|
-        top = PLAY_H - i * band
+        top = PLAY_HEIGHT - i * band
         bottom = i == sky.size - 1 ? floor : top - band
-        o.solids << [0, bottom, VW, top - bottom, col[0], col[1], col[2]]
+        o.solids << [0, bottom, VIEW_WIDTH, top - bottom, col[0], col[1], col[2]]
       end
     else
-      o.solids << [0, floor, VW, PLAY_H - floor, sky[0][0], sky[0][1], sky[0][2]]
+      o.solids << [0, floor, VIEW_WIDTH, PLAY_HEIGHT - floor, sky[0][0], sky[0][1], sky[0][2]]
     end
     if th[:stars]
       40.times do |i|
-        sx = ((i * 211 + 57) - @cam * 0.05) % VW
+        sx = ((i * 211 + 57) - @cam * 0.05) % VIEW_WIDTH
         sy = 300 + (i * 97) % 330
         tw = (@frame / 20 + i) % 7 == 0 ? 120 : 230
         o.solids << [sx.to_i, sy, 8, 4, tw, tw, 255]
@@ -1248,7 +1248,7 @@ class Game
       o.solids << [x + w / 4 + 8, cy + 96, w / 2 - 16, 16, bush[0], bush[1], bush[2]]
     end
     # indoors, the dark below the floor
-    o.solids << [0, 0, VW, 128, 0, 0, 0] if th[:indoor]
+    o.solids << [0, 0, VIEW_WIDTH, 128, 0, 0, 0] if th[:indoor]
   end
 
   # The sunset sun, vaporwave style: a whole disc in 8 px rows, yellow at the
@@ -1281,14 +1281,14 @@ class Game
 
   # Indoors: a brick back wall over the sky, with occasional windows (holes
   # in the wall) that show the parallax sky, clouds and trees outside.
-  WIN_ROWS = (4..6)
+  WINDOW_ROWS = (4..6)
   # [x, canopy width, canopy bottom y] for the background trees
   TREES = [[16, 96, 232], [240, 144, 296], [512, 80, 208], [784, 128, 272], [1056, 112, 312], [1300, 96, 248]]
   def window_at?(c)
     m = c % 13
     return false unless m == 6 || m == 7
     left = c - (m - 6)
-    WIN_ROWS.all? { |r| !SOLID[cell(left, r)] && !SOLID[cell(left + 1, r)] }
+    WINDOW_ROWS.all? { |r| !SOLID[cell(left, r)] && !SOLID[cell(left + 1, r)] }
   end
 
   def draw_back_wall(cam, tiles, c0, c1)
@@ -1296,7 +1296,7 @@ class Game
       win = window_at?(c)
       x = c * TILE - cam
       8.times do |r|
-        next if win && WIN_ROWS.include?(r)
+        next if win && WINDOW_ROWS.include?(r)
         spr(tiles, x, tile_bottom(r), TILE, TILE, 88, 0, 8, 16)
       end
     end
@@ -1305,8 +1305,8 @@ class Game
     c0.upto(c1 + 1) do |c|
       next unless c % 13 == 6 && window_at?(c)
       x = c * TILE - cam
-      bot = tile_bottom(WIN_ROWS.last)
-      top = tile_top(WIN_ROWS.first)
+      bot = tile_bottom(WINDOW_ROWS.last)
+      top = tile_top(WINDOW_ROWS.first)
       w = 2 * TILE
       rect(x, bot, w, 8, sill)                 # sill
       rect(x - 8, bot - 8, w + 16, 8, wood)
@@ -1322,7 +1322,7 @@ class Game
     cam = @cam.to_i
     tiles = @theme[:tiles]
     c0 = [cam / TILE, 0].max
-    c1 = [(cam + VW) / TILE, @cols - 1].min
+    c1 = [(cam + VIEW_WIDTH) / TILE, @cols - 1].min
     nut_f = (@frame / 8) % 4
     draw_back_wall(cam, tiles, c0, c1) if @theme[:indoor]
     ROWS.times do |r|
@@ -1365,7 +1365,7 @@ class Game
     @vents.each do |v|
       next unless (@frame + v[:phase]) % 180 == 130 && v[:h] > 0
       x = v[:c] * TILE - cam
-      sfx(:steam) unless x < -TILE || x > VW
+      sfx(:steam) unless x < -TILE || x > VIEW_WIDTH
     end
   end
 
@@ -1397,7 +1397,7 @@ class Game
       k = (@frame + v[:phase]) % 180
       next if k < 100 || v[:h] <= 0
       x = v[:c] * TILE - cam
-      next if x < -TILE || x > VW
+      next if x < -TILE || x > VIEW_WIDTH
       base = tile_top(v[:r])
       if k < 130
         rect(x + 24, base + (k % 10) * 2, 16, 8, [236, 236, 236], 180) if (k / 5).even?
@@ -1422,7 +1422,7 @@ class Game
     end
     @enemies.each do |enemy|
       x = enemy.x.to_i - cam
-      next if x < -TILE || x > VW + TILE
+      next if x < -TILE || x > VIEW_WIDTH + TILE
       if enemy.kind == :blob
         f = enemy.state == :flat ? 2 : (enemy.t / 10) % 2
         spr('sprites/enemies.png', x - 8, enemy.y.to_i, TILE, 48, f * 8, 0, 8, 12, enemy.vx > 0, 255, 0, enemy.state == :dead)
@@ -1472,15 +1472,15 @@ class Game
   end
 
   def draw_hud
-    rect(0, PLAY_H, VW, 720 - PLAY_H, [16, 16, 16])
-    rect(0, PLAY_H, VW, 4, [60, 60, 60])
+    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, [16, 16, 16])
+    rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, [60, 60, 60])
     col = [236, 212, 64]
     o = @o.labels
     o << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: col[0], g: col[1], b: col[2] }
     o << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     o << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: col[0], g: col[1], b: col[2] }
     o << { x: 720, y: 700, text: @lv[:name], size_px: 4, r: col[0], g: col[1], b: col[2] }
-    shift_time = @time || SHIFT_LEN
+    shift_time = @time || SHIFT_LENGTH
     tc = shift_time <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : col
     o << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: tc[0], g: tc[1], b: tc[2] }
   end

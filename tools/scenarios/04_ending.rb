@@ -31,7 +31,7 @@ s.step([], 1) until s.iv(:lift) > 900
 s.step([])
 check 'level stops being drawn once it is off screen', s.args.outputs.sprites.none? { |sp| sp[:path] == :world }
 fast = s.iv(:lift_v)
-check 'camera races at the valve speed', (fast - END_TOP_V).abs < 0.01
+check 'camera races at the valve speed', (fast - END_TOP_SPEED).abs < 0.01
 s.step([], 1) until s.iv(:mode_t) >= END_SLOW + 60
 check 'camera slows down', s.iv(:lift_v) < fast * 0.3 && s.iv(:lift_v) > 1
 check 'valve flies off the top', s.iv(:rk).nil? || s.iv(:rk)[:y] - s.iv(:lift) > 720

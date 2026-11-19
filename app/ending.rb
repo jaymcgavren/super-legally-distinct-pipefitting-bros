@@ -11,21 +11,21 @@
 # screen and the camera is rising, the level is drawn into a render target
 # and slid down as one sprite; once it's gone it isn't drawn at all.
 
-END_BURST = 150                # frames of spin-up before the blast
-END_SLOW  = END_BURST + 220    # camera starts to ease off
-END_FIRE  = END_SLOW + 70      # first firework
-END_TEXT  = END_FIRE + 24      # CONGRATULATION!
-END_CREDITS = END_TEXT + 240  # credits, one line at a time
-END_THANKS = END_CREDITS + 400 # THANK YOU FOR PLAYING!!!
-END_PROMPT = END_THANKS + 150  # final score + PRESS START
-CREDITS = ['CODE: JAY MCGAVREN', 'CONCEPT: CPRO', 'WASMCART: LUIS MONTES']
-CREDIT_GAP = 90
-RUSTY_FALL = END_THANKS + 40   # Big Rusty tumbles past, upside-down
-RUSTY_FALL_V = 12             # px/frame: about 1.25 s to cross the screen
-END_TOP_V = 36.0               # the valve's top speed, px/frame
-END_LOCK_Y = 380               # where the camera holds the valve on screen
-FW_GRAV = 0.14                 # px/frame^2 pulling firework stars down
-FW_COLS = [[255, 48, 48], [48, 255, 96], [64, 112, 255]]
+END_BURST        = 150              # frames of spin-up before the blast
+END_SLOW         = END_BURST + 220  # camera starts to ease off
+END_FIRE         = END_SLOW + 70    # first firework
+END_TEXT         = END_FIRE + 24    # CONGRATULATION!
+END_CREDITS      = END_TEXT + 240   # credits, one line at a time
+END_THANKS       = END_CREDITS + 400 # THANK YOU FOR PLAYING!!!
+END_PROMPT       = END_THANKS + 150 # final score + PRESS START
+CREDITS          = ['CODE: JAY MCGAVREN', 'CONCEPT: CPRO', 'WASMCART: LUIS MONTES']
+CREDIT_GAP       = 90
+RUSTY_FALL       = END_THANKS + 40  # Big Rusty tumbles past, upside-down
+RUSTY_FALL_SPEED = 12               # px/frame: about 1.25 s to cross the screen
+END_TOP_SPEED    = 36.0             # the valve's top speed, px/frame
+END_LOCK_Y       = 380              # where the camera holds the valve on screen
+FIREWORK_GRAVITY = 0.14             # px/frame^2 pulling firework stars down
+FIREWORK_COLORS  = [[255, 48, 48], [48, 255, 96], [64, 112, 255]]
 
 class Game
   def start_ending
@@ -47,13 +47,13 @@ class Game
     @end_rng = 12345
     @twinkle = nil
     @end_shake = 0.0
-    @end_stars ||= Array.new(70) { |i| [(i * 389 + 41) % VW, (i * 157 + 23) % 760, i % 3] }
+    @end_stars ||= Array.new(70) { |i| [(i * 389 + 41) % VIEW_WIDTH, (i * 157 + 23) % 760, i % 3] }
   end
 
   def step_ending
     elapsed = @mode_t
     player = @p
-    player.vy -= GRAV_FALL
+    player.vy -= GRAVITY_FALL
     player.vx = 0.0
     move_y(player, true, false)
     player.facing = @goal[:c] * TILE > player.x ? 1 : -1
@@ -88,7 +88,7 @@ class Game
     @end_shake -= 0.3 if elapsed > END_BURST && @end_shake > 0
 
     if @rk
-      @rk[:v] = [@rk[:v] + 2.2, END_TOP_V].min
+      @rk[:v] = [@rk[:v] + 2.2, END_TOP_SPEED].min
       @rk[:y] += @rk[:v]
       # steam trail
       if @rk[:y] - @lift < 800
@@ -163,7 +163,7 @@ class Game
   end
 
   def spawn_firework
-    @fw << { x: 160 + end_rand(960), y: 180 + end_rand(400), col: FW_COLS[end_rand(3)], t: 0 }
+    @fw << { x: 160 + end_rand(960), y: 180 + end_rand(400), col: FIREWORK_COLORS[end_rand(3)], t: 0 }
     @fw_n += 1
     sfx(:firework)
   end
@@ -182,12 +182,12 @@ class Game
       draw_space
       if lift < 720
         rt = @args.outputs[:world]
-        rt.w = VW
+        rt.w = VIEW_WIDTH
         rt.h = 720
         @o = rt
         draw_world(true, false)
         @o = @args.outputs
-        @o.sprites << { x: shx, y: shy - lift, w: VW, h: 720, path: :world }
+        @o.sprites << { x: shx, y: shy - lift, w: VIEW_WIDTH, h: 720, path: :world }
       end
     end
     cam = @cam.to_i
@@ -215,7 +215,7 @@ class Game
     end
     @fw.each { |f| draw_firework(f) }
     if elapsed >= RUSTY_FALL
-      ry = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_V
+      ry = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
       if ry > -140
         # dazed face, flipped upside-down, wobbling as he drops
         spr('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, ry, 128, 112, 32, 0, 8, 28,
@@ -263,7 +263,7 @@ class Game
     if k < 5
       rect(f[:x] - 80, f[:y] - 80, 160, 160, [255, 255, 255], 200 - k * 30)
     end
-    droop = k * k * FW_GRAV / 2    # the stars fall under gravity as they spread
+    droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |rf, off, sz|
       r = (40 + k * 10) * rf
       12.times do |i|

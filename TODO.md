@@ -289,3 +289,12 @@ paths, anything the next session needs.)
   collect_nuts/rect_hit?, `t`->`elapsed` (ending), `shift_time` (HUD),
   `shade` (sun ramp, with `from`/`to`). `overlap?(a, b)` keeps a/b: it's a
   symmetric pair. Checks: tests ALL PASS (same info lines), shots ALL SAME.
+- 2026-11-19: step 1, abbreviations part 1/3: constants. VW->VIEW_WIDTH,
+  PLAY_H/PLAYER_H/BOSS_W/BOSS_H -> *_HEIGHT/*_WIDTH, JUMP_V(_RUN) ->
+  JUMP_VELOCITY(_RUN), RUSTY_FALL_V/END_TOP_V -> *_SPEED, GRAV_* ->
+  GRAVITY_*, FW_GRAV/FW_COLS -> FIREWORK_GRAVITY/FIREWORK_COLORS (the code
+  spells it `color`), *_LEN -> *_LENGTH, BOLT_WARN -> BOLT_WARNING,
+  WIN_ROWS -> WINDOW_ROWS. Kept: STEP_MS (unit), END_LOCK_Y, WARN_AHEAD.
+  Also renamed in tools/. Next: instance variables (@p, @cam, @rk, @fw,
+  @lv, ...; tools/sim.rb and bench_start.rb read some of them), then
+  methods and locals. Tests ALL PASS, shots ALL SAME.

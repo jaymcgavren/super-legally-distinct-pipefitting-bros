@@ -128,7 +128,7 @@ check 'respawn at checkpoint', (s.p.x - cone[:c] * TILE).abs < 64
 # --- timer runs out ---
 s = Sim.new.start(0)
 s.set(:time, 1); s.set(:time_acc, 0)
-s.step([], TICK_LEN + 1)
+s.step([], TICK_LENGTH + 1)
 check 'timer death', s.mode == :dying
 
 # --- vent steam hurts ---
@@ -213,8 +213,8 @@ pit = s.iv(:lifts).select { |l| [165, 170].include?((l.data[:bx] / TILE).to_i) }
 check '1-B has its two pit lifts', pit.size == 2
 check '1-B pit lifts swing half as far', pit.all? { |l| l.data[:amp] == TILE }
 check '1-B pit lifts never come within a full jump of the ceiling',
-      pit.all? { |l| l.data[:by] + l.h + l.data[:amp] + PLAYER_H + Game::JUMP_RISE <= ceil_bottom }
-check '1-B pit lifts stay above the death line', pit.all? { |l| l.data[:by] - l.data[:amp] > -140 + PLAYER_H }
+      pit.all? { |l| l.data[:by] + l.h + l.data[:amp] + PLAYER_HEIGHT + Game::JUMP_RISE <= ceil_bottom }
+check '1-B pit lifts stay above the death line', pit.all? { |l| l.data[:by] - l.data[:amp] > -140 + PLAYER_HEIGHT }
 # jump off the first lift at the top of its swing, running: the head never touches the ceiling
 l = pit[0]
 top = l.data[:by] + l.h + l.data[:amp]
@@ -223,8 +223,8 @@ s.p.x = l.x + 40; s.p.y = top; s.p.vx = RUN_MAX; s.p.vy = 0.0; s.p.on_ground = t
 peak = top
 s.step([:right, :b, :a], 1)
 60.times { s.step([:right, :b, :a]); peak = [peak, s.p.y].max; break if s.p.vy < 0 }
-check "running jump from the 1-B pit lift's highest point peaks below the ceiling (#{peak.to_i} + #{PLAYER_H} < #{ceil_bottom})",
-      peak + PLAYER_H < ceil_bottom && peak > top + Game::JUMP_RISE * 0.9
+check "running jump from the 1-B pit lift's highest point peaks below the ceiling (#{peak.to_i} + #{PLAYER_HEIGHT} < #{ceil_bottom})",
+      peak + PLAYER_HEIGHT < ceil_bottom && peak > top + Game::JUMP_RISE * 0.9
 # lifts elsewhere keep the full swing: a lift over floor indoors (no level has
 # one, so try it in a copy of 1-B), and outdoor lifts
 rows = LEVELS[lv_of['JOBSITE 1-B']][:rows].map(&:dup)

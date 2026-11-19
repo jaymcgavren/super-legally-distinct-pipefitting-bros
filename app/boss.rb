@@ -10,11 +10,11 @@ BOSS_MOVES = [
   [:bolts,  'BOLT STORM'],
   [:enrage, 'SHORT FUSE'],
 ]
-BOLT_WARN = 64   # frames a bolt's shadow shows before it drops (was 40)
-WARN_LEN = 160   # klaxon + WARNING card before each fight
-WARN_AHEAD = 12  # the warning goes off this many tiles before the arena gate
-BOSS_W = 112
-BOSS_H = 104
+BOLT_WARNING = 64       # frames a bolt's shadow shows before it drops (was 40)
+WARN_LENGTH  = 160      # klaxon + WARNING card before each fight
+WARN_AHEAD   = 12       # the warning goes off this many tiles before the arena gate
+BOSS_WIDTH   = 112
+BOSS_HEIGHT  = 104
 
 class Game
   def boss_rand(n)
@@ -26,7 +26,7 @@ class Game
   def boss_knows?(move) = BOSS_MOVES.index { |m| m[0] == move } < boss_level
 
   def spawn_boss(c, r)
-    boss = Actor.new(:boss, c * TILE - 24, tile_bottom(r), BOSS_W, BOSS_H)
+    boss = Actor.new(:boss, c * TILE - 24, tile_bottom(r), BOSS_WIDTH, BOSS_HEIGHT)
     hp = 6 + boss_level
     boss.data = { hp: hp, max: hp, inv: 0, cd: 90, spiky: 0, warn_spiky: 0, angry: false, minions: 0 }
     boss.state = :wait
@@ -51,7 +51,7 @@ class Game
     unless @boss_warned
       return unless player.x > (@arena_c - WARN_AHEAD) * TILE
       @boss_warned = true
-      @warning = WARN_LEN
+      @warning = WARN_LENGTH
       sfx(:klaxon)
       music_stop
     end
@@ -189,7 +189,7 @@ class Game
       boss_idle(40) if boss.t > 60
     end
     # Rusty ignores the girders: he stays on the arena floor, between the walls
-    boss.vy -= GRAV_FALL
+    boss.vy -= GRAVITY_FALL
     boss.vy = FALL_MAX if boss.vy < FALL_MAX
     boss.prev_y = boss.y
     boss.y += boss.vy
@@ -301,7 +301,7 @@ class Game
           puff(s[:x] + 16, s[:y])
         end
       when :bolt
-        next if s[:t] < BOLT_WARN
+        next if s[:t] < BOLT_WARNING
         s[:vy] -= 0.506   # 0.9, then 25% slower twice
         s[:y] += s[:vy]
         if s[:y] <= 128
@@ -310,7 +310,7 @@ class Game
           sfx(:bump)
         end
       end
-      next if s[:dead] || (s[:k] == :bolt && s[:t] < BOLT_WARN)
+      next if s[:dead] || (s[:k] == :bolt && s[:t] < BOLT_WARNING)
       hurt if @mode == :play && rect_hit?(player, s[:x] + 4, s[:y], s[:w] - 8, s[:h] - 4)
       if @wrench && s[:k] == :glob && overlap?(@wrench, Actor.new(:x, s[:x], s[:y], s[:w], s[:h]))
         s[:dead] = true
@@ -334,11 +334,11 @@ class Game
         end
       when :glob then spr('sprites/shots.png', x, s[:y].to_i, 32, 32, 0, 0, 8, 16)
       when :bolt
-        if s[:t] < BOLT_WARN
+        if s[:t] < BOLT_WARNING
           # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
           k = s[:t] < 0 ? 0 : s[:t]
           flash = (k / 4).even?
-          w = 32 + (k * 48 / BOLT_WARN)
+          w = 32 + (k * 48 / BOLT_WARNING)
           cx = x + 16
           rect(cx - 16, 128, 32, 592, [232, 40, 40], flash ? 80 : 45) if k > 0
           rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? [252, 220, 40] : [232, 40, 40], 255)
@@ -390,11 +390,11 @@ class Game
 
   # three red pulses in time with the klaxon wails
   def draw_warning
-    k = (WARN_LEN - @warning) % 48
+    k = (WARN_LENGTH - @warning) % 48
     on = k < 36
-    rect(0, 0, VW, PLAY_H, [200, 0, 0], 70 - k * 2) if on
+    rect(0, 0, VIEW_WIDTH, PLAY_HEIGHT, [200, 0, 0], 70 - k * 2) if on
     return unless on || @warning < 16
-    rect(0, 340, VW, 240, [0, 0, 0], 150)
+    rect(0, 340, VIEW_WIDTH, 240, [0, 0, 0], 150)
     label(640, 560, 'WARNING', 16, [232, 40, 40], true)
     label(640, 412, 'HUGE ENEMY APPROACH', 5, [236, 212, 64], true)
   end
