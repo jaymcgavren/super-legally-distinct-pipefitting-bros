@@ -34,7 +34,6 @@ class Game
     @boss_on = false
     @arena_column = @level.columns - 20
     @shots = []
-    @shake = 0
     @banner = 0
     @warning = 0
     @boss_warned = false   # the klaxon has gone off (on the approach)
@@ -69,7 +68,7 @@ class Game
       @sound.music(:boss)
     end
     @banner -= 1 if @banner > 0
-    @shake -= 1 if @shake > 0
+    @camera.settle
     data = boss.data
     data[:inv] -= 1 if data[:inv] > 0
     boss.t += 1
@@ -124,7 +123,7 @@ class Game
       elsif boss.on_ground && data[:air] && boss.t > 22
         data[:air] = false
         boss.vx = 0.0
-        @shake = 20
+        @camera.shake(20)
         @sound.play(:pound)
         waves = angry ? 2 : 1
         waves.times do |i|
@@ -203,7 +202,7 @@ class Game
     if boss.x < min_x || boss.x > max_x
       boss.x = boss.x < min_x ? min_x.to_f : max_x.to_f
       if boss.state == :charge
-        @shake = 16
+        @camera.shake(16)
         @sound.play(:pound)
         boss.state = :stunned
         boss.t = 0

@@ -160,7 +160,7 @@ delegating methods at first if that keeps the diff small, then callers move.
 - [x] `Physics` module (app/physics.rb): `move_x`, `move_y`, `box_free?`,
       `overlap?`, `rect_hit?`, constants for gravity. Mixed into whatever needs
       it, or functions taking the level.
-- [ ] `Camera` (app/camera.rb): position, follow, shake, `max_camera_x`.
+- [x] `Camera` (app/camera.rb): position, follow, shake, `max_camera_x`.
 - [ ] `Run` / session state (app/run.rb): score, lives, nuts, time, combo,
       rush mode, high score load/save (`save_u32` slot 0).
 
@@ -439,3 +439,15 @@ paths, anything the next session needs.)
   classes can include it or take the level then.
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
   0.91-0.92 vs 0.90-0.92, 2-B 0.90 vs 0.89-0.90.
+- 2026-11-19: step 2, `Camera` (app/camera.rb). `@camera_x` and `@shake`
+  became `@camera`: `x`, `max_x`, `jump_to(x)` (clamped, used on level
+  load and by `Sim#snap`), `follow(player, arena)` (was `update_camera`),
+  `shake(frames)`, `settle` (one step of shake running down), `shake_x(frame)`
+  and `offset_by(dx) { }` for drawing shaken; the play screen and the
+  ending used to `+=`/`-=` the camera by hand around `draw_world`. A new
+  Camera comes with each level load, which also clears the shake, so
+  spawn_boss's `@shake = 0` went. bench_start.rb sets `@camera.x` when there
+  is a camera (old refs still get the ivar).
+  Tests ALL PASS (185), shots ALL SAME (the ending ones included),
+  reach/bot unchanged; bench level 1 0.92 vs 0.91-0.93, 2-B 0.91-0.94 vs
+  0.90-0.91 (noise).

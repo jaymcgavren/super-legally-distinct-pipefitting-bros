@@ -175,9 +175,7 @@ class Game
     shake_y = amplitude > 0 ? ((@frame % 6) < 3 ? amplitude : -amplitude).to_i / 2 : 0
     rise = @rise.to_i
     if elapsed < END_BURST
-      @camera_x += shake_x
-      draw_world(true)
-      @camera_x -= shake_x
+      @camera.offset_by(shake_x) { draw_world(true) }
     else
       draw_space
       if rise < 720
@@ -188,7 +186,7 @@ class Game
         @screen.outputs.sprites << { x: shake_x, y: shake_y - rise, w: VIEW_WIDTH, h: 720, path: :world }
       end
     end
-    camera_x = @camera_x.to_i
+    camera_x = @camera.x.to_i
     @steam.each do |steam_puff|
       x = steam_puff[0].to_i - camera_x + shake_x
       y = steam_puff[1].to_i - rise + shake_y

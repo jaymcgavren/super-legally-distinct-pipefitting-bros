@@ -12,6 +12,7 @@ require 'app/sound.rb'
 require 'app/controls.rb'
 require 'app/level.rb'
 require 'app/physics.rb'
+require 'app/camera.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -321,7 +322,7 @@ class Game
     @boss = nil
     @boss_on = false
     @shots = []
-    @shake = 0
+    @camera = Camera.new(@level)
     @banner = 0
     @rng = 1 + index * 31
     boss_at = nil
@@ -371,12 +372,12 @@ class Game
     @time = @level.data[:time] || SHIFT_LENGTH
     @time_accumulator = 0
     @warned = false
-    @camera_x = [[@player.x - 480, 0].max, @level.max_camera_x].min.to_f
+    @camera.jump_to(@player.x - 480)
   end
 
   # ── title ─────────────────────────────────────────────────────────
   def step_title
-    @camera_x = (@mode_frames * 1.5) % @level.max_camera_x
+    @camera.x = (@mode_frames * 1.5) % @camera.max_x
     if @controls.left_pressed? || @controls.right_pressed?
       @bro = 1 - @bro
       @sound.play(:tick)
@@ -447,20 +448,14 @@ class Game
     update_wrench
     update_items
     update_effects
-    update_camera
+    @camera.follow(@player, @boss_on)
     vent_sounds(shake_x)
   end
 
-  # screen shake while @shake runs: the world jumps 6 px left and right
-  def shake_x
-    @shake > 0 ? ((@frame % 4) < 2 ? 6 : -6) : 0
-  end
+  def shake_x = @camera.shake_x(@frame)
 
   def draw_play
-    shake = shake_x
-    @camera_x += shake
-    draw_world(true)
-    @camera_x -= shake
+    @camera.offset_by(shake_x) { draw_world(true) }
   end
 
   def step_paused
@@ -780,7 +775,7 @@ class Game
     end
     update_effects
     update_wrench
-    update_camera
+    @camera.follow(@player, @boss_on)
     vent_sounds
     return unless @time <= 0 && @mode_frames > 300
     @level_index += 1
@@ -838,7 +833,7 @@ class Game
     player = @player
     @enemies.each do |enemy|
       unless enemy.active
-        next if enemy.x > @camera_x + VIEW_WIDTH + 48
+        next if enemy.x > @camera.x + VIEW_WIDTH + 48
         enemy.active = true
         enemy.vx = enemy.kind == :crab ? -1.2 : -1.0
       end
@@ -850,7 +845,7 @@ class Game
         next
       end
       next unless enemy.walking?
-      next if enemy.x < @camera_x - 900 || enemy.x > @camera_x + VIEW_WIDTH + 600
+      next if enemy.x < @camera.x - 900 || enemy.x > @camera.x + VIEW_WIDTH + 600
       spiky = false
       speed = 1.0
       if enemy.kind == :crab
@@ -1044,14 +1039,6 @@ class Game
     end
   end
 
-  def update_camera
-    player = @player
-    target = player.x + player.w / 2 - 560 + player.facing * 90
-    target = @level.max_camera_x if @boss_on
-    @camera_x += (target - @camera_x) * 0.1
-    @camera_x = 0.0 if @camera_x < 0
-    @camera_x = @level.max_camera_x.to_f if @camera_x > @level.max_camera_x
-  end
 
   # ── drawing ───────────────────────────────────────────────────────
   # FRAMES[name], or frame `index` of the animation starting there
@@ -1081,7 +1068,7 @@ class Game
     end
     if theme[:stars]
       40.times do |i|
-        star_x = ((i * 211 + 57) - @camera_x * 0.05) % VIEW_WIDTH
+        star_x = ((i * 211 + 57) - @camera.x * 0.05) % VIEW_WIDTH
         star_y = 300 + (i * 97) % 330
         brightness = (@frame / 20 + i) % 7 == 0 ? 120 : 230
         outputs.solids << [star_x.to_i, star_y, 8, 4, brightness, brightness, 255]
@@ -1093,7 +1080,7 @@ class Game
     SUN_ROWS.each { |r| outputs.solids << r } if theme[:sun]
     cloud = theme[:cloud]
     [[100, 560], [620, 600], [1050, 520], [1500, 580]].each do |cx, cy|
-      x = (((cx - @camera_x * 0.25) % 1800) - 260).to_i
+      x = (((cx - @camera.x * 0.25) % 1800) - 260).to_i
       outputs.solids << [x + 32, cy, 64, 16, cloud[0], cloud[1], cloud[2]]
       outputs.solids << [x, cy - 16, 160, 16, cloud[0], cloud[1], cloud[2]]
       outputs.solids << [x - 16, cy - 32, 208, 16, cloud[0], cloud[1], cloud[2]]
@@ -1104,7 +1091,7 @@ class Game
     # (indoors, from the floor) into blocky canopies; indoors they show
     # through the windows (y 192..384)
     TREES.each do |tree_x, w, cy|
-      x = (((tree_x - @camera_x * 0.5) % 1600) - 160).to_i
+      x = (((tree_x - @camera.x * 0.5) % 1600) - 160).to_i
       trunk_width = w >= 120 ? 24 : 16
       outputs.solids << [x + w / 2 - trunk_width / 2, floor, trunk_width, cy + 8 - floor, 104, 68, 36]
       outputs.solids << [x + w / 2 - trunk_width / 2, floor, 8, cy + 8 - floor, 72, 44, 20]
@@ -1186,7 +1173,7 @@ class Game
   end
 
   def draw_tiles
-    camera_x = @camera_x.to_i
+    camera_x = @camera.x.to_i
     tiles = @level.theme[:tiles]
     c0 = [camera_x / TILE, 0].max
     c1 = [(camera_x + VIEW_WIDTH) / TILE, @level.columns - 1].min
@@ -1228,7 +1215,7 @@ class Game
   # A vent on screen hisses as its plume shoots up. dx is the screen-shake
   # offset the world is drawn with this frame.
   def vent_sounds(dx = 0)
-    camera_x = @camera_x.to_i + dx
+    camera_x = @camera.x.to_i + dx
     @vents.each do |vent|
       next unless (@frame + vent[:phase]) % 180 == 130 && vent[:h] > 0
       x = vent[:c] * TILE - camera_x
@@ -1238,7 +1225,7 @@ class Game
 
   def draw_world(entities, hud = true)
     draw_background
-    camera_x = @camera_x.to_i
+    camera_x = @camera.x.to_i
     draw_tiles
     @lifts.each do |lift|
       x = lift.x.to_i - camera_x
@@ -1320,7 +1307,7 @@ class Game
   def draw_player
     player = @player
     return if player.invulnerable? && (player.invuln / 3) % 2 == 0 && playing?
-    camera_x = @camera_x.to_i
+    camera_x = @camera.x.to_i
     pose = if @mode == :dying then :bro_die
            elsif player.throw_t > 0 then :bro_throw
            elsif !player.on_ground then :bro_jump

@@ -46,7 +46,11 @@ class Game
       @goal = { c: arena + 10, r: 7, turn: 0 }
       player.x = (arena + 9) * BENCH_TILE + 12
       player.y = (ROWS - 1 - 7) * BENCH_TILE
-      instance_variable_set(bench_iv(:@camera_x, :@cam), bench_max_camera_x.to_f)
+      if instance_variable_defined?(:@camera)
+        @camera.x = @camera.max_x.to_f
+      else
+        instance_variable_set(bench_iv(:@camera_x, :@cam), bench_max_camera_x.to_f)
+      end
       start_ending
     end
   end
