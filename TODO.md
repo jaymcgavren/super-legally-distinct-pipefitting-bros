@@ -60,13 +60,18 @@ npx wasmcart pipefitting-bros.wasc --frames 300 --shot <scratchpad>/title.png
   - then `npx wasmcart pack --wasm main.wasm --assets <copy> --name x
     --width 1280 --height 720 -o <scratchpad>/x.wasc` and screenshot it
     (romdev `loadMedia` + `frame stepAndShot`, or `--frames N --shot`).
+  - There are 8 levels (`LEVELS` in app/levels.rb, index 0-7: 1-A ... 2-D),
+    and every one ends in a Big Rusty arena. `tools/bench_start.rb` is a
+    working example of a start-in-level patch (appended to a temp copy).
   - Check at least: a B level (indoor, lifts, vents), a D level (Big Rusty),
-    and the ending (start at 8-D's valve: `@level = 31; load_level(31, false);
+    and the ending (start at 2-D's valve: `@level = 7; load_level(7, false);
     @boss = nil; @goal = { c: @arena_c + 10, r: 7, turn: 0 }; ... start_ending`).
 - Ruby exceptions show on screen in the real runtime, so a screenshot of a
   busy level catches most mruby incompatibilities.
-- **Performance check:** take a baseline before step 1 (see step 0) and
-  compare after the entity and scene steps.
+- **Performance check:** `tools/bench.sh` (see its header and the step 0
+  note below). Run the baseline and the current code back to back, since
+  machine load shifts the numbers by a few percent:
+  `BENCH_REF=un-refactored tools/bench.sh 5; tools/bench.sh 5`.
 - Look at `git diff --stat` before committing: only the intended files.
 
 ## Test coupling to fix as you go
@@ -93,10 +98,9 @@ refactor step will break some of them. Update them in the same commit.
 ### 0. Baseline
 - [x] Confirm `git branch --show-current` is `main` and the tree is clean.
 - [x] Run the tests (ALL PASS) and note the run time.
-- [ ] Performance baseline: a temp build that starts in a busy level (e.g. 7-D
-      boss fight or 8-B) run headlessly for a fixed number of frames, timed
-      (e.g. `time npx wasmcart x.wasc --frames 3000 --shot out.png`); record
-      the numbers here. Repeat a few times; note the variance.
+- [x] Performance baseline: a temp build that starts in a busy level, run
+      headlessly for a fixed number of frames, timed. Done with the new
+      `tools/bench.sh`; numbers in the notes below.
 - [ ] Screenshots of title, a B level, a D level, the ending for later
       comparison. Store in the scratchpad (paths noted here).
 
@@ -217,3 +221,28 @@ paths, anything the next session needs.)
   - `full jump 268 px (4.19 tiles), tap 136 px`
   - `held jump: standing 268, walking 268, 80% run 268, full run 342 px`
   - `firework gaps [8, 56, 37, 27, 14, 25, 9, 29]`
+- 2026-11-19: performance baseline, `tools/bench.sh` (new; with
+  `tools/bench_start.rb` and `tools/bench_time.mjs`). 3600 frames, 3 runs
+  each. The time is the cart's `runFrame` (Ruby tick + runtime drawing):
+  | run | ms/frame |
+  |---|---|
+  | `tools/bench.sh 7` (2-D, Rusty fight) | 0.38-0.42 |
+  | `tools/bench.sh 5` (2-B, Rusty fight) | 0.77-0.80 |
+  | `BENCH_ARENA=0 tools/bench.sh 5` (2-B start, idle) | 0.76-0.81 |
+  | `BENCH_ARENA=0 tools/bench.sh 0` (1-A start, idle) | 0.32-0.33 |
+  | `BENCH_REF=un-refactored tools/bench.sh 5` | 0.72-0.77 (same code) |
+  Findings:
+  - Wall-clock timing of `npx wasmcart --frames` is useless: an empty cart
+    takes 10.8 s for 3600 frames vs 12.3 s for the 2-D fight, and run-to-run
+    noise is about 1 s. The headless player's own overhead is about 3 ms a
+    frame.
+  - Headless runs need `--seed`. Without it the frame clock is real time,
+    headless frames come far faster than 60 Hz, and the game skips updates.
+  - In the 2-D fight, `draw` is about 80% of the cost (0.08 ms/frame with
+    `draw` stubbed out; an empty cart is 0.02 ms). The indoor 2-B (brick
+    background) costs about twice 2-D. So watch draw paths most.
+  - Variance between runs is about 5%; treat a change under 10% as noise
+    unless it shows up consistently back to back.
+  - The whole game uses under 1 ms of a 16.7 ms frame here (this Mac, node).
+    Absolute numbers will be higher on slower targets (browsers, Batocera
+    boxes), so compare relative changes.
