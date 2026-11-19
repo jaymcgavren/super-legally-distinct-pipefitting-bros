@@ -74,8 +74,8 @@ class Sim
     self
   end
 
-  def snap = set(:cam, [[p.x - 560, 0].max, @g.max_cam].min.to_f)
-  def p = iv(:p)
+  def snap = set(:camera_x, [[p.x - 560, 0].max, @g.max_cam].min.to_f)
+  def p = iv(:player)
   def mode = iv(:mode)
 
   # get from title into play on level idx
@@ -89,7 +89,7 @@ class Sim
 
   # walk into the arena, skip the warning, knock Rusty out, wait for the valve
   def beat_boss
-    put(iv(:arena_c) + 3); step([], 2)
+    put(iv(:arena_column) + 3); step([], 2)
     step([], 1) while iv(:warning) > 0
     iv(:boss).data[:inv] = 0; @g.send(:boss_hit, 99); step([], 130)
     self

@@ -103,7 +103,7 @@ end
 class Game
   def initialize(args)
     @args = args
-    @hiscore = args.gtk.load_u32(0) || 0
+    @high_score = args.gtk.load_u32(0) || 0
     @bro = 0
     @frame = 0
     @score = 0
@@ -159,14 +159,14 @@ class Game
   # advance the secret-code matcher; true once the whole code is in
   def feed_code
     return false unless @in_code
-    if @in_code == RUSH_CODE[@code_i]
-      @code_i += 1
+    if @in_code == RUSH_CODE[@code_index]
+      @code_index += 1
     else
-      @code_i = @in_code == :up ? (@code_i == 2 ? 2 : 1) : 0
+      @code_index = @in_code == :up ? (@code_index == 2 ? 2 : 1) : 0
     end
-    code_note(@code_i - 1) if @code_i > 0
-    return false unless @code_i == RUSH_CODE.size
-    @code_i = 0
+    code_note(@code_index - 1) if @code_index > 0
+    return false unless @code_index == RUSH_CODE.size
+    @code_index = 0
     true
   end
 
@@ -189,10 +189,10 @@ class Game
   # ── modes ─────────────────────────────────────────────────────────
   def to_title
     @mode = :title
-    @mode_t = 0
+    @mode_frames = 0
     @rush = false
     @rush_armed = false
-    @code_i = 0
+    @code_index = 0
     load_level(0, false)
     music_stop
   end
@@ -210,7 +210,7 @@ class Game
 
   def to_intro
     @mode = :intro
-    @mode_t = 0
+    @mode_frames = 0
     music_stop
     load_level(@level, true)
   end
@@ -224,20 +224,20 @@ class Game
   # draw once. update changes state and plays sounds but draws nothing; draw
   # only draws, so it is safe to skip or repeat.
   def tick
-    @o = @args.outputs
+    @outputs = @args.outputs
     @played = {}
     poll_input
-    @step_acc = (@step_acc || 0.0) + frame_ms
+    @step_accumulator = (@step_accumulator || 0.0) + frame_ms
     n = 0
-    while @step_acc >= STEP_MS && n < MAX_STEPS
+    while @step_accumulator >= STEP_MS && n < MAX_STEPS
       update
-      @step_acc -= STEP_MS
+      @step_accumulator -= STEP_MS
       n += 1
     end
-    @step_acc = 0.0 if @step_acc >= STEP_MS   # too far behind: drop the backlog
+    @step_accumulator = 0.0 if @step_accumulator >= STEP_MS   # too far behind: drop the backlog
     draw
     @args.gtk.debug_score = @score
-    @args.gtk.debug_aux = @p ? @p.x.to_i : 0
+    @args.gtk.debug_aux = @player ? @player.x.to_i : 0
   end
 
   # Milliseconds since the last frame, from the host. A frame within 1 ms of
@@ -256,7 +256,7 @@ class Game
     # @frame is the world clock (lifts, vents, blinking lights), so it stops
     # during the coffee break
     @frame += 1 unless @mode == :paused
-    @mode_t += 1
+    @mode_frames += 1
     read_input
     case @mode
     when :title    then step_title
@@ -287,7 +287,7 @@ class Game
   # ── level loading ─────────────────────────────────────────────────
   def load_level(idx, use_checkpoint)
     lv = LEVELS[idx]
-    @lv = lv
+    @level_data = lv
     @theme = THEMES[lv[:theme]]
     if lv[:rows]
       rows = lv[:rows]
@@ -305,7 +305,7 @@ class Game
     @particles = []
     @popups = []
     @bumps = {}
-    @multi = {}
+    @hits_left = {}
     @wrench = nil
     @goal = nil
     @boss = nil
@@ -361,16 +361,16 @@ class Game
       cone[:lit] = true
     end
     if @rush && @boss
-      start = [@arena_c + 1, 7]
-      @enemies.reject! { |enemy| enemy.x < (@arena_c + 1) * TILE }
+      start = [@arena_column + 1, 7]
+      @enemies.reject! { |enemy| enemy.x < (@arena_column + 1) * TILE }
     end
-    @p = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
-    @p.powered = @powered if use_checkpoint
-    @p.powered = true if @rush
+    @player = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
+    @player.powered = @powered if use_checkpoint
+    @player.powered = true if @rush
     @time = lv[:time] || SHIFT_LENGTH
-    @time_acc = 0
+    @time_accumulator = 0
     @warned = false
-    @cam = [[@p.x - 480, 0].max, max_cam].min.to_f
+    @camera_x = [[@player.x - 480, 0].max, max_cam].min.to_f
   end
 
   # ── tile helpers ──────────────────────────────────────────────────
@@ -490,7 +490,7 @@ class Game
 
   # ── title ─────────────────────────────────────────────────────────
   def step_title
-    @cam = (@mode_t * 1.5) % max_cam
+    @camera_x = (@mode_frames * 1.5) % max_cam
     if @in_left_down || @in_right_down
       @bro = 1 - @bro
       sfx(:tick)
@@ -516,29 +516,29 @@ class Game
       sel = i == @bro
       rect(x - 56, 196, 112, 120, sel ? [252, 240, 160] : [60, 60, 60])
       rect(x - 48, 204, 96, 104, [20, 20, 40])
-      f = sel ? 1 + (@mode_t / 8) % 3 : 0
+      f = sel ? 1 + (@mode_frames / 8) % 3 : 0
       spr(BROS[i][:path], x - 32, 216, 64, 80, f * 8, 0, 8, 20, i == 1)
       shadow_label(x, 180, BROS[i][:name], 4, sel ? [252, 240, 160] : [140, 140, 140])
     end
-    shadow_label(640, 120, 'PRESS START', 4, [255, 255, 255]) if (@mode_t / 30) % 2 == 0
+    shadow_label(640, 120, 'PRESS START', 4, [255, 255, 255]) if (@mode_frames / 30) % 2 == 0
     shadow_label(640, 366, 'BOSS RUSH', 4, [232, 72, 64]) if @rush_armed
-    shadow_label(640, 70, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
+    shadow_label(640, 70, "TOP #{pad6(@high_score)}", 3, [200, 200, 200])
     shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
   end
 
   # ── intro card ────────────────────────────────────────────────────
   def step_intro
-    return unless @mode_t > 150
+    return unless @mode_frames > 150
     @mode = :play
-    @mode_t = 0
+    @mode_frames = 0
     music(:theme)
   end
 
   def draw_intro
     @args.outputs.background_color = [0, 0, 0]
     draw_hud
-    label(640, 440, @lv[:name], 6, [252, 240, 160])
-    label(640, 370, @lv[:title], 4, [244, 120, 24])
+    label(640, 440, @level_data[:name], 6, [252, 240, 160])
+    label(640, 370, @level_data[:title], 4, [244, 120, 24])
     label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, [232, 72, 64]) if @rush
     spr(BROS[@bro][:path], 560, 210, 64, 80, 0, 0, 8, 20)
     label(680, 270, "x #{@lives}", 5, [255, 255, 255])
@@ -573,9 +573,9 @@ class Game
 
   def draw_play
     sh = shake_x
-    @cam += sh
+    @camera_x += sh
     draw_world(true)
-    @cam -= sh
+    @camera_x -= sh
   end
 
   def step_paused
@@ -595,9 +595,9 @@ class Game
 
   def update_timer
     return if @boss && @boss.state == :dead   # the clock stops once the boss falls
-    @time_acc += 1
-    return if @time_acc < TICK_LENGTH
-    @time_acc = 0
+    @time_accumulator += 1
+    return if @time_accumulator < TICK_LENGTH
+    @time_accumulator = 0
     @time -= 1
     if @time == 100 && !@warned
       @warned = true
@@ -646,7 +646,7 @@ class Game
   end
 
   def update_player
-    player = @p
+    player = @player
     if player.riding
       player.x += player.riding.data[:dx]
       player.y += player.riding.data[:dy]
@@ -770,7 +770,7 @@ class Game
     sfx(:nut, 0.75)
     return if @nuts < 50
     @nuts -= 50
-    one_up(@p.x, @p.y + 90)
+    one_up(@player.x, @player.y + 90)
   end
 
   def one_up(x, y)
@@ -795,9 +795,9 @@ class Game
       @grid[r][c] = 'U'
       pop_nut(x, top)
     when 'M'
-      n = (@multi[key] ||= 8)
+      n = (@hits_left[key] ||= 8)
       pop_nut(x, top)
-      @multi[key] = n - 1
+      @hits_left[key] = n - 1
       @grid[r][c] = 'U' if n - 1 <= 0
     when 'W'
       @grid[r][c] = 'U'
@@ -832,7 +832,7 @@ class Game
   end
 
   def hurt
-    player = @p
+    player = @player
     return if player.invuln > 0 || @mode != :play
     if player.powered
       player.powered = false
@@ -846,27 +846,27 @@ class Game
   def die
     return if @mode != :play
     @mode = :dying
-    @mode_t = 0
+    @mode_frames = 0
     @powered = false
-    @p.vx = 0.0
-    @p.vy = 0.0
+    @player.vx = 0.0
+    @player.vy = 0.0
     music(:death, false)
   end
 
   def step_dying
-    player = @p
-    if @mode_t > 30
-      player.vy = 15.0 if @mode_t == 31
+    player = @player
+    if @mode_frames > 30
+      player.vy = 15.0 if @mode_frames == 31
       player.vy -= 0.8
       player.y += player.vy
     end
     update_effects
     vent_sounds
-    return if @mode_t < 190
+    return if @mode_frames < 190
     @lives -= 1
     if @lives <= 0
       @mode = :gameover
-      @mode_t = 0
+      @mode_frames = 0
       save_hiscore
       music(:gameover, false)
     else
@@ -877,34 +877,34 @@ class Game
   def start_clear
     return start_ending if @level == LEVELS.size - 1
     @mode = :clear
-    @mode_t = 0
-    @powered = @p.powered
+    @mode_frames = 0
+    @powered = @player.powered
     music(:clear, false)
   end
 
   def step_clear
-    player = @p
+    player = @player
     player.vy -= GRAVITY_FALL
     player.vx = 0.0
     move_y(player, true, false)
     player.facing = 1
-    @goal[:turn] += 1 if @mode_t < 100
-    if @mode_t > 110 && @time > 0
+    @goal[:turn] += 1 if @mode_frames < 100
+    if @mode_frames > 110 && @time > 0
       n = [@time, 2].min
       @time -= n
       @score += n * 50
-      sfx(:tick) if @mode_t % 4 == 0
+      sfx(:tick) if @mode_frames % 4 == 0
     end
     update_effects
     update_wrench
     update_camera
     vent_sounds
-    return unless @time <= 0 && @mode_t > 300
+    return unless @time <= 0 && @mode_frames > 300
     @level += 1
     @checkpoint = nil
     if @level >= LEVELS.size
       @mode = :win
-      @mode_t = 0
+      @mode_frames = 0
       save_hiscore
       music(:clear, false)
     else
@@ -915,11 +915,11 @@ class Game
   def draw_clear
     draw_world(true)
     label(640, 470, 'MAIN SHUTOFF CLOSED!', 5, [252, 240, 160], true)
-    label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_t > 110
+    label(640, 420, 'TIME BONUS', 3, [255, 255, 255], true) if @mode_frames > 110
   end
 
   def step_end
-    to_title if @mode_t > 120 && (@in_start_down || @in_a_down)
+    to_title if @mode_frames > 120 && (@in_start_down || @in_a_down)
   end
 
   def draw_end(kind)
@@ -933,14 +933,14 @@ class Game
       label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, [244, 120, 24])
       label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, [255, 255, 255])
     end
-    label(640, 260, "TOP #{pad6(@hiscore)}", 3, [200, 200, 200])
-    label(640, 160, 'PRESS START', 3, [255, 255, 255]) if @mode_t > 120 && (@mode_t / 30) % 2 == 0
+    label(640, 260, "TOP #{pad6(@high_score)}", 3, [200, 200, 200])
+    label(640, 160, 'PRESS START', 3, [255, 255, 255]) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
   end
 
   def save_hiscore
-    return unless @score > @hiscore
-    @hiscore = @score
-    @args.gtk.save_u32(0, @hiscore)
+    return unless @score > @high_score
+    @high_score = @score
+    @args.gtk.save_u32(0, @high_score)
   end
 
   # ── enemies ───────────────────────────────────────────────────────
@@ -952,10 +952,10 @@ class Game
   end
 
   def update_enemies
-    player = @p
+    player = @player
     @enemies.each do |enemy|
       unless enemy.active
-        next if enemy.x > @cam + VIEW_WIDTH + 48
+        next if enemy.x > @camera_x + VIEW_WIDTH + 48
         enemy.active = true
         enemy.vx = enemy.kind == :crab ? -1.2 : -1.0
       end
@@ -967,7 +967,7 @@ class Game
         next
       end
       next if enemy.state != :walk
-      next if enemy.x < @cam - 900 || enemy.x > @cam + VIEW_WIDTH + 600
+      next if enemy.x < @camera_x - 900 || enemy.x > @camera_x + VIEW_WIDTH + 600
       spiky = false
       speed = 1.0
       if enemy.kind == :crab
@@ -1009,7 +1009,7 @@ class Game
   end
 
   def stomp(enemy)
-    player = @p
+    player = @player
     if player.combo >= COMBO.size
       one_up(enemy.x, enemy.y + 60)
     else
@@ -1031,7 +1031,7 @@ class Game
   def update_wrench
     wrench = @wrench
     return unless wrench
-    player = @p
+    player = @player
     wrench.t += 1
     if (bounce = wrench.data[:bounce]) && bounce > 0
       # knocked back off the main valve: a short arc before it heads home
@@ -1087,7 +1087,7 @@ class Game
 
   # ── items ─────────────────────────────────────────────────────────
   def update_items
-    player = @p
+    player = @player
     @items.each do |item|
       item.t += 1
       if item.kind == :popnut
@@ -1133,7 +1133,7 @@ class Game
   end
 
   def dust(x, y)
-    @particles << [x, y + 4, -@p.facing * 1.5, 1.0, 12, [200, 200, 200]]
+    @particles << [x, y + 4, -@player.facing * 1.5, 1.0, 12, [200, 200, 200]]
   end
 
   def sparkle(x, y)
@@ -1163,31 +1163,31 @@ class Game
   end
 
   def update_camera
-    player = @p
+    player = @player
     target = player.x + player.w / 2 - 560 + player.facing * 90
     target = max_cam if @boss_on
-    @cam += (target - @cam) * 0.1
-    @cam = 0.0 if @cam < 0
-    @cam = max_cam.to_f if @cam > max_cam
+    @camera_x += (target - @camera_x) * 0.1
+    @camera_x = 0.0 if @camera_x < 0
+    @camera_x = max_cam.to_f if @camera_x > max_cam
   end
 
   # ── drawing ───────────────────────────────────────────────────────
   def spr(path, x, y, w, h, sx, sy, sw, sh, flip = false, a = 255, angle = 0, flipv = false)
-    @o.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: sx, source_y: sy,
+    @outputs.sprites << { x: x, y: y, w: w, h: h, path: path, source_x: sx, source_y: sy,
                                source_w: sw, source_h: sh, flip_horizontally: flip, flip_vertically: flipv,
                                a: a, angle: angle }
   end
 
   def rect(x, y, w, h, col, a = 255)
-    @o.sprites << { x: x, y: y, w: w, h: h, path: 'sprites/px.png',
+    @outputs.sprites << { x: x, y: y, w: w, h: h, path: 'sprites/px.png',
                                r: col[0], g: col[1], b: col[2], a: a }
   end
 
   def label(x, y, text, size, col, shadow = false)
     if shadow
-      @o.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
+      @outputs.labels << { x: x + size, y: y - size, text: text, size_px: size, alignment_enum: 1, r: 0, g: 0, b: 0 }
     end
-    @o.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: col[0], g: col[1], b: col[2] }
+    @outputs.labels << { x: x, y: y, text: text, size_px: size, alignment_enum: 1, r: col[0], g: col[1], b: col[2] }
   end
 
   def shadow_label(x, y, text, size, col)
@@ -1196,7 +1196,7 @@ class Game
 
   def draw_background
     th = @theme
-    o = @o
+    o = @outputs
     sky = th[:sky]
     o.background_color = sky[0]
     # outdoors the sky runs to the bottom of the screen, so pits show sky;
@@ -1214,7 +1214,7 @@ class Game
     end
     if th[:stars]
       40.times do |i|
-        sx = ((i * 211 + 57) - @cam * 0.05) % VIEW_WIDTH
+        sx = ((i * 211 + 57) - @camera_x * 0.05) % VIEW_WIDTH
         sy = 300 + (i * 97) % 330
         tw = (@frame / 20 + i) % 7 == 0 ? 120 : 230
         o.solids << [sx.to_i, sy, 8, 4, tw, tw, 255]
@@ -1226,7 +1226,7 @@ class Game
     SUN_ROWS.each { |r| o.solids << r } if th[:sun]
     cc = th[:cloud]
     [[100, 560], [620, 600], [1050, 520], [1500, 580]].each do |cx, cy|
-      x = (((cx - @cam * 0.25) % 1800) - 260).to_i
+      x = (((cx - @camera_x * 0.25) % 1800) - 260).to_i
       o.solids << [x + 32, cy, 64, 16, cc[0], cc[1], cc[2]]
       o.solids << [x, cy - 16, 160, 16, cc[0], cc[1], cc[2]]
       o.solids << [x - 16, cy - 32, 208, 16, cc[0], cc[1], cc[2]]
@@ -1237,7 +1237,7 @@ class Game
     # (indoors, from the floor) into blocky canopies; indoors they show
     # through the windows (y 192..384)
     TREES.each do |bx, w, cy|
-      x = (((bx - @cam * 0.5) % 1600) - 160).to_i
+      x = (((bx - @camera_x * 0.5) % 1600) - 160).to_i
       tw = w >= 120 ? 24 : 16
       o.solids << [x + w / 2 - tw / 2, floor, tw, cy + 8 - floor, 104, 68, 36]
       o.solids << [x + w / 2 - tw / 2, floor, 8, cy + 8 - floor, 72, 44, 20]
@@ -1319,7 +1319,7 @@ class Game
   end
 
   def draw_tiles
-    cam = @cam.to_i
+    cam = @camera_x.to_i
     tiles = @theme[:tiles]
     c0 = [cam / TILE, 0].max
     c1 = [(cam + VIEW_WIDTH) / TILE, @cols - 1].min
@@ -1361,7 +1361,7 @@ class Game
   # A vent on screen hisses as its plume shoots up. dx is the screen-shake
   # offset the world is drawn with this frame.
   def vent_sounds(dx = 0)
-    cam = @cam.to_i + dx
+    cam = @camera_x.to_i + dx
     @vents.each do |v|
       next unless (@frame + v[:phase]) % 180 == 130 && v[:h] > 0
       x = v[:c] * TILE - cam
@@ -1371,7 +1371,7 @@ class Game
 
   def draw_world(entities, hud = true)
     draw_background
-    cam = @cam.to_i
+    cam = @camera_x.to_i
     draw_tiles
     @lifts.each do |lift|
       x = lift.x.to_i - cam
@@ -1451,9 +1451,9 @@ class Game
   end
 
   def draw_player
-    player = @p
+    player = @player
     return if player.invuln > 0 && (player.invuln / 3) % 2 == 0 && @mode == :play
-    cam = @cam.to_i
+    cam = @camera_x.to_i
     f = if @mode == :dying then 6
         elsif player.throw_t > 0 then 7
         elsif !player.on_ground then 4
@@ -1475,11 +1475,11 @@ class Game
     rect(0, PLAY_HEIGHT, VIEW_WIDTH, 720 - PLAY_HEIGHT, [16, 16, 16])
     rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, [60, 60, 60])
     col = [236, 212, 64]
-    o = @o.labels
+    o = @outputs.labels
     o << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: col[0], g: col[1], b: col[2] }
     o << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     o << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: col[0], g: col[1], b: col[2] }
-    o << { x: 720, y: 700, text: @lv[:name], size_px: 4, r: col[0], g: col[1], b: col[2] }
+    o << { x: 720, y: 700, text: @level_data[:name], size_px: 4, r: col[0], g: col[1], b: col[2] }
     shift_time = @time || SHIFT_LENGTH
     tc = shift_time <= 100 && (@frame / 15) % 2 == 0 ? [232, 72, 64] : col
     o << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: tc[0], g: tc[1], b: tc[2] }

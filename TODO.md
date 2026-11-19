@@ -298,3 +298,15 @@ paths, anything the next session needs.)
   Also renamed in tools/. Next: instance variables (@p, @cam, @rk, @fw,
   @lv, ...; tools/sim.rb and bench_start.rb read some of them), then
   methods and locals. Tests ALL PASS, shots ALL SAME.
+- 2026-11-19: abbreviations part 2/3: instance variables. @p->@player,
+  @cam->@camera_x, @arena_c->@arena_column, @rk->@flying_valve, ending's
+  @lift/@lift_v->@rise/@rise_speed, @fw/@fw_n/@fw_next->@fireworks/
+  @fireworks_launched/@next_firework_at, @lv->@level_data,
+  @code_i->@code_index, @mode_t->@mode_frames, @o->@outputs,
+  @step_acc/@time_acc->@step_accumulator/@time_accumulator,
+  @hiscore->@high_score, @multi->@hits_left. Kept: @in_a/@in_b etc.
+  (button names), @rng/@end_rng (standard term), @bro (game vocabulary),
+  Actor's x/y/w/h/vx/vy/t. tools/ updated (`Sim#p` now reads @player;
+  scenario `iv(:...)` symbols). bench_start.rb picks old or new names with
+  `bench_iv(new, old)`, so shots still build un-refactored. Tests ALL PASS,
+  shots ALL SAME, reach/bot output unchanged. Next: methods and locals.

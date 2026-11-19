@@ -22,7 +22,7 @@ class Game
     @rng % n
   end
 
-  def boss_level = @lv[:boss] || 1
+  def boss_level = @level_data[:boss] || 1
   def boss_knows?(move) = BOSS_MOVES.index { |m| m[0] == move } < boss_level
 
   def spawn_boss(c, r)
@@ -32,7 +32,7 @@ class Game
     boss.state = :wait
     @boss = boss
     @boss_on = false
-    @arena_c = @cols - 20
+    @arena_column = @cols - 20
     @shots = []
     @shake = 0
     @banner = 0
@@ -45,11 +45,11 @@ class Game
   def update_boss
     boss = @boss
     return unless boss
-    player = @p
+    player = @player
     # the warning goes off on the approach, while the player can still look
     # before stepping in; the gate shuts once they are inside the arena
     unless @boss_warned
-      return unless player.x > (@arena_c - WARN_AHEAD) * TILE
+      return unless player.x > (@arena_column - WARN_AHEAD) * TILE
       @boss_warned = true
       @warning = WARN_LENGTH
       sfx(:klaxon)
@@ -57,9 +57,9 @@ class Game
     end
     @warning -= 1 if @warning > 0
     unless @boss_on
-      return unless player.x > (@arena_c + 2) * TILE
+      return unless player.x > (@arena_column + 2) * TILE
       @boss_on = true
-      8.times { |r| @grid[r][@arena_c] = '#' }   # the gate slams shut
+      8.times { |r| @grid[r][@arena_column] = '#' }   # the gate slams shut
       sfx(:bump)
     end
     unless @fight_on
@@ -77,7 +77,7 @@ class Game
       boss.vy -= 0.6
       boss.y += boss.vy
       if boss.t == 120
-        @goal = { c: @arena_c + 10, r: 7, turn: 0 }   # between the arena girders
+        @goal = { c: @arena_column + 10, r: 7, turn: 0 }   # between the arena girders
         sfx(:appear)
         popup(@goal[:c] * TILE, tile_top(7) + 60, 'MAIN VALVE')
       end
@@ -181,7 +181,7 @@ class Game
         sfx(:warn)
         cnt = angry ? 5 : 3
         cnt.times do |i|
-          c = @arena_c + 2 + boss_rand(16)
+          c = @arena_column + 2 + boss_rand(16)
           c = col_at(player.x + player.w / 2) if i == 0
           @shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
         end
@@ -200,7 +200,7 @@ class Game
       boss.on_ground = true
     end
     boss.x += boss.vx
-    lo = (@arena_c + 1) * TILE + 4
+    lo = (@arena_column + 1) * TILE + 4
     hi = @cols * TILE - boss.w - 4
     if boss.x < lo || boss.x > hi
       boss.x = boss.x < lo ? lo.to_f : hi.to_f
@@ -261,7 +261,7 @@ class Game
 
   def boss_vs_player
     boss = @boss
-    player = @p
+    player = @player
     return if boss.state == :dead || @mode != :play
     return unless overlap?(player, boss)
     # a stomp is the player coming down onto him *relative to his motion*, so
@@ -285,13 +285,13 @@ class Game
   end
 
   def update_shots
-    player = @p
+    player = @player
     @shots.each do |s|
       s[:t] += 1
       case s[:k]
       when :wave
         s[:x] += s[:vx]
-        s[:dead] = true if s[:x] < @arena_c * TILE || s[:x] > @cols * TILE
+        s[:dead] = true if s[:x] < @arena_column * TILE || s[:x] > @cols * TILE
       when :glob
         s[:vy] -= 0.5
         s[:x] += s[:vx]

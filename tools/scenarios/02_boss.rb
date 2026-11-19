@@ -5,7 +5,7 @@ d_levels.each_with_index do |li, n|
   s = Sim.new.start(li)
   b = s.iv(:boss)
   check "#{LEVELS[li][:name]} has boss level #{n + 1}", b && s.g.boss_level == n + 1
-  ac = s.iv(:arena_c)
+  ac = s.iv(:arena_column)
   s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.snap
   s.step([], 2)
   check "#{LEVELS[li][:name]} fight starts and gate closes", s.iv(:boss_on) && s.g.cell(ac, 6) == '#'
@@ -52,7 +52,7 @@ end
 
 # wrench damages the boss
 s = Sim.new.start(d_levels[0])
-b = s.iv(:boss); ac = s.iv(:arena_c)
+b = s.iv(:boss); ac = s.iv(:arena_column)
 s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.p.powered = true; s.p.facing = 1; s.snap
 s.step([], 2)
 s.step([], 1) while s.iv(:warning) > 0
@@ -65,7 +65,7 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
 # the boss valve appears between the girders, and clears even if it lands on you
 [[:left, -3], [:on, 0], [:right, 4], [:girder, 13], [:far_right, 5]].each do |name, off|
   s = Sim.new.start(d_levels[0])
-  ac = s.iv(:arena_c)
+  ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99)
   gc = ac + 10
@@ -98,7 +98,7 @@ end
 
 # bolt storm: 3 bolts (5 when angry), falling at 0.506 px/frame^2
 s = Sim.new.start(d_levels[6])
-ac = s.iv(:arena_c)
+ac = s.iv(:arena_column)
 s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
 b = s.iv(:boss); b.state = :bolts; b.t = 0; s.set(:shots, [])
@@ -116,7 +116,7 @@ check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh[:k] == :bol
 
 # wrench at the boss valve from the right side
 s = Sim.new.start(d_levels[0])
-ac = s.iv(:arena_c)
+ac = s.iv(:arena_column)
 s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
 s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99)
 s.put(ac + 15); s.p.powered = true
@@ -130,7 +130,7 @@ check 'wrench clears the boss valve from the right', cleared
 # Rusty hopping up into the player's feet counts as a stomp, not a hit
 [[:rising, 3.0], [:still, 0.0], [:falling, -2.0]].each do |name, pvy|
   s = Sim.new.start(d_levels[0])
-  ac = s.iv(:arena_c)
+  ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.set(:banner, 0)
   b = s.iv(:boss); b.state = :wait; b.t = 0; b.data[:inv] = 0
@@ -146,7 +146,7 @@ end
 # ...but walking into him, or him landing on you, still hurts
 [[:side, 0.0, 0], [:landed_on, -10.0, 1]].each do |name, bvy, above|
   s = Sim.new.start(d_levels[0])
-  ac = s.iv(:arena_c)
+  ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.set(:banner, 0)
   b = s.iv(:boss); b.state = :wait; b.t = 0; b.data[:inv] = 0
@@ -160,7 +160,7 @@ end
 
 # --- the warning goes off on the approach, before the gate shuts ---
 s = Sim.new.start(0)
-ac = s.iv(:arena_c)
+ac = s.iv(:arena_column)
 s.put(ac - WARN_AHEAD - 3); s.step([], 2)
 check 'no warning further back', s.iv(:warning) == 0 && !s.sounds.include?('sounds/klaxon.wav')
 s.put(ac - WARN_AHEAD + 1); s.step([], 2)

@@ -9,7 +9,7 @@
 #   :ending  skip straight to the ending sequence (Rusty gone, valve turned)
 # Lives are set to 99 so a run stays in play.
 BENCH_MODE = :BENCH_START
-# tile size: TILE since the refactor, T in un-refactored
+# Names that the refactor changed; the patch must also build un-refactored.
 BENCH_TILE = defined?(TILE) ? TILE : T
 
 class Game
@@ -23,20 +23,24 @@ class Game
     to_intro
   end
 
+  def bench_iv(new, old) = instance_variable_defined?(new) ? new : old
+
   alias bench_to_intro to_intro
   def to_intro
     bench_to_intro
     return unless @boss
+    player = instance_variable_get(bench_iv(:@player, :@p))
+    arena = instance_variable_get(bench_iv(:@arena_column, :@arena_c))
     case BENCH_MODE
     when :arena
-      @p.x = (@arena_c + 3) * BENCH_TILE + 12
-      @p.y = tile_bottom(7)
+      player.x = (arena + 3) * BENCH_TILE + 12
+      player.y = tile_bottom(7)
     when :ending
       @boss = nil
-      @goal = { c: @arena_c + 10, r: 7, turn: 0 }
-      @p.x = (@arena_c + 9) * BENCH_TILE + 12
-      @p.y = tile_bottom(7)
-      @cam = max_cam.to_f
+      @goal = { c: arena + 10, r: 7, turn: 0 }
+      player.x = (arena + 9) * BENCH_TILE + 12
+      player.y = tile_bottom(7)
+      instance_variable_set(bench_iv(:@camera_x, :@cam), max_cam.to_f)
       start_ending
     end
   end

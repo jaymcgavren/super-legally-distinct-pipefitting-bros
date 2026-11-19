@@ -34,7 +34,7 @@ s = Sim.new; s.step([], 5); enter_code(s); s.step([:start], 1)
 s.step([], 1) until s.mode == :play
 ok = true
 (0...LEVELS.size).each_with_index do |lv, i|
-  ok &&= s.iv(:level) == lv && s.p.powered && s.iv(:boss) && s.p.x > s.iv(:arena_c) * TILE
+  ok &&= s.iv(:level) == lv && s.p.powered && s.iv(:boss) && s.p.x > s.iv(:arena_column) * TILE
   check "rush #{i + 1}: in arena #{lv} with wrench", ok
   break unless ok
   if i == 0

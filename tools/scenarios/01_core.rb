@@ -127,7 +127,7 @@ check 'respawn at checkpoint', (s.p.x - cone[:c] * TILE).abs < 64
 
 # --- timer runs out ---
 s = Sim.new.start(0)
-s.set(:time, 1); s.set(:time_acc, 0)
+s.set(:time, 1); s.set(:time_accumulator, 0)
 s.step([], TICK_LENGTH + 1)
 check 'timer death', s.mode == :dying
 
