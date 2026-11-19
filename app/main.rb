@@ -9,6 +9,7 @@
 require 'app/levels.rb'
 require 'app/screen.rb'
 require 'app/sound.rb'
+require 'app/controls.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -168,6 +169,7 @@ class Game
     @args = args
     @screen = Screen.new(args.outputs)
     @sound = Sound.new(args)
+    @controls = Controls.new(args)
     @high_score = args.gtk.load_u32(0) || 0
     @bro = 0
     @frame = 0
@@ -178,39 +180,7 @@ class Game
     to_title
   end
 
-  # ── input / audio helpers ─────────────────────────────────────────
-  PRESS_KEYS = %i[a b x start up down left right].freeze
-
-  # Called every host frame. A press is held in @pressed until an update
-  # reads it, so a press on a frame with no update isn't lost and a frame
-  # with several updates doesn't see it twice.
-  def poll_input
-    down = @args.inputs.keyboard.key_down
-    @pressed ||= {}
-    PRESS_KEYS.each { |k| @pressed[k] = true if down.send(k) }
-  end
-
-  def read_input
-    keyboard = @args.inputs.keyboard
-    analog_x = keyboard.left_analog_x_perc || 0
-    @in_left  = keyboard.left || analog_x < -0.5
-    @in_right = keyboard.right || analog_x > 0.5
-    @in_a     = keyboard.a
-    @in_b     = keyboard.b || keyboard.x
-    pressed = @pressed
-    @in_a_down = pressed[:a]
-    @in_b_down = pressed[:b] || pressed[:x]
-    @in_start_down = pressed[:start]
-    @in_left_down = pressed[:left]
-    @in_right_down = pressed[:right]
-    @in_code = if pressed[:up] then :up
-               elsif pressed[:down] then :down
-               elsif pressed[:left] then :left
-               elsif pressed[:right] then :right
-               end
-    pressed.clear
-  end
-
+  # ── secret code ───────────────────────────────────────────────────
   # Up Up Down Down Left Right Left Right on the title screen locks in
   # Boss Rush; the next game started is a Boss Rush run.
   RUSH_CODE = %i[up up down down left right left right].freeze
@@ -223,11 +193,12 @@ class Game
 
   # advance the secret-code matcher; true once the whole code is in
   def feed_code
-    return false unless @in_code
-    if @in_code == RUSH_CODE[@code_index]
+    press = @controls.code_press
+    return false unless press
+    if press == RUSH_CODE[@code_index]
       @code_index += 1
     else
-      @code_index = @in_code == :up ? (@code_index == 2 ? 2 : 1) : 0
+      @code_index = press == :up ? (@code_index == 2 ? 2 : 1) : 0
     end
     code_note(@code_index - 1) if @code_index > 0
     return false unless @code_index == RUSH_CODE.size
@@ -275,7 +246,7 @@ class Game
   def tick
     @screen.outputs = @args.outputs
     @sound.new_frame
-    poll_input
+    @controls.poll
     @step_accumulator = (@step_accumulator || 0.0) + frame_ms
     n = 0
     while @step_accumulator >= STEP_MS && n < MAX_STEPS
@@ -306,7 +277,7 @@ class Game
     # during the coffee break
     @frame += 1 unless @mode == :paused
     @mode_frames += 1
-    read_input
+    @controls.read
     case @mode
     when :title    then step_title
     when :intro    then step_intro
@@ -540,7 +511,7 @@ class Game
   # ── title ─────────────────────────────────────────────────────────
   def step_title
     @camera_x = (@mode_frames * 1.5) % max_camera_x
-    if @in_left_down || @in_right_down
+    if @controls.left_pressed? || @controls.right_pressed?
       @bro = 1 - @bro
       @sound.play(:tick)
     end
@@ -548,7 +519,7 @@ class Game
       @rush_armed = true
       @sound.play(:oneup)
     end
-    if @in_start_down || @in_a_down
+    if @controls.start_pressed? || @controls.jump_pressed?
       @sound.play(:checkpoint)
       new_game(@rush_armed)
     end
@@ -595,7 +566,7 @@ class Game
 
   # ── gameplay ──────────────────────────────────────────────────────
   def step_play
-    if @in_start_down
+    if @controls.start_pressed?
       @mode = :paused
       @sound.play(:pause)
       @sound.pause_music
@@ -627,7 +598,7 @@ class Game
   end
 
   def step_paused
-    return unless @in_start_down
+    return unless @controls.start_pressed?
     @mode = :play
     @sound.play(:pause)
     @sound.resume_music
@@ -698,8 +669,8 @@ class Game
       player.y += player.riding.data[:dy]
     end
     player.prev_y = player.y
-    dir = (@in_right ? 1 : 0) - (@in_left ? 1 : 0)
-    run = @in_b
+    dir = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
+    run = @controls.run_held?
     max_speed = run ? RUN_MAX : WALK_MAX
     ground = player.on_ground
     player.skid = false
@@ -720,7 +691,7 @@ class Game
       player.vx = player.vx.abs <= f ? 0.0 : player.vx - f * (player.vx > 0 ? 1 : -1)
     end
 
-    player.buffer = @in_a_down ? 7 : player.buffer - 1
+    player.buffer = @controls.jump_pressed? ? 7 : player.buffer - 1
     player.coyote = ground ? 6 : player.coyote - 1
     if player.buffer > 0 && player.coyote > 0
       player.vy = player.vx.abs >= RUN_JUMP_SPEED ? JUMP_VELOCITY_RUN : JUMP_VELOCITY
@@ -730,7 +701,7 @@ class Game
       player.riding = nil
       @sound.play(:jump)
     end
-    gravity = player.vy > 0 ? (player.jumping && @in_a ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
+    gravity = player.vy > 0 ? (player.jumping && @controls.jump_held? ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
     player.vy -= gravity
     player.vy = FALL_MAX if player.vy < FALL_MAX
 
@@ -752,7 +723,7 @@ class Game
     player.throw_t -= 1 if player.throw_t > 0
 
     # throw the wrench
-    if @in_b_down && player.powered && @wrench.nil?
+    if @controls.throw_pressed? && player.powered && @wrench.nil?
       wrench = Actor.new(:wrench, player.x + (player.facing > 0 ? player.w : -40), player.y + 36, 40, 20)
       wrench.vx = player.facing * 16.0 + player.vx * 0.5
       wrench.facing = player.facing
@@ -965,7 +936,7 @@ class Game
   end
 
   def step_end
-    to_title if @mode_frames > 120 && (@in_start_down || @in_a_down)
+    to_title if @mode_frames > 120 && (@controls.start_pressed? || @controls.jump_pressed?)
   end
 
   def draw_end(kind)
@@ -1062,8 +1033,8 @@ class Game
       add_score(COMBO[player.combo] * (enemy.kind == :crab ? 2 : 1), enemy.x + 20, enemy.y + 60)
     end
     player.combo += 1
-    player.vy = @in_a ? 17.0 : 10.0
-    player.jumping = @in_a
+    player.vy = @controls.jump_held? ? 17.0 : 10.0
+    player.jumping = @controls.jump_held?
     puff(enemy.x + enemy.w / 2, enemy.y + 10)
     @sound.play(:stomp)
     if enemy.kind == :blob

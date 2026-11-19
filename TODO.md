@@ -149,7 +149,7 @@ delegating methods at first if that keeps the diff small, then callers move.
 - [x] `Sound` (app/sound.rb): `play`, `chime`, `music(name, looping:)`,
       `stop_music`, `music_playing?`, `pause_music`/`resume_music`,
       `music_pitch=`; owns the once-per-frame dedupe (`@played`).
-- [ ] `Controls` (app/controls.rb): replaces `poll_input`/`read_input` and the
+- [x] `Controls` (app/controls.rb): replaces `poll_input`/`read_input` and the
       `@in_*` ivars with readers (`left?`, `right?`, `jump_held?`,
       `jump_pressed?`, `run_held?`, `start_pressed?`, `code_press`). Watch the
       fixed-step detail: presses are latched in `poll_input` once per frame
@@ -398,3 +398,15 @@ paths, anything the next session needs.)
   touches args.audio or outputs.sounds. Tests ALL PASS (185; they cover
   sounds per frame at 30-144 Hz, boss music and the klaxon), shots ALL
   SAME, reach/bot unchanged, 2-B bench 0.88-0.91 vs 0.89 at HEAD.
+- 2026-11-19: step 2, `Controls` (app/controls.rb). Game holds
+  `@controls`; `tick` calls `@controls.poll` every host frame and `update`
+  calls `@controls.read` every step, exactly where `poll_input`/
+  `read_input` ran, so the latched-press behaviour is unchanged (the 30-144
+  Hz scenarios cover it). The ten `@in_*` ivars became readers: `left?`,
+  `right?`, `jump_held?`, `run_held?` (held), `jump_pressed?`,
+  `throw_pressed?`, `start_pressed?`, `left_pressed?`, `right_pressed?`
+  (pressed since the last step) and `code_press`. They return the same raw
+  values as before (nil or false), since `player.jumping = jump_held?`
+  stores one. tools/reach.rb now sets the readers' ivars on `@controls`.
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged, level 1 bench
+  0.90-0.92 vs 0.92 at HEAD.

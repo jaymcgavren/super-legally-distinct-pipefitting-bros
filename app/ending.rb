@@ -147,7 +147,7 @@ class Game
       vent_sounds
     end
     @sound.play(:hurt) if elapsed == RUSTY_FALL + 6
-    if elapsed > END_PROMPT && (@in_start_down || @in_a_down)
+    if elapsed > END_PROMPT && (@controls.start_pressed? || @controls.jump_pressed?)
       to_title
     end
   end

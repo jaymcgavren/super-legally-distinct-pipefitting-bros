@@ -269,8 +269,8 @@ class Game
     closing = (player.y - player.prev_y) - (boss.y - boss.prev_y) < 0
     if closing && player.prev_y >= boss.prev_y + boss.h * 0.6 && !boss_spiky?
       if boss_hit(2)
-        player.vy = @in_a ? 18.0 : 14.0
-        player.jumping = @in_a
+        player.vy = @controls.jump_held? ? 18.0 : 14.0
+        player.jumping = @controls.jump_held?
         puff(player.x + player.w / 2, player.y)
       else
         player.vy = 10.0
