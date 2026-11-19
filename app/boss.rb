@@ -188,8 +188,7 @@ class Game
       boss_idle(40) if boss.t > 60
     end
     # Rusty ignores the girders: he stays on the arena floor, between the walls
-    boss.vy -= GRAVITY_FALL
-    boss.vy = FALL_MAX if boss.vy < FALL_MAX
+    fall(boss)
     boss.prev_y = boss.y
     boss.y += boss.vy
     boss.on_ground = false

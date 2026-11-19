@@ -157,7 +157,7 @@ delegating methods at first if that keeps the diff small, then callers move.
 - [x] `Level` (app/level.rb): grid, `cell`, `column_at`, `row_at`, `tile_top`,
       `tile_bottom`, `max_camera_x`, loading from `LEVELS[i]` (`load_level`'s grid
       part) and spawning markers into entity lists. Theme lookup.
-- [ ] `Physics` module (app/physics.rb): `move_x`, `move_y`, `box_free?`,
+- [x] `Physics` module (app/physics.rb): `move_x`, `move_y`, `box_free?`,
       `overlap?`, `rect_hit?`, constants for gravity. Mixed into whatever needs
       it, or functions taking the level.
 - [ ] `Camera` (app/camera.rb): position, follow, shake, `max_camera_x`.
@@ -427,3 +427,15 @@ paths, anything the next session needs.)
   is one, so BENCH_REF=un-refactored still works.
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
   0.92-0.93 vs 0.90-0.91, 2-B 0.89-0.92 vs 0.90-0.91 (noise).
+- 2026-11-19: step 2, `Physics` (app/physics.rb), a module included in
+  Game: `box_free?`, `overlap?`, `rect_hit?`, `move_x`, `move_y` moved
+  over unchanged (they read `@level` and `@lifts`, documented at the top),
+  plus GRAVITY_HOLD/CUT/FALL and FALL_MAX as `Physics::` constants (Game,
+  boss.rb and ending.rb see them through the include). New `fall(actor)`:
+  gravity plus the terminal-velocity cap, replacing the two copies (enemies,
+  Big Rusty). The player's variable gravity and the uncapped death arcs and
+  popped items keep their own lines, since they differ. Mixin rather than
+  functions taking the level: Game is the only user, and step 3's entity
+  classes can include it or take the level then.
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
+  0.91-0.92 vs 0.90-0.92, 2-B 0.90 vs 0.89-0.90.
