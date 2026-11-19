@@ -193,7 +193,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       `update`/`draw` become one line each.
 - [x] Note `@frame` (world clock) stops while paused; keep that.
 - [x] Title keeps the Boss Rush code (`RUSH_CODE`, `feed_code`, chime notes).
-- [ ] `app/ending.rb` becomes the `Ending` scene (render target `:world`,
+- [x] `app/ending.rb` becomes the `Ending` scene (render target `:world`,
       fireworks, credits, Rusty's fall). Keep `CREDITS` text exactly.
 - [x] Tests that check `s.mode == :play` etc.: give scenes a `name` symbol
       (or keep `Game#mode` returning one) so the tests stay readable.
@@ -617,3 +617,21 @@ paths, anything the next session needs.)
   every label's text): identical apart from the 51 paused steps' timer.
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level
   1 0.88 vs 0.88, arena 0.87-0.89 vs 0.86-0.89, title 0.36-0.37 vs 0.37.
+- 2026-11-19: step 4, app/ending.rb is the `Ending` scene. Its state
+  (spin, flying valve, rise, steam, fireworks, rng, twinkle, shake) is
+  the scene's own ivars instead of Game's; `elapsed` is the scene timer.
+  `Game#start_ending` just switches to it and banks the bonus.
+  Fireworks are `Firework < Struct.new(:x, :y, :color, :t)` with `update`,
+  `gone?`, `draw(screen)` (the gravity test draws one directly). The star
+  field is the constant `Ending::STARS` (was `@end_stars ||=` on Game).
+  The player's settling uses `Game#settle_player`, the shake jitter uses
+  `Game#clock` (the world clock). Renamed: `@end_shake` -> `@shake`,
+  `end_shake_x` -> `shake_dx`, `end_rand` -> `rand_below`. CREDITS and
+  the END_* timings are unchanged (still top level; the tests use them).
+  sim.rb: `s.scene_iv(:name)` reads a scene ivar.
+  Traced against the previous commit: the whole ending to the title,
+  normal and Boss Rush (4000 steps: mode, timer, score, music channels,
+  background colour, an MD5 of every sprite/solid/label/primitive drawn,
+  sounds): identical. Tests ALL PASS (185), shots ALL SAME (incl. the
+  four ending stages, render target and all), reach/bot unchanged; bench
+  ending 0.43-0.44 vs 0.43-0.44, level 1 0.86 vs 0.89.

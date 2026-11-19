@@ -169,6 +169,7 @@ class Game
   attr_accessor :bro   # 0 Dez, 1 Ozzie
 
   def mode = @scene.name
+  def clock = @frame   # the world clock
   def playing? = @scene.name == :play
   def switch_to(scene)
     @scene = scene
@@ -531,6 +532,14 @@ class Game
     else
       to_intro
     end
+  end
+
+  # the last level's valve is turned: the whole time bonus at once
+  def start_ending
+    switch_to(Ending.new(self))
+    @run.bank_time
+    save_hiscore
+    @sound.stop_music
   end
 
   # game over, or every level done

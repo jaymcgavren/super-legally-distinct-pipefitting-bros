@@ -266,16 +266,3 @@ class Final < Scene
     screen.label(640, 160, 'PRESS START', 3, WHITE) if @frames > WAIT && blink?
   end
 end
-
-# The ending after the last level (app/ending.rb, still Game methods).
-class Ending < Scene
-  def name = :ending
-
-  def update
-    game.step_ending(@frames)
-  end
-
-  def draw
-    game.draw_ending(@frames)
-  end
-end

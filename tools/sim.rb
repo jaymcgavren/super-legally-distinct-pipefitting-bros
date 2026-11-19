@@ -80,6 +80,7 @@ class Sim
   def p = iv(:player)
   def mode = @g.mode
   def mode_frames = @g.scene.frames   # steps since the current scene began
+  def scene_iv(n) = @g.scene.instance_variable_get("@#{n}")
 
   # get from title into play on level idx
   def start(level = 0)

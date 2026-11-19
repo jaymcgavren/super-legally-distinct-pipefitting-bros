@@ -7,7 +7,7 @@
 #             credits a line at a time, then THANK YOU FOR PLAYING!!!
 #             (with Big Rusty dropping past, upside-down)
 #
-# Everything here only runs in :ending mode. While the level is still on
+# This is the Ending scene (Game#start_ending switches to it). While the level is still on
 # screen and the camera is rising, the level is drawn into a render target
 # and slid down as one sprite; once it's gone it isn't drawn at all.
 
@@ -27,14 +27,14 @@ END_LOCK_Y       = 380              # where the camera holds the valve on screen
 FIREWORK_GRAVITY = 0.14             # px/frame^2 pulling firework stars down
 FIREWORK_COLORS  = [[255, 48, 48], [48, 255, 96], [64, 112, 255]].freeze
 
-class Game
-  def start_ending
-    switch_to(Ending.new(self))
-    @run.bank_time             # the whole time bonus at once
-    save_hiscore
-    @sound.stop_music
+# The ending scene; its timer `@frames` is the `elapsed` below.
+class Ending < Scene
+  STARS = Array.new(70) { |i| [(i * 389 + 41) % VIEW_WIDTH, (i * 157 + 23) % 760, i % 3] }.freeze
+
+  def initialize(game)
+    super
     @spin = 0.0                # valve frame phase
-    @flying_valve = nil                  # the valve, once it's airborne (world coords)
+    @flying_valve = nil        # the valve, once it's airborne (world coords)
     @rise = 0.0                # how far the camera has risen
     @rise_speed = 0.0
     @locked = false
@@ -42,47 +42,48 @@ class Game
     @fireworks = []
     @fireworks_launched = 0
     @next_firework_at = END_FIRE
-    @end_rng = 12345
+    @rng = 12345
     @twinkle = nil
-    @end_shake = 0.0
-    @end_stars ||= Array.new(70) { |i| [(i * 389 + 41) % VIEW_WIDTH, (i * 157 + 23) % 760, i % 3] }
+    @shake = 0.0
   end
 
-  def step_ending(elapsed)
-    player = @player
-    player.vy -= GRAVITY_FALL
-    player.vx = 0.0
-    move_y(player, true, false)
-    player.facing = @goal.x > player.x ? 1 : -1
-    update_effects
-    update_wrench
-    vx = @goal.x + 32                  # valve centre, world x
-    vy = @goal.y + 2 * TILE      # valve bottom, world y
+  def name = :ending
+
+  def update
+    elapsed = @frames
+    game = @game
+    player = game.player
+    goal = game.goal
+    game.settle_player(goal.x > player.x ? 1 : -1)
+    game.update_effects
+    game.update_wrench
+    vx = goal.x + 32           # valve centre, world x
+    vy = goal.y + 2 * TILE     # valve bottom, world y
 
     if elapsed < END_BURST
       # spin up: frame phase speeds toward one frame per tick
       @spin += [0.2 + elapsed / 120.0, 1.0].min
-      @goal.turn = (@spin * 5).to_i
+      goal.turn = (@spin * 5).to_i
       every = [36 - elapsed / 5, 4].max
-      @sound.play(:steam) if elapsed % every == 0
+      sound.play(:steam) if elapsed % every == 0
       n = elapsed / 40 + 1
       n.times do |i|
         angle = (elapsed * 37 + i * 101) % 360 * 0.01745
         @steam << SteamPuff.new(vx + Math.cos(angle) * 24, vy + 40 + Math.sin(angle) * 24, Math.cos(angle) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4)
       end
-      @end_shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
+      @shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
     elsif elapsed == END_BURST
-      @goal.gone = true
+      goal.gone = true
       @flying_valve = { x: vx - 32, y: vy.to_f, v: 14.0 }
-      @end_shake = 16.0
-      @sound.play(:blast)
-      @sound.play(:pound)
+      @shake = 16.0
+      sound.play(:blast)
+      sound.play(:pound)
       24.times do |i|
         angle = i * 0.2618
         @steam << SteamPuff.new(vx, vy + 20, Math.cos(angle) * 9, Math.sin(angle).abs * 6 + 1, 40, 48)
       end
     end
-    @end_shake -= 0.3 if elapsed > END_BURST && @end_shake > 0
+    @shake -= 0.3 if elapsed > END_BURST && @shake > 0
 
     if @flying_valve
       @flying_valve[:v] = [@flying_valve[:v] + 2.2, END_TOP_SPEED].min
@@ -105,7 +106,7 @@ class Game
         @rise += @rise_speed
         if !@twinkle && @flying_valve[:y] - @rise > 720
           @twinkle = { x: @flying_valve[:x] + 32, t: 0 }
-          @sound.play(:appear)
+          sound.play(:appear)
         end
       end
       @flying_valve = nil if @flying_valve[:y] - @rise > 1600
@@ -119,118 +120,123 @@ class Game
     @steam.reject!(&:gone?)
 
     if elapsed >= END_FIRE
-      @sound.music(:clear, looping: false) if elapsed == END_FIRE
-      @sound.music(:theme) if elapsed > END_FIRE + 30 && !@sound.music_playing?
+      sound.music(:clear, looping: false) if elapsed == END_FIRE
+      sound.music(:theme) if elapsed > END_FIRE + 30 && !sound.music_playing?
       if elapsed >= @next_firework_at
         # irregular cadence: quick doubles, short gaps and longer lulls
-        (end_rand(4) == 0 ? 2 : 1).times { spawn_firework }
-        r = end_rand(10)
-        @next_firework_at = elapsed + (r < 3 ? 8 + end_rand(10) : r < 8 ? 22 + end_rand(26) : 55 + end_rand(30))
+        (rand_below(4) == 0 ? 2 : 1).times { spawn_firework }
+        r = rand_below(10)
+        @next_firework_at = elapsed + (r < 3 ? 8 + rand_below(10) : r < 8 ? 22 + rand_below(26) : 55 + rand_below(30))
       end
-      @fireworks.each { |f| f[:t] += 1 }
-      @fireworks.reject! { |f| f[:t] > 72 }
+      @fireworks.each(&:update)
+      @fireworks.reject!(&:gone?)
     end
 
     # the level's vents still hiss while it is on screen
     if elapsed < END_BURST
-      vent_sounds(end_shake_x)
+      game.vent_sounds(shake_dx)
     elsif @rise.to_i < 720
-      vent_sounds
+      game.vent_sounds
     end
-    @sound.play(:hurt) if elapsed == RUSTY_FALL + 6
-    if elapsed > END_PROMPT && (@controls.start_pressed? || @controls.jump_pressed?)
-      to_title
+    sound.play(:hurt) if elapsed == RUSTY_FALL + 6
+    if elapsed > END_PROMPT && (controls.start_pressed? || controls.jump_pressed?)
+      game.to_title
     end
   end
 
-  def end_shake_x
-    amplitude = @end_shake
-    amplitude > 0 ? ((@frame % 4) < 2 ? amplitude : -amplitude).to_i : 0
-  end
-
-  def end_rand(n)
-    @end_rng = (@end_rng * 75 + 74) % 65537
-    @end_rng % n
-  end
-
-  def spawn_firework
-    @fireworks << { x: 160 + end_rand(960), y: 180 + end_rand(400), col: FIREWORK_COLORS[end_rand(3)], t: 0 }
-    @fireworks_launched += 1
-    @sound.play(:firework)
-  end
-
-  def draw_ending(elapsed)
-    amplitude = @end_shake
-    shake_x = end_shake_x
-    shake_y = amplitude > 0 ? ((@frame % 6) < 3 ? amplitude : -amplitude).to_i / 2 : 0
+  def draw
+    elapsed = @frames
+    game = @game
+    amplitude = @shake
+    shake_x = shake_dx
+    shake_y = amplitude > 0 ? ((game.clock % 6) < 3 ? amplitude : -amplitude).to_i / 2 : 0
     rise = @rise.to_i
     if elapsed < END_BURST
-      @camera.offset_by(shake_x) { draw_world(true) }
+      game.camera.offset_by(shake_x) { game.draw_world(true) }
     else
       draw_space
       if rise < 720
-        target = @args.outputs[:world]
+        target = screen.outputs[:world]
         target.w = VIEW_WIDTH
         target.h = 720
-        @screen.draw_into(target) { draw_world(true, false) }
-        @screen.outputs.sprites << { x: shake_x, y: shake_y - rise, w: VIEW_WIDTH, h: 720, path: :world }
+        screen.draw_into(target) { game.draw_world(true, false) }
+        screen.outputs.sprites << { x: shake_x, y: shake_y - rise, w: VIEW_WIDTH, h: 720, path: :world }
       end
     end
-    camera_x = @camera.x.to_i
+    camera_x = game.camera.x.to_i
     @steam.each do |steam_puff|
       x = steam_puff.x.to_i - camera_x + shake_x
       y = steam_puff.y.to_i - rise + shake_y
       next if y < -80 || y > 760
       size = steam_puff.size
-      @screen.rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff.life * 5, 200].min)
+      screen.rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff.life * 5, 200].min)
     end
     if @flying_valve
       x = @flying_valve[:x].to_i - camera_x + shake_x
       y = @flying_valve[:y].to_i - rise + shake_y
       if y < 760
         f = elapsed % 3
-        @screen.tile('sprites/items.png', x, y, frame(:valve, f))
+        screen.tile('sprites/items.png', x, y, frame(:valve, f))
       end
     end
     if @twinkle && @twinkle[:t] < 40
       k = @twinkle[:t]
       flare = k < 20 ? k * 2 : (40 - k) * 2
       x = @twinkle[:x] - camera_x
-      @screen.rect(x - flare, 690, flare * 2 + 8, 8, TWINKLE)
-      @screen.rect(x, 690 - flare, 8, flare * 2 + 8, TWINKLE)
+      screen.rect(x - flare, 690, flare * 2 + 8, 8, TWINKLE)
+      screen.rect(x, 690 - flare, 8, flare * 2 + 8, TWINKLE)
     end
-    @fireworks.each { |f| draw_firework(f) }
+    @fireworks.each { |firework| firework.draw(screen) }
     if elapsed >= RUSTY_FALL
       rusty_y = 760 - (elapsed - RUSTY_FALL) * RUSTY_FALL_SPEED
       if rusty_y > -140
         # dazed face, flipped upside-down, wobbling as he drops
-        @screen.sprite('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt], flip: (elapsed / 6).even?, flip_v: true)
+        screen.sprite('sprites/rusty.png', 576 + ((elapsed / 3) % 2) * 8 - 4, rusty_y, 128, 112, FRAMES[:rusty_hurt], flip: (elapsed / 6).even?, flip_v: true)
       end
     end
     if elapsed >= END_THANKS
-      @screen.label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, PALE_YELLOW, true)
+      screen.label(640, 420, 'THANK YOU FOR PLAYING!!!', 7, PALE_YELLOW, true)
     elsif elapsed >= END_CREDITS
       CREDITS.each_with_index do |c, i|
         next if elapsed < END_CREDITS + i * CREDIT_GAP
-        @screen.label(640, 500 - i * 110, c, 5, WHITE, true)
+        screen.label(640, 500 - i * 110, c, 5, WHITE, true)
       end
     elsif elapsed >= END_TEXT
-      @screen.label(640, 470, 'CONGRATULATION!', 12, PALE_YELLOW, true)
-      @screen.label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
+      screen.label(640, 470, 'CONGRATULATION!', 12, PALE_YELLOW, true)
+      screen.label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
     end
     if elapsed > END_PROMPT
-      @screen.label(640, 200, "FINAL SCORE #{pad6(@run.score)}", 4, WHITE, true)
-      @screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (elapsed / 30) % 2 == 0
+      screen.label(640, 200, "FINAL SCORE #{pad6(run.score)}", 4, WHITE, true)
+      screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (elapsed / 30) % 2 == 0
     end
+  end
+
+  private
+
+  # sideways shake this frame, px
+  def shake_dx
+    amplitude = @shake
+    amplitude > 0 ? ((game.clock % 4) < 2 ? amplitude : -amplitude).to_i : 0
+  end
+
+  def rand_below(n)
+    @rng = (@rng * 75 + 74) % 65537
+    @rng % n
+  end
+
+  def spawn_firework
+    @fireworks << Firework.new(160 + rand_below(960), 180 + rand_below(400), FIREWORK_COLORS[rand_below(3)], 0)
+    @fireworks_launched += 1
+    sound.play(:firework)
   end
 
   # the night sky deepening into space, stars streaking past as the camera rises
   def draw_space
-    outputs = @screen.outputs
+    outputs = screen.outputs
     k = [@rise / 4000.0, 1.0].min
     outputs.background_color = [(8 - 6 * k).to_i, (12 - 10 * k).to_i, (48 - 36 * k).to_i]
     speed = @rise_speed
-    @end_stars.each do |sx, sy, depth|
+    STARS.each do |sx, sy, depth|
       star_speed = 0.35 + depth * 0.3
       y = (sy - @rise * star_speed) % 760 - 20
       length = [(speed * star_speed * 0.9).to_i, 4].max
@@ -238,24 +244,36 @@ class Game
       outputs.solids << [sx, y.to_i, depth == 2 ? 8 : 4, length, c, c, 255]
     end
   end
+end
 
-  # a huge blocky burst: three rings of chunky squares racing outward
-  def draw_firework(f)
-    k = f[:t]
-    col = f[:col]
+# A huge blocky burst: three rings of chunky squares racing outward.
+class Firework < Struct.new(:x, :y, :color, :t)
+  LIFETIME = 72
+
+  def update
+    self.t += 1
+  end
+
+  def gone? = t > LIFETIME
+
+  def draw(screen)
+    k = t
+    col = color
+    x0 = x
+    y0 = y
     alpha = 150 - k * 2
     return if alpha <= 0
     if k < 5
-      @screen.rect(f[:x] - 80, f[:y] - 80, 160, 160, WHITE, 200 - k * 30)
+      screen.rect(x0 - 80, y0 - 80, 160, 160, WHITE, 200 - k * 30)
     end
     droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |radius_factor, offset, size|
       r = (40 + k * 10) * radius_factor
       12.times do |i|
         angle = i * 0.5236 + offset
-        x = ((f[:x] + Math.cos(angle) * r) / 16).to_i * 16
-        y = ((f[:y] + Math.sin(angle) * r - droop) / 16).to_i * 16
-        @screen.rect(x - size / 2, y - size / 2, size, size, col, alpha)
+        px = ((x0 + Math.cos(angle) * r) / 16).to_i * 16
+        py = ((y0 + Math.sin(angle) * r - droop) / 16).to_i * 16
+        screen.rect(px - size / 2, py - size / 2, size, size, col, alpha)
       end
     end
   end
