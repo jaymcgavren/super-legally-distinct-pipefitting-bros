@@ -162,6 +162,48 @@ romdev MCP (if the ABI is v4):
 - Show it to the user with `playtest({op:'open'})`.
 - Background on the host: `platform({op:'doc', platform:'guide', name:'wasmcart'})`.
 
+### Headless tests and checks (host Ruby)
+
+`tools/sim.rb` runs `app/main.rb` under CRuby with a stub `args`, so
+gameplay can be scripted. Keep these green after every change:
+
+```sh
+ruby tools/sim.rb                   # every scenario (Minitest); ends ALL PASS
+ruby tools/sim.rb -n test_02_boss   # one scenario
+rubocop                             # 0 offenses; .rubocop.yml says why each cop is set
+tools/shots.sh --compare [ref]      # real-runtime screenshots vs a ref, ALL SAME
+tools/bench.sh <level> [frames] [runs]   # real-runtime ms/frame (BENCH_START, BENCH_REF)
+```
+
+- Scenarios live in `tools/scenarios/NN_name.rb`, one Minitest test per
+  file. Each line is `check 'what', condition`.
+- `tools/reach.rb` checks that every level can be reached by jumps.
+- `tools/bot.rb` plays each level with a simple bot.
+- Levels are generated: edit `tools/segments.rb`, then run
+  `ruby tools/gen-levels.rb` to rewrite `app/levels.rb`. Never edit that
+  file by hand.
+- RuboCop checks CRuby style, but the game runs on mruby. Some idiomatic
+  rewrites are slower there (keyword args, `[a, b].max`) or don't exist
+  (`defined?`, Struct keyword_init). Read `.rubocop.yml` before re-enabling
+  a cop.
+
+### Code layout (app/)
+
+`main.rb` holds `Game`, the world: level loading, the update and draw
+loop, and the HUD. It `require`s the rest, one concern per file:
+- `screen.rb`, `sound.rb` and `controls.rb` are the output, audio and input
+  wrappers.
+- `level.rb`, `physics.rb` and `camera.rb` cover the grid, collision and
+  scrolling.
+- `run.rb` keeps lives and score across levels.
+- `player.rb`, `lift.rb`, `items.rb`, `props.rb`, `enemies.rb`,
+  `wrench.rb` and `effects.rb` are the entities.
+- `scenes.rb` has the game's modes as `Scene` subclasses: Title, Intro,
+  Play, Paused, Dying, Clear and Final (game over or win).
+- `boss.rb` holds Big Rusty, his moves (the `BOSS_MOVES` table) and his
+  shots.
+- `ending.rb` is the ending scene.
+
 ## Package
 
 ```sh

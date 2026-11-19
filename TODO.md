@@ -226,7 +226,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [ ] Rebuild and publish the web player (AGENTS.md "Branches and the web
       player": `tools/build-web.sh`, `tools/publish-web.sh "Web player: ..."`,
       `git push origin gh-pages`), only if the user asks to update the site.
-- [ ] Update AGENTS.md if file layout or commands changed.
+- [x] Update AGENTS.md if file layout or commands changed.
 
 ## Notes / progress log
 (Add dated notes here: decisions, surprises, baseline numbers, screenshot
@@ -765,3 +765,10 @@ paths, anything the next session needs.)
   PASS lines, 190 assertions (185 checks + 5 tests), the info lines
   unchanged; a deliberate double failure in 03_rush failed the test with
   both names and exit 1; reach and bot the same; rubocop 0 offenses.
+- 2026-11-19: step 7, AGENTS.md. Two new parts under "Test loop":
+  - "Headless tests and checks" covers `ruby tools/sim.rb` (and `-n`
+    for one scenario), `rubocop`, `tools/shots.sh --compare` and
+    `tools/bench.sh`. It also says where scenarios live, what reach.rb
+    and bot.rb are for, that levels.rb is generated from segments.rb,
+    and that RuboCop's CRuby idioms can be slow or missing on mruby.
+  - "Code layout (app/)" lists one line per file.
