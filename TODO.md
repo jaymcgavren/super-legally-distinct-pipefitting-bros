@@ -146,8 +146,9 @@ delegating methods at first if that keeps the diff small, then callers move.
       Keyword args only for the optional sprite settings:
       `sprite(path, x, y, w, h, frame, flip: false, alpha: 255, angle: 0, flip_v: false)`
       (w/h/frame positional: see the perf note in the log).
-- [ ] `Sound` (app/sound.rb): `sfx`, `music`, `stop_music`; owns the
-      once-per-frame dedupe (`@played`).
+- [x] `Sound` (app/sound.rb): `play`, `chime`, `music(name, looping:)`,
+      `stop_music`, `music_playing?`, `pause_music`/`resume_music`,
+      `music_pitch=`; owns the once-per-frame dedupe (`@played`).
 - [ ] `Controls` (app/controls.rb): replaces `poll_input`/`read_input` and the
       `@in_*` ivars with readers (`left?`, `right?`, `jump_held?`,
       `jump_pressed?`, `run_held?`, `start_pressed?`, `code_press`). Watch the
@@ -386,3 +387,14 @@ paths, anything the next session needs.)
   draw_tiles). Now level 1 0.90-0.92 vs 0.90-0.93 at HEAD, 2-B 0.90-0.91
   vs 0.91. Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged.
   Scenario 04 sets `s.iv(:screen).outputs` instead of `@outputs`.
+- 2026-11-19: step 2, `Sound` (app/sound.rb). Game holds `@sound`.
+  `sfx(:jump)` is now `@sound.play(:jump)`; `music(:clear, false)` is
+  `@sound.music(:clear, looping: false)`; `music_stop` is
+  `@sound.stop_music`. The four "fetch args.audio[:music] and poke it if
+  present" blocks became `pause_music`, `resume_music` and
+  `music_pitch = 1.15`, and the ending's `@args.audio[:music].nil?` is
+  `!@sound.music_playing?`. The code chime is `@sound.chime(semitones)`.
+  `tick` calls `@sound.new_frame` where it reset `@played`. Game no longer
+  touches args.audio or outputs.sounds. Tests ALL PASS (185; they cover
+  sounds per frame at 30-144 Hz, boss music and the klaxon), shots ALL
+  SAME, reach/bot unchanged, 2-B bench 0.88-0.91 vs 0.89 at HEAD.

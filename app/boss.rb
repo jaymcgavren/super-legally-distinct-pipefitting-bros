@@ -52,21 +52,21 @@ class Game
       return unless player.x > (@arena_column - WARN_AHEAD) * TILE
       @boss_warned = true
       @warning = WARN_LENGTH
-      sfx(:klaxon)
-      music_stop
+      @sound.play(:klaxon)
+      @sound.stop_music
     end
     @warning -= 1 if @warning > 0
     unless @boss_on
       return unless player.x > (@arena_column + 2) * TILE
       @boss_on = true
       8.times { |r| @grid[r][@arena_column] = '#' }   # the gate slams shut
-      sfx(:bump)
+      @sound.play(:bump)
     end
     unless @fight_on
       return if @warning > 0
       @fight_on = true
       @banner = 180
-      music(:boss)
+      @sound.music(:boss)
     end
     @banner -= 1 if @banner > 0
     @shake -= 1 if @shake > 0
@@ -78,7 +78,7 @@ class Game
       boss.y += boss.vy
       if boss.t == 120
         @goal = { c: @arena_column + 10, r: 7, turn: 0 }   # between the arena girders
-        sfx(:appear)
+        @sound.play(:appear)
         popup(@goal[:c] * TILE, tile_top(7) + 60, 'MAIN VALVE')
       end
       update_shots
@@ -89,9 +89,8 @@ class Game
     if boss_knows?(:enrage) && !angry && data[:hp] * 2 <= data[:max]
       data[:angry] = true
       popup(boss.x, boss.y + 140, 'RUSTY IS FUMING!')
-      sfx(:warn)
-      track = @args.audio[:music]
-      track[:pitch] = 1.2 if track
+      @sound.play(:warn)
+      @sound.music_pitch = 1.2
     end
     data[:spiky] -= 1 if data[:spiky] > 0
     data[:warn_spiky] -= 1 if data[:warn_spiky] > 0
@@ -126,7 +125,7 @@ class Game
         data[:air] = false
         boss.vx = 0.0
         @shake = 20
-        sfx(:pound)
+        @sound.play(:pound)
         waves = angry ? 2 : 1
         waves.times do |i|
           [-1, 1].each do |side|
@@ -140,7 +139,7 @@ class Game
       boss.vx = 0.0
       n = angry ? 3 : 1 + (boss_level >= 6 ? 1 : 0)
       if boss.t == 24 || (n > 1 && boss.t == 38) || (n > 2 && boss.t == 52)
-        sfx(:spit)
+        @sound.play(:spit)
         dx = (player.x - boss.x).to_f
         t_air = 50.0
         @shots << { k: :glob, x: boss.x + boss.w / 2 - 16, y: boss.y + 70, w: 32, h: 32,
@@ -150,7 +149,7 @@ class Game
     when :summon
       boss.vx = 0.0
       if boss.t == 30
-        sfx(:appear)
+        @sound.play(:appear)
         enemy = Actor.new(:blob, boss.x + boss.w / 2 - 24, boss.y + 60, 48, 40)
         enemy.active = true
         enemy.vx = dir * 1.0
@@ -163,7 +162,7 @@ class Game
       if boss.t < 45
         boss.vx = 0.0
         boss.facing = dir if boss.t == 1
-        sfx(:warn) if boss.t == 1
+        @sound.play(:warn) if boss.t == 1
       else
         boss.vx = boss.facing * 9.0 * speed
         boss_idle(30) if boss.t > 240
@@ -178,7 +177,7 @@ class Game
     when :bolts
       boss.vx = 0.0
       if boss.t == 1
-        sfx(:warn)
+        @sound.play(:warn)
         count = angry ? 5 : 3
         count.times do |i|
           c = @arena_column + 2 + boss_rand(16)
@@ -206,7 +205,7 @@ class Game
       boss.x = boss.x < min_x ? min_x.to_f : max_x.to_f
       if boss.state == :charge
         @shake = 16
-        sfx(:pound)
+        @sound.play(:pound)
         boss.state = :stunned
         boss.t = 0
       end
@@ -245,7 +244,7 @@ class Game
     return false if boss_invulnerable? || boss.dead?
     data[:hp] -= damage
     data[:inv] = 45
-    sfx(:bosshit)
+    @sound.play(:bosshit)
     add_score(500, boss.x + 30, boss.y + 140)
     if data[:hp] <= 0
       boss.state = :dead
@@ -254,8 +253,8 @@ class Game
       @shots = []
       @enemies.each { |enemy| knock(enemy, 1) if enemy.data[:minion] && enemy.walking? }
       add_score(5000, boss.x + 30, boss.y + 170)
-      music_stop
-      sfx(:bossdie, 0.75)
+      @sound.stop_music
+      @sound.play(:bossdie, 0.75)
     end
     true
   end
@@ -308,7 +307,7 @@ class Game
         if shot[:y] <= 128
           shot[:dead] = true
           puff(shot[:x] + 16, 128)
-          sfx(:bump)
+          @sound.play(:bump)
         end
       end
       next if shot[:dead] || (shot[:k] == :bolt && shot[:t] < BOLT_WARNING)

@@ -34,7 +34,7 @@ class Game
     @score += @time * 50       # the whole time bonus at once
     @time = 0
     save_hiscore
-    music_stop
+    @sound.stop_music
     @spin = 0.0                # valve frame phase
     @flying_valve = nil                  # the valve, once it's airborne (world coords)
     @rise = 0.0                # how far the camera has risen
@@ -67,7 +67,7 @@ class Game
       @spin += [0.2 + elapsed / 120.0, 1.0].min
       @goal[:turn] = (@spin * 5).to_i
       every = [36 - elapsed / 5, 4].max
-      sfx(:steam) if elapsed % every == 0
+      @sound.play(:steam) if elapsed % every == 0
       n = elapsed / 40 + 1
       n.times do |i|
         angle = (elapsed * 37 + i * 101) % 360 * 0.01745
@@ -78,8 +78,8 @@ class Game
       @goal[:gone] = true
       @flying_valve = { x: vx - 32, y: vy.to_f, v: 14.0 }
       @end_shake = 16.0
-      sfx(:blast)
-      sfx(:pound)
+      @sound.play(:blast)
+      @sound.play(:pound)
       24.times do |i|
         angle = i * 0.2618
         @steam << [vx, vy + 20, Math.cos(angle) * 9, Math.sin(angle).abs * 6 + 1, 40, 48]
@@ -108,7 +108,7 @@ class Game
         @rise += @rise_speed
         if !@twinkle && @flying_valve[:y] - @rise > 720
           @twinkle = { x: @flying_valve[:x] + 32, t: 0 }
-          sfx(:appear)
+          @sound.play(:appear)
         end
       end
       @flying_valve = nil if @flying_valve[:y] - @rise > 1600
@@ -128,8 +128,8 @@ class Game
     @steam.reject! { |steam_puff| steam_puff[4] <= 0 }
 
     if elapsed >= END_FIRE
-      music(:clear, false) if elapsed == END_FIRE
-      music(:theme) if elapsed > END_FIRE + 30 && @args.audio[:music].nil?
+      @sound.music(:clear, looping: false) if elapsed == END_FIRE
+      @sound.music(:theme) if elapsed > END_FIRE + 30 && !@sound.music_playing?
       if elapsed >= @next_firework_at
         # irregular cadence: quick doubles, short gaps and longer lulls
         (end_rand(4) == 0 ? 2 : 1).times { spawn_firework }
@@ -146,7 +146,7 @@ class Game
     elsif @rise.to_i < 720
       vent_sounds
     end
-    sfx(:hurt) if elapsed == RUSTY_FALL + 6
+    @sound.play(:hurt) if elapsed == RUSTY_FALL + 6
     if elapsed > END_PROMPT && (@in_start_down || @in_a_down)
       to_title
     end
@@ -165,7 +165,7 @@ class Game
   def spawn_firework
     @fireworks << { x: 160 + end_rand(960), y: 180 + end_rand(400), col: FIREWORK_COLORS[end_rand(3)], t: 0 }
     @fireworks_launched += 1
-    sfx(:firework)
+    @sound.play(:firework)
   end
 
   def draw_ending

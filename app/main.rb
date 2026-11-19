@@ -8,6 +8,7 @@
 
 require 'app/levels.rb'
 require 'app/screen.rb'
+require 'app/sound.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -166,6 +167,7 @@ class Game
   def initialize(args)
     @args = args
     @screen = Screen.new(args.outputs)
+    @sound = Sound.new(args)
     @high_score = args.gtk.load_u32(0) || 0
     @bro = 0
     @frame = 0
@@ -216,7 +218,7 @@ class Game
   # nut chime climbing a major scale, one step per correct code press
   CODE_STEPS = [0, 2, 4, 5, 7, 9, 11, 12].freeze
   def code_note(i)
-    @args.audio[:code] = { input: 'sounds/nut.wav', gain: 1.0, pitch: 2.0**(CODE_STEPS[i] / 12.0) }
+    @sound.chime(CODE_STEPS[i])
   end
 
   # advance the secret-code matcher; true once the whole code is in
@@ -233,22 +235,6 @@ class Game
     true
   end
 
-  def sfx(name, gain = 1.0)
-    return if @played[name]
-    @played[name] = true
-    path = "sounds/#{name}.wav"
-    @args.outputs.sounds << (gain == 1.0 ? path : { path: path, gain: gain })
-  end
-
-  def music(name, looping = true)
-    @args.audio.delete(:music)
-    @args.audio[:music] = { input: "sounds/#{name}.wav", gain: 0.375, looping: looping }
-  end
-
-  def music_stop
-    @args.audio.delete(:music)
-  end
-
   # ── modes ─────────────────────────────────────────────────────────
   def to_title
     @mode = :title
@@ -257,7 +243,7 @@ class Game
     @rush_armed = false
     @code_index = 0
     load_level(0, false)
-    music_stop
+    @sound.stop_music
   end
 
   def new_game(rush = false)
@@ -274,7 +260,7 @@ class Game
   def to_intro
     @mode = :intro
     @mode_frames = 0
-    music_stop
+    @sound.stop_music
     load_level(@level, true)
   end
 
@@ -288,7 +274,7 @@ class Game
   # only draws, so it is safe to skip or repeat.
   def tick
     @screen.outputs = @args.outputs
-    @played = {}
+    @sound.new_frame
     poll_input
     @step_accumulator = (@step_accumulator || 0.0) + frame_ms
     n = 0
@@ -556,14 +542,14 @@ class Game
     @camera_x = (@mode_frames * 1.5) % max_camera_x
     if @in_left_down || @in_right_down
       @bro = 1 - @bro
-      sfx(:tick)
+      @sound.play(:tick)
     end
     if !@rush_armed && feed_code
       @rush_armed = true
-      sfx(:oneup)
+      @sound.play(:oneup)
     end
     if @in_start_down || @in_a_down
-      sfx(:checkpoint)
+      @sound.play(:checkpoint)
       new_game(@rush_armed)
     end
   end
@@ -594,7 +580,7 @@ class Game
     return unless @mode_frames > 150
     @mode = :play
     @mode_frames = 0
-    music(:theme)
+    @sound.music(:theme)
   end
 
   def draw_intro
@@ -611,9 +597,8 @@ class Game
   def step_play
     if @in_start_down
       @mode = :paused
-      sfx(:pause)
-      track = @args.audio[:music]
-      track[:paused] = true if track
+      @sound.play(:pause)
+      @sound.pause_music
       vent_sounds
       return
     end
@@ -644,9 +629,8 @@ class Game
   def step_paused
     return unless @in_start_down
     @mode = :play
-    sfx(:pause)
-    track = @args.audio[:music]
-    track[:paused] = false if track
+    @sound.play(:pause)
+    @sound.resume_music
   end
 
   def draw_paused
@@ -664,9 +648,8 @@ class Game
     @time -= 1
     if @time == 100 && !@warned
       @warned = true
-      sfx(:warn)
-      track = @args.audio[:music]
-      track[:pitch] = 1.15 if track
+      @sound.play(:warn)
+      @sound.music_pitch = 1.15
     end
     die if @time <= 0
   end
@@ -745,7 +728,7 @@ class Game
       player.coyote = 0
       player.jumping = true
       player.riding = nil
-      sfx(:jump)
+      @sound.play(:jump)
     end
     gravity = player.vy > 0 ? (player.jumping && @in_a ? GRAVITY_HOLD : GRAVITY_CUT) : GRAVITY_FALL
     player.vy -= gravity
@@ -776,7 +759,7 @@ class Game
       wrench.data[:back] = false
       @wrench = wrench
       player.throw_t = 12
-      sfx(:throw)
+      @sound.play(:throw)
     end
 
     collect_nuts(player)
@@ -789,7 +772,7 @@ class Game
       next if cone[:lit] || player.x < cone[:c] * TILE
       cone[:lit] = true
       @checkpoint = [@level, i]
-      sfx(:checkpoint)
+      @sound.play(:checkpoint)
       popup(cone[:c] * TILE, tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
     if goal_touched?(player)
@@ -830,7 +813,7 @@ class Game
   def add_nut
     @nuts += 1
     @score += 50
-    sfx(:nut, 0.75)
+    @sound.play(:nut, 0.75)
     return if @nuts < 50
     @nuts -= 50
     one_up(@player.x, @player.y + 90)
@@ -838,7 +821,7 @@ class Game
 
   def one_up(x, y)
     @lives += 1
-    sfx(:oneup)
+    @sound.play(:oneup)
     popup(x, y, '1UP')
   end
 
@@ -867,16 +850,16 @@ class Game
       item = Actor.new(:wrench_item, x + 4, top - 64, 56, 56)
       item.data[:rise] = 64
       @items << item
-      sfx(:appear)
+      @sound.play(:appear)
     when 'I'
       @grid[r][c] = 'U'
       item = Actor.new(:lunch, x + 4, top - 64, 56, 56)
       item.data[:rise] = 64
       item.vx = 2.5
       @items << item
-      sfx(:appear)
+      @sound.play(:appear)
     else
-      sfx(:bump)
+      @sound.play(:bump)
     end
     # knock out enemies standing on the bumped tile
     @enemies.each do |enemy|
@@ -900,7 +883,7 @@ class Game
     if player.powered
       player.powered = false
       player.invuln = 120
-      sfx(:hurt)
+      @sound.play(:hurt)
     else
       die
     end
@@ -913,7 +896,7 @@ class Game
     @powered = false
     @player.vx = 0.0
     @player.vy = 0.0
-    music(:death, false)
+    @sound.music(:death, looping: false)
   end
 
   def step_dying
@@ -931,7 +914,7 @@ class Game
       @mode = :gameover
       @mode_frames = 0
       save_hiscore
-      music(:gameover, false)
+      @sound.music(:gameover, looping: false)
     else
       to_intro
     end
@@ -942,7 +925,7 @@ class Game
     @mode = :clear
     @mode_frames = 0
     @powered = @player.powered
-    music(:clear, false)
+    @sound.music(:clear, looping: false)
   end
 
   def step_clear
@@ -956,7 +939,7 @@ class Game
       n = [@time, 2].min
       @time -= n
       @score += n * 50
-      sfx(:tick) if @mode_frames % 4 == 0
+      @sound.play(:tick) if @mode_frames % 4 == 0
     end
     update_effects
     update_wrench
@@ -969,7 +952,7 @@ class Game
       @mode = :win
       @mode_frames = 0
       save_hiscore
-      music(:clear, false)
+      @sound.music(:clear, looping: false)
     else
       to_intro
     end
@@ -1011,7 +994,7 @@ class Game
     enemy.state = :dead
     enemy.vy = 12.0
     enemy.vx = dir * 2.0
-    sfx(:kick)
+    @sound.play(:kick)
   end
 
   def update_enemies
@@ -1082,7 +1065,7 @@ class Game
     player.vy = @in_a ? 17.0 : 10.0
     player.jumping = @in_a
     puff(enemy.x + enemy.w / 2, enemy.y + 10)
-    sfx(:stomp)
+    @sound.play(:stomp)
     if enemy.kind == :blob
       enemy.state = :flat
     else
@@ -1140,7 +1123,7 @@ class Game
       wrench.data[:back] = true
       wrench.data[:bounce] = 14
       wrench.t = 0
-      sfx(:bump)
+      @sound.play(:bump)
       popup(@goal[:c] * TILE, tile_bottom(@goal[:r]) + 3 * TILE + 80, 'NICE SHOT')
       start_clear
       return
@@ -1177,7 +1160,7 @@ class Game
       else
         add_score(1000, item.x, item.y + 70)
         player.powered = true
-        sfx(:powerup)
+        @sound.play(:powerup)
       end
     end
     @items.reject!(&:gone?)
@@ -1413,7 +1396,7 @@ class Game
     @vents.each do |vent|
       next unless (@frame + vent[:phase]) % 180 == 130 && vent[:h] > 0
       x = vent[:c] * TILE - camera_x
-      sfx(:steam) unless x < -TILE || x > VIEW_WIDTH
+      @sound.play(:steam) unless x < -TILE || x > VIEW_WIDTH
     end
   end
 
