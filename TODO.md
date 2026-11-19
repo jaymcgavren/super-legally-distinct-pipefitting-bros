@@ -17,8 +17,9 @@ nothing below has been started yet.
   layouts. If a step would change behaviour (even fixing a bug), stop and ask
   the user first.
 - **Don't open the playtest window** unless the user asks. Verify headlessly.
-- This file is git-ignored (`.git/info/exclude`). Tick items off here as you go
-  and add notes for anything surprising.
+- This file is committed. Tick items off here as you go, add notes for
+  anything surprising, and include the TODO.md update in the same commit as
+  the step it records.
 
 ## Constraints that shape the refactor
 
