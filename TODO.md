@@ -118,6 +118,7 @@ refactor step will break some of them. Update them in the same commit.
       `b` -> `boss`, `e` -> `enemy`, `l` -> `lift`, `w` -> `wrench`,
       `it` -> `item`, `t` -> `time`/`frames` where it helps. Rename `T` (tile
       size) to `TILE` everywhere at once.
+- [ ] Replace abbreviations. E.g. `gravity`, not `grav`.
 - [ ] Name the colours used more than once (`WHITE = [255, 255, 255]`,
       steam `[236, 236, 236]`, label yellow `[252, 240, 160]`, ...). Freeze
       constant arrays/hashes.
