@@ -11,9 +11,11 @@
 # here: its own per-frame overhead is about 3 ms, ten times the game's cost,
 # and it varies by more than the whole game costs.
 #
-#   BENCH_ARENA=1 (default)  every (re)start puts the player inside Big Rusty's
-#                            arena, so the fight keeps running
-#   BENCH_ARENA=0            the player idles at the level start instead
+#   BENCH_START=arena        (default) every (re)start puts the player inside
+#                            Big Rusty's arena, so the fight keeps running
+#   BENCH_START=level        the player idles at the level start instead
+#   BENCH_START=ending       the ending sequence (level is ignored)
+#   BENCH_START=title        the title screen (level is ignored)
 #   BENCH_SHOT=path.png      keep the last frame
 #   BENCH_REF=<git ref>      time app/ from that commit instead of the working
 #                            tree, e.g. BENCH_REF=un-refactored for the baseline
@@ -23,13 +25,14 @@
 # frames far faster than 60 Hz and the game skips most updates.
 #
 # The repo's app/ is never modified. bench_start.rb calls Game internals
-# (new_game, to_intro, @p, @boss, @arena_c), so update it when those change.
+# (new_game, to_intro, start_ending, @p, @boss, @arena_c, @goal, @cam), so
+# update it when those change.
 set -e
 cd "$(dirname "$0")/.."
 level=${1:?usage: tools/bench.sh <level-index> [frames] [runs]}
 frames=${2:-3600}
 runs=${3:-3}
-arena=$([ "${BENCH_ARENA:-1}" = 0 ] && echo false || echo true)
+start=${BENCH_START:-arena}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 if [ -n "$BENCH_REF" ]; then
@@ -37,10 +40,10 @@ if [ -n "$BENCH_REF" ]; then
 else
   cp -R app "$tmp/app"
 fi
-sed -e "s/BENCH_LEVEL/$level/" -e "s/BENCH_ARENA/$arena/" tools/bench_start.rb >> "$tmp/app/main.rb"
+sed -e "s/BENCH_LEVEL/$level/" -e "s/BENCH_START/$start/" tools/bench_start.rb >> "$tmp/app/main.rb"
 npx wasmcart pack --wasm main.wasm --assets "$tmp/app" --name bench \
   --width 1280 --height 720 -o "$tmp/bench.wasc" >/dev/null
-echo "${BENCH_REF:-working tree}: level $level, arena $arena, $frames frames"
+echo "${BENCH_REF:-working tree}: $start, level $level, $frames frames"
 i=0
 while [ $i -lt "$runs" ]; do
   node --import ./tools/bench_time.mjs node_modules/wasmcart/bin/wasmcart-play.js \

@@ -68,6 +68,11 @@ npx wasmcart pipefitting-bros.wasc --frames 300 --shot <scratchpad>/title.png
     @boss = nil; @goal = { c: @arena_c + 10, r: 7, turn: 0 }; ... start_ending`).
 - Ruby exceptions show on screen in the real runtime, so a screenshot of a
   busy level catches most mruby incompatibilities.
+- **Visual regression:** `tools/shots.sh --compare` renders 11 seeded frames
+  (title, 1-A/1-B starts, 2-B/2-D fights, four ending stages) from
+  `un-refactored` and from the working tree and compares them byte for byte.
+  It must print ALL SAME after every step (about 1.5 min). A DIFF means the
+  game drew something different: look at both PNGs in the printed folder.
 - **Performance check:** `tools/bench.sh` (see its header and the step 0
   note below). Run the baseline and the current code back to back, since
   machine load shifts the numbers by a few percent:
@@ -101,8 +106,9 @@ refactor step will break some of them. Update them in the same commit.
 - [x] Performance baseline: a temp build that starts in a busy level, run
       headlessly for a fixed number of frames, timed. Done with the new
       `tools/bench.sh`; numbers in the notes below.
-- [ ] Screenshots of title, a B level, a D level, the ending for later
-      comparison. Store in the scratchpad (paths noted here).
+- [x] Screenshots of title, a B level, a D level, the ending for later
+      comparison. Done as `tools/shots.sh` (see the note below): the set can
+      be re-rendered from `un-refactored` at any time, so nothing is stored.
 
 ### 1. Line-level cleanup (no structural change)
 - [ ] One statement per line: remove `;` chains (about 51 lines in main.rb,
@@ -228,8 +234,8 @@ paths, anything the next session needs.)
   |---|---|
   | `tools/bench.sh 7` (2-D, Rusty fight) | 0.38-0.42 |
   | `tools/bench.sh 5` (2-B, Rusty fight) | 0.77-0.80 |
-  | `BENCH_ARENA=0 tools/bench.sh 5` (2-B start, idle) | 0.76-0.81 |
-  | `BENCH_ARENA=0 tools/bench.sh 0` (1-A start, idle) | 0.32-0.33 |
+  | `BENCH_START=level tools/bench.sh 5` (2-B start, idle) | 0.76-0.81 |
+  | `BENCH_START=level tools/bench.sh 0` (1-A start, idle) | 0.32-0.33 |
   | `BENCH_REF=un-refactored tools/bench.sh 5` | 0.72-0.77 (same code) |
   Findings:
   - Wall-clock timing of `npx wasmcart --frames` is useless: an empty cart
@@ -246,3 +252,11 @@ paths, anything the next session needs.)
   - The whole game uses under 1 ms of a 16.7 ms frame here (this Mac, node).
     Absolute numbers will be higher on slower targets (browsers, Batocera
     boxes), so compare relative changes.
+- 2026-11-19: `tools/shots.sh` (new). `bench_start.rb` now takes
+  `BENCH_START=title|level|arena|ending` (was `BENCH_ARENA=0/1`). Seeded
+  headless runs are fully deterministic: `--compare` against `un-refactored`
+  gives ALL SAME, and against `8fdb217~1` (older game code) 8 of 11 differ,
+  so it does catch changes. The patch in `bench_start.rb` calls Game
+  internals; when the refactor renames them, keep it working for both the
+  working tree and `un-refactored` (e.g. `respond_to?` checks), or the
+  comparison breaks.
