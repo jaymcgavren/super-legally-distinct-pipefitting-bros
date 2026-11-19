@@ -60,7 +60,7 @@ class Game
     update_effects
     update_wrench
     vx = @goal[:c] * TILE + 32                  # valve centre, world x
-    vy = tile_bottom(@goal[:r]) + 2 * TILE      # valve bottom, world y
+    vy = @level.tile_bottom(@goal[:r]) + 2 * TILE      # valve bottom, world y
 
     if elapsed < END_BURST
       # spin up: frame phase speeds toward one frame per tick

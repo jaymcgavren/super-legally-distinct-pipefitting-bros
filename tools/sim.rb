@@ -56,6 +56,7 @@ class Sim
 
   def iv(n) = @g.instance_variable_get("@#{n}")
   def set(n, v) = @g.instance_variable_set("@#{n}", v)
+  def level = iv(:level)
 
   # held: array of button symbols held this frame
   def step(held = [], n = 1)
@@ -74,14 +75,14 @@ class Sim
     self
   end
 
-  def snap = set(:camera_x, [[p.x - 560, 0].max, @g.max_camera_x].min.to_f)
+  def snap = set(:camera_x, [[p.x - 560, 0].max, level.max_camera_x].min.to_f)
   def p = iv(:player)
   def mode = iv(:mode)
 
   # get from title into play on level idx
   def start(level = 0)
     step([], 2); step([:start]); step([], 2)
-    @g.instance_variable_set(:@level, level)
+    @g.instance_variable_set(:@level_index, level)
     @g.send(:to_intro)
     step([], 1) until mode == :play
     self
@@ -97,7 +98,7 @@ class Sim
 
   # teleport player to tile column (standing on the ground row 8)
   def put(col, row = 7)
-    p.x = col * TILE + 12.0; p.y = @g.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
+    p.x = col * TILE + 12.0; p.y = level.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
     snap
     self
   end

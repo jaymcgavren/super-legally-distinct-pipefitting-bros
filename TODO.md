@@ -154,7 +154,7 @@ delegating methods at first if that keeps the diff small, then callers move.
       `jump_pressed?`, `run_held?`, `start_pressed?`, `code_press`). Watch the
       fixed-step detail: presses are latched in `poll_input` once per frame
       and consumed by `update` steps (`PRESS_KEYS`); keep that behaviour.
-- [ ] `Level` (app/level.rb): grid, `cell`, `column_at`, `row_at`, `tile_top`,
+- [x] `Level` (app/level.rb): grid, `cell`, `column_at`, `row_at`, `tile_top`,
       `tile_bottom`, `max_camera_x`, loading from `LEVELS[i]` (`load_level`'s grid
       part) and spawning markers into entity lists. Theme lookup.
 - [ ] `Physics` module (app/physics.rb): `move_x`, `move_y`, `box_free?`,
@@ -410,3 +410,20 @@ paths, anything the next session needs.)
   stores one. tools/reach.rb now sets the readers' ivars on `@controls`.
   Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged, level 1 bench
   0.90-0.92 vs 0.92 at HEAD.
+- 2026-11-19: step 2, `Level` (app/level.rb). `Level.new(index)` builds the
+  grid from LEVELS[index] (own rows, or segments side by side) and holds
+  `data`, `theme`, `columns`, `name`, `title`; `cell`, `set_cell`, `row`,
+  `column_at`, `row_at`, `tile_top`, `tile_bottom`, `width`,
+  `max_camera_x`. `each_marker { |tile, c, r| }` walks the start markers in
+  the old scan order and clears each one after the block (vents stay), so
+  `load_level` keeps only the entity spawning. Game's `@level` is now the
+  Level; the level number is `@level_index` (scenarios use
+  `iv(:level_index)`). `@grid`, `@cols`, `@theme`, `@level_data` are gone;
+  grid writes are `@level.set_cell(c, r, 'U')`.
+  Tools: `Sim#level`; bot/reach/scenarios call `level.cell` etc. instead
+  of `g.cell` and use `set_cell` instead of writing `@grid`; bot/reach
+  params renamed `level` -> `index`. bench_start.rb sets `@level_index` (or
+  `@level` on old refs) and reads max_camera_x from the Level when there
+  is one, so BENCH_REF=un-refactored still works.
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
+  0.92-0.93 vs 0.90-0.91, 2-B 0.89-0.92 vs 0.90-0.91 (noise).

@@ -2,24 +2,24 @@
 # standable tiles; lifts approximated as girders across their travel.
 require_relative 'sim'
 
-def analyze(level)
-  s = Sim.new.start(level)
+def analyze(index)
+  s = Sim.new.start(index)
   g = s.g
-  grid = g.instance_variable_get(:@grid)
+  level = s.level
   g.instance_variable_get(:@lifts).each do |l|
-    c = (l.x / TILE).round; r = g.row_at(l.y + l.h - 1)
+    c = (l.x / TILE).round; r = level.row_at(l.y + l.h - 1)
     offs = l.data[:axis] == :x ? [-2, 0, 2].map { |d| [c + d, r] } : [-2, 0, 2].map { |d| [c, r + d] }
-    offs.each { |cc, rr| [cc, cc + 1].each { |k| grid[rr][k] = '=' if rr.between?(0, 9) && grid[rr][k] == '.' } }
+    offs.each { |cc, rr| [cc, cc + 1].each { |k| level.set_cell(k, rr, '=') if rr.between?(0, 9) && level.cell(k, rr) == '.' } }
   end
   g.instance_variable_set(:@lifts, [])
   g.instance_variable_set(:@vents, [])
   g.instance_variable_set(:@cones, [])
-  goal = g.instance_variable_get(:@goal) || { c: g.instance_variable_get(:@cols) - 12 }  # boss: reach the arena
+  goal = g.instance_variable_get(:@goal) || { c: level.columns - 12 }  # boss: reach the arena
   g.instance_variable_set(:@goal, nil)
-  cols = g.instance_variable_get(:@cols)
-  standable = ->(c, r) { !SOLID[g.cell(c, r)] && (SOLID[g.cell(c, r + 1)] || g.cell(c, r + 1) == '-') && r < 9 }
+  cols = level.columns
+  standable = ->(c, r) { !SOLID[level.cell(c, r)] && (SOLID[level.cell(c, r + 1)] || level.cell(c, r + 1) == '-') && r < 9 }
   p = s.p
-  start = [(p.x / TILE).floor, g.row_at(p.y + 1)]
+  start = [(p.x / TILE).floor, level.row_at(p.y + 1)]
   seen = { start => true }; q = [start]
   controls = g.instance_variable_get(:@controls)
   sim = lambda do |x, y, vx, dir, hold|
@@ -32,13 +32,13 @@ def analyze(level)
       pad.each { |k, v| controls.instance_variable_set(:"@#{k}", v) }
       g.send(:update_player)
       return nil if p.y < 0 || g.instance_variable_get(:@mode) != :play
-      return [(p.x + p.w / 2).div(TILE), g.row_at(p.y + 1)] if p.on_ground && f > 0 && (hold == 0 || f > 2)
+      return [(p.x + p.w / 2).div(TILE), level.row_at(p.y + 1)] if p.on_ground && f > 0 && (hold == 0 || f > 2)
     end
     nil
   end
   until q.empty?
     c, r = q.shift
-    y = g.tile_bottom(r).to_f
+    y = level.tile_bottom(r).to_f
     [1, -1].each do |d|
       [c * TILE + 1.0, c * TILE + 23.0].each do |x|
         [0.0, RUN_MAX * d, WALK_MAX * d].each do |vx|

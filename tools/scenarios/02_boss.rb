@@ -6,9 +6,9 @@ d_levels.each_with_index do |li, n|
   b = s.iv(:boss)
   check "#{LEVELS[li][:name]} has boss level #{n + 1}", b && s.g.boss_level == n + 1
   ac = s.iv(:arena_column)
-  s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.snap
+  s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.level.tile_bottom(7).to_f; s.snap
   s.step([], 2)
-  check "#{LEVELS[li][:name]} fight starts and gate closes", s.iv(:boss_on) && s.g.cell(ac, 6) == '#'
+  check "#{LEVELS[li][:name]} fight starts and gate closes", s.iv(:boss_on) && s.level.cell(ac, 6) == '#'
   if n == 0
     check 'warning plays the klaxon', s.sounds.include?('sounds/klaxon.wav')
     check 'boss music waits for the warning', s.args.audio[:music].nil?
@@ -40,7 +40,7 @@ d_levels.each_with_index do |li, n|
     s.step([])
   end
   check "#{LEVELS[li][:name]} boss can be defeated", b.state == :dead
-  s.p.x = (ac + 8) * TILE; s.p.y = s.g.tile_bottom(7).to_f; s.p.vy = 0
+  s.p.x = (ac + 8) * TILE; s.p.y = s.level.tile_bottom(7).to_f; s.p.vy = 0
   t0 = s.iv(:time)
   s.step([], 130)
   check "#{LEVELS[li][:name]} timer stops once the boss is beaten", s.iv(:time) == t0
@@ -53,7 +53,7 @@ end
 # wrench damages the boss
 s = Sim.new.start(d_levels[0])
 b = s.iv(:boss); ac = s.iv(:arena_column)
-s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.g.tile_bottom(7).to_f; s.p.powered = true; s.p.facing = 1; s.snap
+s.p.x = (ac + 3) * TILE + 12.0; s.p.y = s.level.tile_bottom(7).to_f; s.p.powered = true; s.p.facing = 1; s.snap
 s.step([], 2)
 s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
@@ -78,7 +78,7 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
   g = s.iv(:goal)
   if name == :left
     check 'boss valve sits between the girders', g && g[:c] == gc &&
-      (5..7).all? { |r| s.g.cell(g[:c], r) == '.' } && (6..13).all? { |k| s.g.cell(ac + k, 5) == '.' }
+      (5..7).all? { |r| s.level.cell(g[:c], r) == '.' } && (6..13).all? { |k| s.level.cell(ac + k, 5) == '.' }
   end
   if %i[right girder far_right].include?(name)
     s.step([], 30)
@@ -89,7 +89,7 @@ check 'wrench hits the boss', b.data[:hp] == hp - 1
   begin
     s.step(name == :left ? [:right] : [], 240)
     s.step([], 700)
-    ok = %i[intro play].include?(s.mode) && s.iv(:level) == d_levels[0] + 1
+    ok = %i[intro play].include?(s.mode) && s.iv(:level_index) == d_levels[0] + 1
   rescue => e
     puts "  #{e.class}: #{e.message}"; ok = false
   end
@@ -165,13 +165,13 @@ s.put(ac - WARN_AHEAD - 3); s.step([], 2)
 check 'no warning further back', s.iv(:warning) == 0 && !s.sounds.include?('sounds/klaxon.wav')
 s.put(ac - WARN_AHEAD + 1); s.step([], 2)
 check 'warning goes off on the approach', s.iv(:warning) > 0 && s.sounds.include?('sounds/klaxon.wav')
-check 'gate still open during the approach warning', !s.iv(:boss_on) && s.g.cell(ac, 6) != '#'
+check 'gate still open during the approach warning', !s.iv(:boss_on) && s.level.cell(ac, 6) != '#'
 s.step([], 1) while s.iv(:warning) > 0
 s.step([], 60)
 check 'no fight until the player steps in', !s.iv(:boss_on) && s.iv(:boss).state == :wait && s.args.audio[:music].nil?
 klaxons = s.sounds.count('sounds/klaxon.wav')
 s.put(ac + 3); s.step([], 2)
 check 'stepping in shuts the gate and starts the fight at once',
-      s.iv(:boss_on) && s.g.cell(ac, 6) == '#' && s.iv(:banner) > 0 &&
+      s.iv(:boss_on) && s.level.cell(ac, 6) == '#' && s.iv(:banner) > 0 &&
       s.args.audio[:music] && s.args.audio[:music][:input] == 'sounds/boss.wav'
 check 'klaxon does not go off a second time', s.sounds.count('sounds/klaxon.wav') == klaxons

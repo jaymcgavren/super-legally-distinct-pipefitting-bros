@@ -10,12 +10,12 @@ check 'partial code does not arm boss rush', !s.iv(:rush_armed) && s.mode == :ti
 enter_code(s, [:right])
 check 'full code arms boss rush on the title', s.iv(:rush_armed) && s.mode == :title
 s.step([:a], 1); s.step([], 2)
-check 'A then starts boss rush', s.iv(:rush) && s.iv(:level) == 0 && s.mode == :intro
+check 'A then starts boss rush', s.iv(:rush) && s.iv(:level_index) == 0 && s.mode == :intro
 check 'boss rush gives 5 lives', s.iv(:lives) == 5
 
 s = Sim.new; s.step([], 5)
 enter_code(s, Game::RUSH_CODE); s.step([:start], 1); s.step([], 2)
-check 'Start also starts boss rush', s.iv(:rush) && s.iv(:level) == 0
+check 'Start also starts boss rush', s.iv(:rush) && s.iv(:level_index) == 0
 
 s = Sim.new; s.step([], 5)
 enter_code(s, %i[up up up down down left right left right])
@@ -23,7 +23,7 @@ check 'extra Up still accepted', s.iv(:rush_armed)
 
 s = Sim.new; s.step([], 5)
 s.step([:a], 1); s.step([], 2)
-check 'plain A still starts normal game', !s.iv(:rush) && s.iv(:level) == 0
+check 'plain A still starts normal game', !s.iv(:rush) && s.iv(:level_index) == 0
 
 s.step([], 1) until s.mode == :play
 s.set(:lives, 1); s.g.send(:die); s.step([], 200); s.step([], 130); s.step([:start]); s.step([], 2)
@@ -34,13 +34,13 @@ s = Sim.new; s.step([], 5); enter_code(s); s.step([:start], 1)
 s.step([], 1) until s.mode == :play
 ok = true
 (0...LEVELS.size).each_with_index do |lv, i|
-  ok &&= s.iv(:level) == lv && s.p.powered && s.iv(:boss) && s.p.x > s.iv(:arena_column) * TILE
+  ok &&= s.iv(:level_index) == lv && s.p.powered && s.iv(:boss) && s.p.x > s.iv(:arena_column) * TILE
   check "rush #{i + 1}: in arena #{lv} with wrench", ok
   break unless ok
   if i == 0
     lives = s.iv(:lives)
     s.g.send(:die); s.step([], 200); s.step([], 1) until s.mode == :play
-    check 'rush respawn keeps the wrench', s.p.powered && s.iv(:lives) == lives - 1 && s.iv(:level) == lv
+    check 'rush respawn keeps the wrench', s.p.powered && s.iv(:lives) == lives - 1 && s.iv(:level_index) == lv
   end
   s.step([:right], 40)
   check "rush #{i + 1}: fight starts", s.iv(:boss_on) if i == 0

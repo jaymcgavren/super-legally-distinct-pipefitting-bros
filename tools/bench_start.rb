@@ -20,13 +20,18 @@ class Game
     return if BENCH_MODE == :title
     new_game(false)
     @lives = 99
-    @level = BENCH_MODE == :ending ? LEVELS.size - 1 : BENCH_LEVEL
+    instance_variable_set(bench_iv(:@level_index, :@level), BENCH_MODE == :ending ? LEVELS.size - 1 : BENCH_LEVEL)
     to_intro
   end
 
   def bench_iv(new, old) = instance_variable_defined?(new) ? new : old
 
   alias bench_to_intro to_intro
+  def bench_max_camera_x
+    return @level.max_camera_x if @level.respond_to?(:max_camera_x)
+    respond_to?(:max_camera_x, true) ? max_camera_x : max_cam
+  end
+
   def to_intro
     bench_to_intro
     return unless @boss
@@ -35,13 +40,13 @@ class Game
     case BENCH_MODE
     when :arena
       player.x = (arena + 3) * BENCH_TILE + 12
-      player.y = tile_bottom(7)
+      player.y = (ROWS - 1 - 7) * BENCH_TILE
     when :ending
       @boss = nil
       @goal = { c: arena + 10, r: 7, turn: 0 }
       player.x = (arena + 9) * BENCH_TILE + 12
-      player.y = tile_bottom(7)
-      instance_variable_set(bench_iv(:@camera_x, :@cam), (respond_to?(:max_camera_x, true) ? max_camera_x : max_cam).to_f)
+      player.y = (ROWS - 1 - 7) * BENCH_TILE
+      instance_variable_set(bench_iv(:@camera_x, :@cam), bench_max_camera_x.to_f)
       start_ending
     end
   end

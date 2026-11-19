@@ -22,17 +22,17 @@ class Game
     @rng % n
   end
 
-  def boss_level = @level_data[:boss] || 1
+  def boss_level = @level.data[:boss] || 1
   def boss_knows?(move) = BOSS_MOVES.index { |entry| entry[0] == move } < boss_level
 
   def spawn_boss(c, r)
-    boss = Actor.new(:boss, c * TILE - 24, tile_bottom(r), BOSS_WIDTH, BOSS_HEIGHT)
+    boss = Actor.new(:boss, c * TILE - 24, @level.tile_bottom(r), BOSS_WIDTH, BOSS_HEIGHT)
     hp = 6 + boss_level
     boss.data = { hp: hp, max: hp, inv: 0, cd: 90, spiky: 0, warn_spiky: 0, angry: false, minions: 0 }
     boss.state = :wait
     @boss = boss
     @boss_on = false
-    @arena_column = @cols - 20
+    @arena_column = @level.columns - 20
     @shots = []
     @shake = 0
     @banner = 0
@@ -59,7 +59,7 @@ class Game
     unless @boss_on
       return unless player.x > (@arena_column + 2) * TILE
       @boss_on = true
-      8.times { |r| @grid[r][@arena_column] = '#' }   # the gate slams shut
+      8.times { |r| @level.set_cell(@arena_column, r, '#') }   # the gate slams shut
       @sound.play(:bump)
     end
     unless @fight_on
@@ -79,7 +79,7 @@ class Game
       if boss.t == 120
         @goal = { c: @arena_column + 10, r: 7, turn: 0 }   # between the arena girders
         @sound.play(:appear)
-        popup(@goal[:c] * TILE, tile_top(7) + 60, 'MAIN VALVE')
+        popup(@goal[:c] * TILE, @level.tile_top(7) + 60, 'MAIN VALVE')
       end
       update_shots
       return
@@ -181,7 +181,7 @@ class Game
         count = angry ? 5 : 3
         count.times do |i|
           c = @arena_column + 2 + boss_rand(16)
-          c = column_at(player.x + player.w / 2) if i == 0
+          c = @level.column_at(player.x + player.w / 2) if i == 0
           @shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
         end
       end
@@ -200,7 +200,7 @@ class Game
     end
     boss.x += boss.vx
     min_x = (@arena_column + 1) * TILE + 4
-    max_x = @cols * TILE - boss.w - 4
+    max_x = @level.width - boss.w - 4
     if boss.x < min_x || boss.x > max_x
       boss.x = boss.x < min_x ? min_x.to_f : max_x.to_f
       if boss.state == :charge
@@ -291,12 +291,12 @@ class Game
       case shot[:k]
       when :wave
         shot[:x] += shot[:vx]
-        shot[:dead] = true if shot[:x] < @arena_column * TILE || shot[:x] > @cols * TILE
+        shot[:dead] = true if shot[:x] < @arena_column * TILE || shot[:x] > @level.width
       when :glob
         shot[:vy] -= 0.5
         shot[:x] += shot[:vx]
         shot[:y] += shot[:vy]
-        if shot[:y] <= 128 || SOLID[cell(column_at(shot[:x] + 16), row_at(shot[:y]))]
+        if shot[:y] <= 128 || SOLID[@level.cell(@level.column_at(shot[:x] + 16), @level.row_at(shot[:y]))]
           shot[:dead] = true
           puff(shot[:x] + 16, shot[:y])
         end

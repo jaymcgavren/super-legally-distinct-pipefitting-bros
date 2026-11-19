@@ -1,7 +1,7 @@
 # spawn a lone active blob on the start segment's open floor
 def lone_blob(s, col)
   s.iv(:enemies).clear
-  e = Actor.new(:blob, col * TILE + 8, s.g.tile_bottom(7), 48, 40)
+  e = Actor.new(:blob, col * TILE + 8, s.level.tile_bottom(7), 48, 40)
   e.active = true; e.vx = -1.0
   s.iv(:enemies) << e
   e
@@ -25,8 +25,7 @@ check 'tap jump is much lower', tap < full * 0.6
 # held-jump peak from open floor (everything above cleared) at a given speed
 held_peak = lambda do |vx, keys|
   s = Sim.new.start(0)
-  grid = s.iv(:grid)
-  (0..7).each { |r| (0...60).each { |c| grid[r][c] = '.' } }
+  (0..7).each { |r| (0...60).each { |c| s.level.set_cell(c, r, '.') } }
   s.iv(:enemies).clear
   s.put(4); s.p.vx = vx
   y0 = s.p.y; pk = y0
@@ -76,11 +75,12 @@ check 'powered contact only loses power', s.mode == :play && !s.p.powered && s.p
 # --- wrench crate -> pickup -> throw ---
 s = Sim.new.start(0)
 g = s.g
+level = s.level
 # a wrench crate with open air beneath it down to the floor
 c, r = nil
-g.instance_variable_get(:@cols).times do |cc|
-  rr = (0..7).find { |k| g.cell(cc, k) == 'W' }
-  next unless rr && ((rr + 1)..7).all? { |k| g.cell(cc, k) == '.' } && SOLID[g.cell(cc, 8)]
+level.columns.times do |cc|
+  rr = (0..7).find { |k| level.cell(cc, k) == 'W' }
+  next unless rr && ((rr + 1)..7).all? { |k| level.cell(cc, k) == '.' } && SOLID[level.cell(cc, 8)]
   c, r = cc, rr
   break
 end
@@ -88,7 +88,7 @@ check 'found a W crate over open floor', !c.nil?
 s.put(c)
 s.p.x = c * TILE + 12
 s.step([:a], 30); s.step([], 40)
-check 'W crate used', g.cell(c, r) == 'U'
+check 'W crate used', level.cell(c, r) == 'U'
 item = s.iv(:items).find { |i| i.kind == :wrench_item }
 check 'wrench item spawned', !item.nil?
 s.step([], 40)
@@ -107,7 +107,7 @@ check 'wrench comes back', s.iv(:wrench).nil?
 # --- pit death and respawn ---
 s = Sim.new.start(0)
 lives = s.iv(:lives)
-pit = (0...s.g.instance_variable_get(:@cols)).find { |c| (0..9).none? { |r| SOLID[s.g.cell(c, r)] || s.g.cell(c, r) == '-' } && (0..9).none? { |r| SOLID[s.g.cell(c + 1, r)] } }
+pit = (0...s.level.columns).find { |c| (0..9).none? { |r| SOLID[s.level.cell(c, r)] || s.level.cell(c, r) == '-' } && (0..9).none? { |r| SOLID[s.level.cell(c + 1, r)] } }
 s.p.x = pit * TILE + 12; s.p.y = 300; s.snap
 s.step([], 60)
 check 'pit kills', s.mode == :dying
@@ -166,7 +166,7 @@ s.put(g[:c] - 3)
 s.step([:right], 120)
 check 'goal triggers clear', s.mode == :clear
 s.step([], 600)
-check 'advances to 1-B', s.iv(:level) == 1 && %i[intro play].include?(s.mode)
+check 'advances to 1-B', s.iv(:level_index) == 1 && %i[intro play].include?(s.mode)
 
 # --- game over and back to title ---
 s = Sim.new.start(0)
@@ -203,11 +203,11 @@ back = false
 120.times { s.step([]); (back = true; break) if s.iv(:wrench).nil? }
 check 'bounced wrench flies back to the player during the clear', back && s.mode == :clear
 s.step([], 700)
-check 'wrench clear advances to 1-B', s.iv(:level) == 1
+check 'wrench clear advances to 1-B', s.iv(:level_index) == 1
 
 # --- lifts over a pit under a ceiling swing low enough to jump off at full height ---
 lv_of = ->(name) { LEVELS.index { |l| l[:name] == name } }
-ceil_bottom = Sim.new.g.tile_bottom(0)
+ceil_bottom = Sim.new.level.tile_bottom(0)
 s = Sim.new.start(lv_of['JOBSITE 1-B'])
 pit = s.iv(:lifts).select { |l| [165, 170].include?((l.data[:bx] / TILE).to_i) }
 check '1-B has its two pit lifts', pit.size == 2
@@ -256,7 +256,7 @@ landed = (0..20).step(2).any? do |jx|
     60.times do |f|
       s.step(f < coast ? %i[right b a] : %i[b a])
       next unless s.p.on_ground
-      hit = (s.p.y - s.g.tile_top(wc[1])).abs < 1
+      hit = (s.p.y - s.level.tile_top(wc[1])).abs < 1
       break
     end
     hit

@@ -10,6 +10,7 @@ require 'app/levels.rb'
 require 'app/screen.rb'
 require 'app/sound.rb'
 require 'app/controls.rb'
+require 'app/level.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -176,7 +177,7 @@ class Game
     @score = 0
     @nuts = 0
     @lives = 3
-    @level = 0
+    @level_index = 0
     to_title
   end
 
@@ -222,7 +223,7 @@ class Game
     @score = 0
     @nuts = 0
     @lives = rush ? 5 : 3
-    @level = 0
+    @level_index = 0
     @checkpoint = nil
     @powered = rush
     to_intro
@@ -232,7 +233,7 @@ class Game
     @mode = :intro
     @mode_frames = 0
     @sound.stop_music
-    load_level(@level, true)
+    load_level(@level_index, true)
   end
 
   # The game runs in fixed 60 Hz steps whatever the display's refresh rate.
@@ -306,17 +307,7 @@ class Game
 
   # ── level loading ─────────────────────────────────────────────────
   def load_level(index, use_checkpoint)
-    level = LEVELS[index]
-    @level_data = level
-    @theme = THEMES[level[:theme]]
-    if level[:rows]
-      rows = level[:rows]
-    else
-      rows = Array.new(ROWS) { '' }
-      level[:segs].each { |segment| segment.each_with_index { |row, r| rows[r] += row } }
-    end
-    @cols = rows[0].size
-    @grid = rows.map(&:chars)
+    @level = Level.new(index)
     @enemies = []
     @lifts = []
     @vents = []
@@ -336,43 +327,34 @@ class Game
     @rng = 1 + index * 31
     boss_at = nil
     start = [2, 7]
-    @grid.each_with_index do |row, r|
-      row.each_with_index do |tile, c|
-        case tile
-        when 'P'
-          start = [c, r]
-          row[c] = '.'
-        when 'r'
-          @enemies << Actor.new(:blob, c * TILE + 8, tile_bottom(r), 48, 40)
-          row[c] = '.'
-        when 'v'
-          enemy = Actor.new(:crab, c * TILE + 6, tile_bottom(r), 52, 44)
-          enemy.data[:cycle] = (c * 29) % 200
-          @enemies << enemy
-          row[c] = '.'
-        when 'L', 'H'
-          lift = Actor.new(:lift, c * TILE, tile_top(r) - 16, 128, 16)
-          lift.data = { bx: lift.x, by: lift.y, amp: 2 * TILE, axis: tile == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
-          lower_pit_lift(lift, c, r) if tile == 'L'
-          @lifts << lift
-          row[c] = '.'
-        when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
-        when 'K'
-          @cones << { c: c, r: r, lit: false }
-          row[c] = '.'
-        when 'G'
-          @goal = { c: c, r: r, turn: 0 }
-          row[c] = '.'
-        when 'B'
-          boss_at = [c, r]
-          row[c] = '.'
-        end
+    @level.each_marker do |tile, c, r|
+      case tile
+      when 'P'
+        start = [c, r]
+      when 'r'
+        @enemies << Actor.new(:blob, c * TILE + 8, @level.tile_bottom(r), 48, 40)
+      when 'v'
+        enemy = Actor.new(:crab, c * TILE + 6, @level.tile_bottom(r), 52, 44)
+        enemy.data[:cycle] = (c * 29) % 200
+        @enemies << enemy
+      when 'L', 'H'
+        lift = Actor.new(:lift, c * TILE, @level.tile_top(r) - 16, 128, 16)
+        lift.data = { bx: lift.x, by: lift.y, amp: 2 * TILE, axis: tile == 'H' ? :x : :y, phase: c * 0.7, dx: 0.0, dy: 0.0 }
+        lower_pit_lift(lift, c, r) if tile == 'L'
+        @lifts << lift
+      when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
+      when 'K'
+        @cones << { c: c, r: r, lit: false }
+      when 'G'
+        @goal = { c: c, r: r, turn: 0 }
+      when 'B'
+        boss_at = [c, r]
       end
     end
     spawn_boss(boss_at[0], boss_at[1]) if boss_at
     @vents.each do |vent|
       h = 0
-      h += 1 while h < 3 && !SOLID[cell(vent[:c], vent[:r] - h - 1)]
+      h += 1 while h < 3 && !SOLID[@level.cell(vent[:c], vent[:r] - h - 1)]
       vent[:h] = h * TILE
     end
     if use_checkpoint && @checkpoint && @checkpoint[0] == index
@@ -384,34 +366,22 @@ class Game
       start = [@arena_column + 1, 7]
       @enemies.reject! { |enemy| enemy.x < (@arena_column + 1) * TILE }
     end
-    @player = Player.new(start[0] * TILE + 12, tile_bottom(start[1]))
+    @player = Player.new(start[0] * TILE + 12, @level.tile_bottom(start[1]))
     @player.powered = @powered if use_checkpoint
     @player.powered = true if @rush
-    @time = level[:time] || SHIFT_LENGTH
+    @time = @level.data[:time] || SHIFT_LENGTH
     @time_accumulator = 0
     @warned = false
-    @camera_x = [[@player.x - 480, 0].max, max_camera_x].min.to_f
+    @camera_x = [[@player.x - 480, 0].max, @level.max_camera_x].min.to_f
   end
 
   # ── tile helpers ──────────────────────────────────────────────────
-  def cell(c, r)
-    return '#' if c < 0 || c >= @cols
-    return '.' if r < 0 || r >= ROWS
-    @grid[r][c]
-  end
-
-  def column_at(x) = (x / TILE).floor
-  def row_at(y) = ROWS - 1 - (y / TILE).floor
-  def tile_bottom(r) = (ROWS - 1 - r) * TILE
-  def tile_top(r) = (ROWS - r) * TILE
-  def max_camera_x = @cols * TILE - VIEW_WIDTH
-
   def box_free?(x, y, w, h)
-    r0 = row_at(y + h - 0.01)
-    r1 = row_at(y + 0.01)
-    c0 = column_at(x + 0.01)
-    c1 = column_at(x + w - 0.01)
-    r0.upto(r1) { |r| c0.upto(c1) { |c| return false if SOLID[cell(c, r)] } }
+    r0 = @level.row_at(y + h - 0.01)
+    r1 = @level.row_at(y + 0.01)
+    c0 = @level.column_at(x + 0.01)
+    c1 = @level.column_at(x + w - 0.01)
+    r0.upto(r1) { |r| c0.upto(c1) { |c| return false if SOLID[@level.cell(c, r)] } }
     true
   end
 
@@ -426,19 +396,19 @@ class Game
   # horizontal move with tile collision; returns true on wall hit
   def move_x(actor)
     actor.x += actor.vx
-    r0 = row_at(actor.y + actor.h - 0.01)
-    r1 = row_at(actor.y + 0.01)
+    r0 = @level.row_at(actor.y + actor.h - 0.01)
+    r1 = @level.row_at(actor.y + 0.01)
     if actor.vx > 0
-      c = column_at(actor.x + actor.w - 0.01)
+      c = @level.column_at(actor.x + actor.w - 0.01)
       r0.upto(r1) do |r|
-        next unless SOLID[cell(c, r)]
+        next unless SOLID[@level.cell(c, r)]
         actor.x = c * TILE - actor.w
         return true
       end
     elsif actor.vx < 0
-      c = column_at(actor.x)
+      c = @level.column_at(actor.x)
       r0.upto(r1) do |r|
-        next unless SOLID[cell(c, r)]
+        next unless SOLID[@level.cell(c, r)]
         actor.x = (c + 1) * TILE
         return true
       end
@@ -453,13 +423,13 @@ class Game
     actor.y += actor.vy
     actor.on_ground = false
     actor.riding = nil
-    c0 = column_at(actor.x + 0.01)
-    c1 = column_at(actor.x + actor.w - 0.01)
+    c0 = @level.column_at(actor.x + 0.01)
+    c1 = @level.column_at(actor.x + actor.w - 0.01)
     if actor.vy <= 0
-      r = row_at(actor.y)
-      top = tile_top(r)
+      r = @level.row_at(actor.y)
+      top = @level.tile_top(r)
       c0.upto(c1) do |c|
-        tile = cell(c, r)
+        tile = @level.cell(c, r)
         if SOLID[tile] || (tile == '-' && prev >= top - 0.01)
           actor.y = top
           actor.vy = 0.0
@@ -481,15 +451,15 @@ class Game
       end
       return []
     end
-    r = row_at(actor.y + actor.h)
+    r = @level.row_at(actor.y + actor.h)
     hits = []
     c0.upto(c1) do |c|
-      tile = cell(c, r)
+      tile = @level.cell(c, r)
       hits << c if SOLID[tile] || tile == 'I'
     end
     return hits if hits.empty?
     # a hidden crate only blocks if the head started below it
-    hits = hits.select { |c| cell(c, r) != 'I' || prev + actor.h <= tile_bottom(r) + 0.01 }
+    hits = hits.select { |c| @level.cell(c, r) != 'I' || prev + actor.h <= @level.tile_bottom(r) + 0.01 }
     return hits if hits.empty?
     if corner_fix && hits.size == 1
       c = hits[0]
@@ -503,14 +473,14 @@ class Game
         return []
       end
     end
-    actor.y = tile_bottom(r) - actor.h
+    actor.y = @level.tile_bottom(r) - actor.h
     actor.vy = 0.0
     hits.map { |c| [c, r] }
   end
 
   # ── title ─────────────────────────────────────────────────────────
   def step_title
-    @camera_x = (@mode_frames * 1.5) % max_camera_x
+    @camera_x = (@mode_frames * 1.5) % @level.max_camera_x
     if @controls.left_pressed? || @controls.right_pressed?
       @bro = 1 - @bro
       @sound.play(:tick)
@@ -557,9 +527,9 @@ class Game
   def draw_intro
     @args.outputs.background_color = BLACK
     draw_hud
-    @screen.label(640, 440, @level_data[:name], 6, PALE_YELLOW)
-    @screen.label(640, 370, @level_data[:title], 4, ORANGE)
-    @screen.label(640, 560, "BOSS RUSH #{@level + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
+    @screen.label(640, 440, @level.name, 6, PALE_YELLOW)
+    @screen.label(640, 370, @level.title, 4, ORANGE)
+    @screen.label(640, 560, "BOSS RUSH #{@level_index + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
     @screen.sprite(BROS[@bro][:path], 560, 210, 64, 80, FRAMES[:bro_stand])
     @screen.label(680, 270, "x #{@lives}", 5, WHITE)
   end
@@ -632,10 +602,10 @@ class Game
   JUMP_RISE = JUMP_VELOCITY_RUN**2 / (2 * GRAVITY_HOLD)
   def lower_pit_lift(lift, c, r)
     columns = [c, c + 1]
-    return unless columns.all? { |column| (r + 1...ROWS).none? { |row| SOLID[cell(column, row)] } }
-    ceil = (0...r).to_a.reverse.find { |row| columns.any? { |column| SOLID[cell(column, row)] } }
+    return unless columns.all? { |column| (r + 1...ROWS).none? { |row| SOLID[@level.cell(column, row)] } }
+    ceil = (0...r).to_a.reverse.find { |row| columns.any? { |column| SOLID[@level.cell(column, row)] } }
     return unless ceil
-    max_top = tile_bottom(ceil) - PLAYER_HEIGHT - JUMP_RISE
+    max_top = @level.tile_bottom(ceil) - PLAYER_HEIGHT - JUMP_RISE
     top = lift.y + lift.h
     return if top + 2 * TILE <= max_top
     data = lift.data
@@ -737,14 +707,14 @@ class Game
     @vents.each do |vent|
       k = (@frame + vent[:phase]) % 180
       next unless k >= 130 && vent[:h] > 0
-      hurt if rect_hit?(player, vent[:c] * TILE + 14, tile_top(vent[:r]), 36, vent[:h] - 8)
+      hurt if rect_hit?(player, vent[:c] * TILE + 14, @level.tile_top(vent[:r]), 36, vent[:h] - 8)
     end
     @cones.each_with_index do |cone, i|
       next if cone[:lit] || player.x < cone[:c] * TILE
       cone[:lit] = true
-      @checkpoint = [@level, i]
+      @checkpoint = [@level_index, i]
       @sound.play(:checkpoint)
-      popup(cone[:c] * TILE, tile_top(cone[:r]) + 20, 'CHECKPOINT')
+      popup(cone[:c] * TILE, @level.tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
     if goal_touched?(player)
       player.x = @goal[:c] * TILE + 8 - player.w if player.x < @goal[:c] * TILE
@@ -762,21 +732,21 @@ class Game
     return false unless @goal
     goal_x = @goal[:c] * TILE
     return player.x + player.w > goal_x + 8 if player.x < goal_x
-    player.x < goal_x + TILE - 8 && player.y < tile_bottom(@goal[:r]) + 3 * TILE
+    player.x < goal_x + TILE - 8 && player.y < @level.tile_bottom(@goal[:r]) + 3 * TILE
   end
 
   def collect_nuts(actor)
-    r0 = row_at(actor.y + actor.h - 8)
-    r1 = row_at(actor.y + 8)
-    c0 = column_at(actor.x + 6)
-    c1 = column_at(actor.x + actor.w - 6)
+    r0 = @level.row_at(actor.y + actor.h - 8)
+    r1 = @level.row_at(actor.y + 8)
+    c0 = @level.column_at(actor.x + 6)
+    c1 = @level.column_at(actor.x + actor.w - 6)
     r0.upto(r1) do |r|
       next if r < 0 || r >= ROWS
       c0.upto(c1) do |c|
-        next unless cell(c, r) == 'o'
-        @grid[r][c] = '.'
+        next unless @level.cell(c, r) == 'o'
+        @level.set_cell(c, r, '.')
         add_nut
-        sparkle(c * TILE + 32, tile_bottom(r) + 32)
+        sparkle(c * TILE + 32, @level.tile_bottom(r) + 32)
       end
     end
   end
@@ -802,28 +772,28 @@ class Game
   end
 
   def bump(c, r)
-    tile = cell(c, r)
+    tile = @level.cell(c, r)
     key = r * 10000 + c
     @bumps[key] = BUMP_ARC.size
     x = c * TILE
-    top = tile_top(r)
+    top = @level.tile_top(r)
     case tile
     when 'C'
-      @grid[r][c] = 'U'
+      @level.set_cell(c, r, 'U')
       pop_nut(x, top)
     when 'M'
       n = (@hits_left[key] ||= 8)
       pop_nut(x, top)
       @hits_left[key] = n - 1
-      @grid[r][c] = 'U' if n - 1 <= 0
+      @level.set_cell(c, r, 'U') if n - 1 <= 0
     when 'W'
-      @grid[r][c] = 'U'
+      @level.set_cell(c, r, 'U')
       item = Actor.new(:wrench_item, x + 4, top - 64, 56, 56)
       item.data[:rise] = 64
       @items << item
       @sound.play(:appear)
     when 'I'
-      @grid[r][c] = 'U'
+      @level.set_cell(c, r, 'U')
       item = Actor.new(:lunch, x + 4, top - 64, 56, 56)
       item.data[:rise] = 64
       item.vx = 2.5
@@ -892,7 +862,7 @@ class Game
   end
 
   def start_clear
-    return start_ending if @level == LEVELS.size - 1
+    return start_ending if @level_index == LEVELS.size - 1
     @mode = :clear
     @mode_frames = 0
     @powered = @player.powered
@@ -917,9 +887,9 @@ class Game
     update_camera
     vent_sounds
     return unless @time <= 0 && @mode_frames > 300
-    @level += 1
+    @level_index += 1
     @checkpoint = nil
-    if @level >= LEVELS.size
+    if @level_index >= LEVELS.size
       @mode = :win
       @mode_frames = 0
       save_hiscore
@@ -1001,7 +971,7 @@ class Game
       move_y(enemy, false, false)
       if enemy.on_ground
         front_x = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2
-        below = cell(column_at(front_x), row_at(enemy.y - 4))
+        below = @level.cell(@level.column_at(front_x), @level.row_at(enemy.y - 4))
         enemy.vx = -enemy.vx unless SOLID[below] || below == '-'
       end
       enemy.state = :dead if enemy.y < -100
@@ -1088,14 +1058,14 @@ class Game
     # a wrench that hits the main valve turns it: level clear. It bounces
     # off and flies back to the player while the level ends.
     if @goal && playing? &&
-       rect_hit?(wrench, @goal[:c] * TILE, tile_bottom(@goal[:r]), TILE, 3 * TILE)
+       rect_hit?(wrench, @goal[:c] * TILE, @level.tile_bottom(@goal[:r]), TILE, 3 * TILE)
       wrench.vx = wrench.vx > 0 ? -7.0 : 7.0
       wrench.vy = 7.0
       wrench.data[:back] = true
       wrench.data[:bounce] = 14
       wrench.t = 0
       @sound.play(:bump)
-      popup(@goal[:c] * TILE, tile_bottom(@goal[:r]) + 3 * TILE + 80, 'NICE SHOT')
+      popup(@goal[:c] * TILE, @level.tile_bottom(@goal[:r]) + 3 * TILE + 80, 'NICE SHOT')
       start_clear
       return
     end
@@ -1182,10 +1152,10 @@ class Game
   def update_camera
     player = @player
     target = player.x + player.w / 2 - 560 + player.facing * 90
-    target = max_camera_x if @boss_on
+    target = @level.max_camera_x if @boss_on
     @camera_x += (target - @camera_x) * 0.1
     @camera_x = 0.0 if @camera_x < 0
-    @camera_x = max_camera_x.to_f if @camera_x > max_camera_x
+    @camera_x = @level.max_camera_x.to_f if @camera_x > @level.max_camera_x
   end
 
   # ── drawing ───────────────────────────────────────────────────────
@@ -1197,7 +1167,7 @@ class Game
   end
 
   def draw_background
-    theme = @theme
+    theme = @level.theme
     outputs = @screen.outputs
     sky = theme[:sky]
     outputs.background_color = sky[0]
@@ -1290,7 +1260,7 @@ class Game
     phase = c % 13
     return false unless phase == 6 || phase == 7
     left = c - (phase - 6)
-    WINDOW_ROWS.all? { |r| !SOLID[cell(left, r)] && !SOLID[cell(left + 1, r)] }
+    WINDOW_ROWS.all? { |r| !SOLID[@level.cell(left, r)] && !SOLID[@level.cell(left + 1, r)] }
   end
 
   def draw_back_wall(camera_x, tiles, c0, c1)
@@ -1299,7 +1269,7 @@ class Game
       x = c * TILE - camera_x
       8.times do |r|
         next if window && WINDOW_ROWS.include?(r)
-        @screen.tile(tiles, x, tile_bottom(r), FRAMES[:back_wall])
+        @screen.tile(tiles, x, @level.tile_bottom(r), FRAMES[:back_wall])
       end
     end
     wood = [140, 88, 44]
@@ -1307,8 +1277,8 @@ class Game
     c0.upto(c1 + 1) do |c|
       next unless c % 13 == 6 && window_at?(c)
       x = c * TILE - camera_x
-      bottom = tile_bottom(WINDOW_ROWS.last)
-      top = tile_top(WINDOW_ROWS.first)
+      bottom = @level.tile_bottom(WINDOW_ROWS.last)
+      top = @level.tile_top(WINDOW_ROWS.first)
       w = 2 * TILE
       @screen.rect(x, bottom, w, 8, sill)                 # sill
       @screen.rect(x - 8, bottom - 8, w + 16, 8, wood)
@@ -1322,14 +1292,14 @@ class Game
 
   def draw_tiles
     camera_x = @camera_x.to_i
-    tiles = @theme[:tiles]
+    tiles = @level.theme[:tiles]
     c0 = [camera_x / TILE, 0].max
-    c1 = [(camera_x + VIEW_WIDTH) / TILE, @cols - 1].min
+    c1 = [(camera_x + VIEW_WIDTH) / TILE, @level.columns - 1].min
     nut_f = (@frame / 8) % 4
-    draw_back_wall(camera_x, tiles, c0, c1) if @theme[:indoor]
+    draw_back_wall(camera_x, tiles, c0, c1) if @level.theme[:indoor]
     ROWS.times do |r|
-      row = @grid[r]
-      y = tile_bottom(r)
+      row = @level.row(r)
+      y = @level.tile_bottom(r)
       c0.upto(c1) do |c|
         tile = row[c]
         next if tile == '.' || tile == 'I'
@@ -1337,17 +1307,17 @@ class Game
         bump = @bumps[r * 10000 + c]
         bumped_y = bump ? y + BUMP_ARC[BUMP_ARC.size - bump] : y
         case tile
-        when '#' then @screen.tile(tiles, x, bumped_y, FRAMES[r == 0 || SOLID[cell(c, r - 1)] ? :brick : :brick_top])
-        when 'F' then @screen.tile(tiles, x, bumped_y, FRAMES[cell(c, r - 1) == 'F' ? :subfloor : :wood_floor])
+        when '#' then @screen.tile(tiles, x, bumped_y, FRAMES[r == 0 || SOLID[@level.cell(c, r - 1)] ? :brick : :brick_top])
+        when 'F' then @screen.tile(tiles, x, bumped_y, FRAMES[@level.cell(c, r - 1) == 'F' ? :subfloor : :wood_floor])
         when '=' then @screen.tile(tiles, x, bumped_y, FRAMES[:girder])
         when 'C', 'W', 'M' then @screen.tile(tiles, x, bumped_y, FRAMES[:crate])
         when 'U' then @screen.tile(tiles, x, bumped_y, FRAMES[:crate_used])
         when '-'
           # extend a stand up behind the pipe so it meets the pipe's underside
-          @screen.tile(tiles, x, y, FRAMES[:pipe_stand]) if cell(c, r + 1) == '|'
-          if cell(c + 1, r) != '-'
+          @screen.tile(tiles, x, y, FRAMES[:pipe_stand]) if @level.cell(c, r + 1) == '|'
+          if @level.cell(c + 1, r) != '-'
             @screen.sprite(tiles, x, bumped_y, TILE, TILE, FRAMES[:pipe_flange], flip: true)
-          elsif cell(c - 1, r) != '-' || c % 4 == 0
+          elsif @level.cell(c - 1, r) != '-' || c % 4 == 0
             @screen.tile(tiles, x, bumped_y, FRAMES[:pipe_flange])
           else
             @screen.tile(tiles, x, bumped_y, FRAMES[:pipe])
@@ -1377,18 +1347,18 @@ class Game
     draw_tiles
     @lifts.each do |lift|
       x = lift.x.to_i - camera_x
-      @screen.tile(@theme[:tiles], x, lift.y.to_i - 48, FRAMES[:lift])
-      @screen.tile(@theme[:tiles], x + TILE, lift.y.to_i - 48, FRAMES[:lift])
+      @screen.tile(@level.theme[:tiles], x, lift.y.to_i - 48, FRAMES[:lift])
+      @screen.tile(@level.theme[:tiles], x + TILE, lift.y.to_i - 48, FRAMES[:lift])
     end
     @cones.each do |cone|
       lit = cone[:lit] && (@frame / 10) % 2 == 0
-      @screen.tile('sprites/items.png', cone[:c] * TILE - camera_x, tile_bottom(cone[:r]), FRAMES[lit ? :cone_lit : :cone_off])
+      @screen.tile('sprites/items.png', cone[:c] * TILE - camera_x, @level.tile_bottom(cone[:r]), FRAMES[lit ? :cone_lit : :cone_off])
     end
     if @goal
       goal_x = @goal[:c] * TILE - camera_x
-      goal_y = tile_bottom(@goal[:r])
-      @screen.tile(@theme[:tiles], goal_x, goal_y, FRAMES[:standpipe])
-      @screen.tile(@theme[:tiles], goal_x, goal_y + TILE, FRAMES[:standpipe])
+      goal_y = @level.tile_bottom(@goal[:r])
+      @screen.tile(@level.theme[:tiles], goal_x, goal_y, FRAMES[:standpipe])
+      @screen.tile(@level.theme[:tiles], goal_x, goal_y + TILE, FRAMES[:standpipe])
       unless @goal[:gone]
         f = (@goal[:turn] / 5) % 3
         @screen.tile('sprites/items.png', goal_x, goal_y + 2 * TILE, frame(:valve, f))
@@ -1400,7 +1370,7 @@ class Game
       next if k < 100 || vent[:h] <= 0
       x = vent[:c] * TILE - camera_x
       next if x < -TILE || x > VIEW_WIDTH
-      base = tile_top(vent[:r])
+      base = @level.tile_top(vent[:r])
       if k < 130
         @screen.rect(x + 24, base + (k % 10) * 2, 16, 8, STEAM, 180) if (k / 5).even?
       else
@@ -1482,7 +1452,7 @@ class Game
     labels << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: color[0], g: color[1], b: color[2] }
     labels << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
     labels << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }
-    labels << { x: 720, y: 700, text: @level_data[:name], size_px: 4, r: color[0], g: color[1], b: color[2] }
+    labels << { x: 720, y: 700, text: @level.name, size_px: 4, r: color[0], g: color[1], b: color[2] }
     shift_time = @time || SHIFT_LENGTH
     time_color = shift_time <= 100 && (@frame / 15) % 2 == 0 ? ALERT_RED : color
     labels << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: time_color[0], g: time_color[1], b: time_color[2] }
