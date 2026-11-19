@@ -184,7 +184,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       `ride_lift`, `animate`.
 - [x] Effects: `Particle` Struct for puff/dust/sparkle/steam; `Popup` for
       floating scores. Keep the existing lifetimes and motion exactly.
-- [ ] Performance check against the baseline.
+- [x] Performance check against the baseline.
 
 ### 4. Modes as scene objects
 - [ ] Scenes with `update` and `draw`: `Title`, `Intro`, `Play`, `Paused`,
@@ -565,3 +565,25 @@ paths, anything the next session needs.)
   level 1 0.87-0.88 vs 0.86 (+2%), arena 0.86 vs 0.85-0.90, ending
   0.45-0.46 vs 0.42 (+6-8%, consistent: Struct accessors on ~100 steam
   puffs; under the noise bar and the ending costs half a level).
+- 2026-11-19: step 3 performance check, `un-refactored` vs c8633a8,
+  interleaved, 3 pairs per row (3600 frames; the ending 900), median
+  ms/frame:
+  | run | baseline | now | change |
+  |---|---|---|---|
+  | arena 7 (2-D fight) | 0.412 | 0.424 | +3% |
+  | arena 5 (2-B fight) | 0.842 | 0.850 | +1% |
+  | level 5 (2-B start) | 0.857 | 0.896 | +4.5% |
+  | level 0 (1-A start) | 0.332 | 0.342 | +3% |
+  | level 1 (1-B start) | 0.855 | 0.867 | +1.4% |
+  | ending | 0.428 | 0.459 | +7% |
+  | title | 0.352 | 0.355 | +1% |
+  Every row is under the 10% bar, but the refactor is consistently a
+  little slower (one more method call per object here and there). The
+  biggest is the ending (+7%, most of it from SteamPuff's Struct accessors,
+  see the effects entry). Worst absolute is level 5 at 0.90 ms, still
+  about 5% of a 16.7 ms frame. No action; if a later step adds more,
+  SteamPuff back to arrays and level 5's draw path are the first places
+  to look.
+  (Note to self: in zsh, `set -- $cfg` doesn't split words. A loop over
+  config strings must run under sh, or every run benches the exception
+  banner.)
