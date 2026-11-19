@@ -221,7 +221,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       keep `ruby tools/sim.rb` working as the one command either way.
 
 ### 7. Finish
-- [ ] Full regression: tests, all real-runtime screenshots compared with the
+- [x] Full regression: tests, all real-runtime screenshots compared with the
       step 0 ones, performance compared with the baseline.
 - [ ] Rebuild and publish the web player (AGENTS.md "Branches and the web
       player": `tools/build-web.sh`, `tools/publish-web.sh "Web player: ..."`,
@@ -772,3 +772,24 @@ paths, anything the next session needs.)
     and bot.rb are for, that levels.rb is generated from segments.rb,
     and that RuboCop's CRuby idioms can be slow or missing on mruby.
   - "Code layout (app/)" lists one line per file.
+- 2026-11-19: step 7, full regression against step 0 (`un-refactored`)
+  at bf8d090:
+  - Tests ALL PASS, 185 checks, with the three info lines unchanged.
+  - `tools/shots.sh --compare`: all 11 real-runtime shots ALL SAME.
+  - Performance, ms/frame, old vs new (3 runs each, interleaved):
+    | run | old | new |
+    |---|---|---|
+    | arena 7 | 0.375-0.437 | 0.381-0.416 |
+    | arena 5 | 0.721-0.748 | 0.735-0.767 |
+    | level 0 | 0.301-0.304 | 0.309-0.318 |
+    | level 1 | 0.70-0.78 | 0.74-0.84 |
+  - Level 5, ending and title were rerun 5 times each to settle them.
+    Medians: level 5 0.758 -> 0.777 (+2.5%), ending 0.418 -> 0.422
+    (+1%), title 0.369 -> 0.383 (+4%).
+  - The boss fights are unchanged. The rest is 1-4% slower, consistent
+    in direction but well under the 10% noise threshold. Likely sources
+    are the extra method calls from objects that replaced hashes and
+    inline code (scenes, Camera, Run, entity classes). Everything is
+    still under 1 ms of a 16.7 ms frame.
+  The refactor is done. The only open item is the web player, which waits
+  for the user to ask.
