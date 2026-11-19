@@ -17,7 +17,7 @@ def bot(index, frames: 5000, invuln: true)
     end
     p = s.p
     p.invuln = 5 if invuln
-    s.set(:time, 300)
+    s.run.time = 300
     fx = p.x + p.w + 30
     wall = SOLID[level.cell(level.column_at(fx), level.row_at(p.y + 10))]
     gc = level.column_at(p.x + p.w + 40)

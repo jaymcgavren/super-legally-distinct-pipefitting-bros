@@ -1,7 +1,7 @@
 # --- the ending: turning the last valve launches it into the sky ---
 def to_ending(rush = false)
   s = Sim.new.start(LEVELS.size - 1)
-  s.set(:rush, rush)
+  s.run.rush = rush
   s.put(s.iv(:arena_column) + 3); s.step([], 2)
   s.step([], 1) while s.iv(:warning) > 0
   s.iv(:boss).data[:inv] = 0; s.g.send(:boss_hit, 99); s.step([], 130)
@@ -16,7 +16,7 @@ check 'no render target during normal play', Sim.new.start(0).tap { |x| x.step([
   .args.outputs.instance_variable_get(:@t).nil?
 s = to_ending
 check 'ending starts at the last valve', s.mode == :ending
-check 'time bonus is paid at once', s.iv(:time) == 0 && s.iv(:high_score) == s.iv(:score) && s.iv(:score) > 0
+check 'time bonus is paid at once', s.run.time == 0 && s.iv(:high_score).value == s.run.score && s.run.score > 0
 sp = []
 END_BURST.times { |i| t0 = s.iv(:spin); s.step([]); sp << s.iv(:spin) - t0 }
 check 'valve spins faster and faster', sp[10] < sp[60] && sp[60] < sp[-2] && s.iv(:steam).size > 0

@@ -19,7 +19,11 @@ class Game
     bench_initialize(args)
     return if BENCH_MODE == :title
     new_game(false)
-    @lives = 99
+    if instance_variable_defined?(:@run)
+      @run.lives = 99
+    else
+      @lives = 99
+    end
     instance_variable_set(bench_iv(:@level_index, :@level), BENCH_MODE == :ending ? LEVELS.size - 1 : BENCH_LEVEL)
     to_intro
   end

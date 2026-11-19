@@ -13,6 +13,7 @@ require 'app/controls.rb'
 require 'app/level.rb'
 require 'app/physics.rb'
 require 'app/camera.rb'
+require 'app/run.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -171,12 +172,10 @@ class Game
     @screen = Screen.new(args.outputs)
     @sound = Sound.new(args)
     @controls = Controls.new(args)
-    @high_score = args.gtk.load_u32(0) || 0
+    @high_score = HighScore.new(args.gtk)
+    @run = Run.new
     @bro = 0
     @frame = 0
-    @score = 0
-    @nuts = 0
-    @lives = 3
     @level_index = 0
     to_title
   end
@@ -211,7 +210,7 @@ class Game
   def to_title
     @mode = :title
     @mode_frames = 0
-    @rush = false
+    @run.rush = false
     @rush_armed = false
     @code_index = 0
     load_level(0, false)
@@ -219,13 +218,8 @@ class Game
   end
 
   def new_game(rush = false)
-    @rush = rush
-    @score = 0
-    @nuts = 0
-    @lives = rush ? 5 : 3
+    @run = Run.new(rush)
     @level_index = 0
-    @checkpoint = nil
-    @powered = rush
     to_intro
   end
 
@@ -257,7 +251,7 @@ class Game
     end
     @step_accumulator = 0.0 if @step_accumulator >= STEP_MS   # too far behind: drop the backlog
     draw
-    @args.gtk.debug_score = @score
+    @args.gtk.debug_score = @run.score
     @args.gtk.debug_aux = @player ? @player.x.to_i : 0
   end
 
@@ -357,21 +351,19 @@ class Game
       h += 1 while h < 3 && !SOLID[@level.cell(vent[:c], vent[:r] - h - 1)]
       vent[:h] = h * TILE
     end
-    if use_checkpoint && @checkpoint && @checkpoint[0] == index
-      cone = @cones[@checkpoint[1]]
+    if use_checkpoint && @run.checkpoint && @run.checkpoint[0] == index
+      cone = @cones[@run.checkpoint[1]]
       start = [cone[:c], cone[:r]]
       cone[:lit] = true
     end
-    if @rush && @boss
+    if @run.rush? && @boss
       start = [@arena_column + 1, 7]
       @enemies.reject! { |enemy| enemy.x < (@arena_column + 1) * TILE }
     end
     @player = Player.new(start[0] * TILE + 12, @level.tile_bottom(start[1]))
-    @player.powered = @powered if use_checkpoint
-    @player.powered = true if @rush
-    @time = @level.data[:time] || SHIFT_LENGTH
-    @time_accumulator = 0
-    @warned = false
+    @player.powered = @run.powered if use_checkpoint
+    @player.powered = true if @run.rush?
+    @run.start_shift(@level.data[:time] || SHIFT_LENGTH)
     @camera.jump_to(@player.x - 480)
   end
 
@@ -409,7 +401,7 @@ class Game
     end
     @screen.shadow_label(640, 120, 'PRESS START', 4, WHITE) if (@mode_frames / 30) % 2 == 0
     @screen.shadow_label(640, 366, 'BOSS RUSH', 4, ALERT_RED) if @rush_armed
-    @screen.shadow_label(640, 70, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
+    @screen.shadow_label(640, 70, "TOP #{pad6(@high_score.value)}", 3, LIGHT_GRAY)
     @screen.shadow_label(640, 30, 'ANY RESEMBLANCE TO PLUMBERS LIVING OR DEAD IS PURELY COINCIDENTAL', 2, [180, 180, 180])
   end
 
@@ -426,9 +418,9 @@ class Game
     draw_hud
     @screen.label(640, 440, @level.name, 6, PALE_YELLOW)
     @screen.label(640, 370, @level.title, 4, ORANGE)
-    @screen.label(640, 560, "BOSS RUSH #{@level_index + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @rush
+    @screen.label(640, 560, "BOSS RUSH #{@level_index + 1} OF #{LEVELS.size}", 4, ALERT_RED) if @run.rush?
     @screen.sprite(BROS[@bro][:path], 560, 210, 64, 80, FRAMES[:bro_stand])
-    @screen.label(680, 270, "x #{@lives}", 5, WHITE)
+    @screen.label(680, 270, "x #{@run.lives}", 5, WHITE)
   end
 
   # ── gameplay ──────────────────────────────────────────────────────
@@ -474,16 +466,12 @@ class Game
 
   def update_timer
     return if @boss && @boss.dead?   # the clock stops once the boss falls
-    @time_accumulator += 1
-    return if @time_accumulator < TICK_LENGTH
-    @time_accumulator = 0
-    @time -= 1
-    if @time == 100 && !@warned
-      @warned = true
+    return unless @run.tick_clock
+    if @run.low_time_warning?
       @sound.play(:warn)
       @sound.music_pitch = 1.15
     end
-    die if @time <= 0
+    die if @run.time <= 0
   end
 
   # A vertical lift over a pit with a ceiling above swings lower, and half as
@@ -603,7 +591,7 @@ class Game
     @cones.each_with_index do |cone, i|
       next if cone[:lit] || player.x < cone[:c] * TILE
       cone[:lit] = true
-      @checkpoint = [@level_index, i]
+      @run.checkpoint = [@level_index, i]
       @sound.play(:checkpoint)
       popup(cone[:c] * TILE, @level.tile_top(cone[:r]) + 20, 'CHECKPOINT')
     end
@@ -643,22 +631,19 @@ class Game
   end
 
   def add_nut
-    @nuts += 1
-    @score += 50
+    extra_life = @run.add_nut
     @sound.play(:nut, 0.75)
-    return if @nuts < 50
-    @nuts -= 50
-    one_up(@player.x, @player.y + 90)
+    one_up(@player.x, @player.y + 90) if extra_life
   end
 
   def one_up(x, y)
-    @lives += 1
+    @run.lives += 1
     @sound.play(:oneup)
     popup(x, y, '1UP')
   end
 
   def add_score(n, x, y)
-    @score += n
+    @run.add_score(n)
     popup(x, y, n.to_s)
   end
 
@@ -725,7 +710,7 @@ class Game
     return unless playing?
     @mode = :dying
     @mode_frames = 0
-    @powered = false
+    @run.powered = false
     @player.vx = 0.0
     @player.vy = 0.0
     @sound.music(:death, looping: false)
@@ -741,8 +726,8 @@ class Game
     update_effects
     vent_sounds
     return if @mode_frames < 190
-    @lives -= 1
-    if @lives <= 0
+    @run.lives -= 1
+    if @run.lives <= 0
       @mode = :gameover
       @mode_frames = 0
       save_hiscore
@@ -756,7 +741,7 @@ class Game
     return start_ending if @level_index == LEVELS.size - 1
     @mode = :clear
     @mode_frames = 0
-    @powered = @player.powered
+    @run.powered = @player.powered
     @sound.music(:clear, looping: false)
   end
 
@@ -767,19 +752,17 @@ class Game
     move_y(player, true, false)
     player.facing = 1
     @goal[:turn] += 1 if @mode_frames < 100
-    if @mode_frames > 110 && @time > 0
-      n = [@time, 2].min
-      @time -= n
-      @score += n * 50
+    if @mode_frames > 110 && @run.time > 0
+      @run.bank_time(2)
       @sound.play(:tick) if @mode_frames % 4 == 0
     end
     update_effects
     update_wrench
     @camera.follow(@player, @boss_on)
     vent_sounds
-    return unless @time <= 0 && @mode_frames > 300
+    return unless @run.time <= 0 && @mode_frames > 300
     @level_index += 1
-    @checkpoint = nil
+    @run.checkpoint = nil
     if @level_index >= LEVELS.size
       @mode = :win
       @mode_frames = 0
@@ -807,18 +790,16 @@ class Game
       @screen.label(640, 440, 'GAME OVER', 8, ALERT_RED)
       @screen.label(640, 350, 'YOU ARE FIRED', 4, WHITE)
     else
-      @screen.label(640, 500, @rush ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, PALE_YELLOW)
-      @screen.label(640, 420, @rush ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, ORANGE)
-      @screen.label(640, 340, "FINAL SCORE #{pad6(@score)}", 4, WHITE)
+      @screen.label(640, 500, @run.rush? ? 'BOSS RUSH CLEARED!' : 'ALL MAINS SHUT OFF!', 6, PALE_YELLOW)
+      @screen.label(640, 420, @run.rush? ? 'BIG RUSTY IS SCRAP' : 'OVERTIME APPROVED', 4, ORANGE)
+      @screen.label(640, 340, "FINAL SCORE #{pad6(@run.score)}", 4, WHITE)
     end
-    @screen.label(640, 260, "TOP #{pad6(@high_score)}", 3, LIGHT_GRAY)
+    @screen.label(640, 260, "TOP #{pad6(@high_score.value)}", 3, LIGHT_GRAY)
     @screen.label(640, 160, 'PRESS START', 3, WHITE) if @mode_frames > 120 && (@mode_frames / 30) % 2 == 0
   end
 
   def save_hiscore
-    return unless @score > @high_score
-    @high_score = @score
-    @args.gtk.save_u32(0, @high_score)
+    @high_score.submit(@run.score)
   end
 
   # ── enemies ───────────────────────────────────────────────────────
@@ -1331,11 +1312,11 @@ class Game
     @screen.rect(0, PLAY_HEIGHT, VIEW_WIDTH, 4, DARK_GRAY)
     color = GOLD
     labels = @screen.outputs.labels
-    labels << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@lives}", size_px: 4, r: color[0], g: color[1], b: color[2] }
-    labels << { x: 230, y: 700, text: pad6(@score), size_px: 4, r: 255, g: 255, b: 255 }
-    labels << { x: 470, y: 700, text: "NUTS x#{@nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }
+    labels << { x: 24, y: 700, text: "#{BROS[@bro][:name]} x#{@run.lives}", size_px: 4, r: color[0], g: color[1], b: color[2] }
+    labels << { x: 230, y: 700, text: pad6(@run.score), size_px: 4, r: 255, g: 255, b: 255 }
+    labels << { x: 470, y: 700, text: "NUTS x#{@run.nuts}", size_px: 4, r: color[0], g: color[1], b: color[2] }
     labels << { x: 720, y: 700, text: @level.name, size_px: 4, r: color[0], g: color[1], b: color[2] }
-    shift_time = @time || SHIFT_LENGTH
+    shift_time = @run.time || SHIFT_LENGTH
     time_color = shift_time <= 100 && (@frame / 15) % 2 == 0 ? ALERT_RED : color
     labels << { x: 1256, y: 700, text: "SHIFT #{pad3(shift_time)}", size_px: 4, alignment_enum: 2, r: time_color[0], g: time_color[1], b: time_color[2] }
   end

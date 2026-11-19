@@ -50,10 +50,10 @@ s = Sim.new.start(0)
 e = s.iv(:enemies).find { |en| en.kind == :blob }
 s.p.x = e.x; s.p.y = e.y + e.h + 8; s.p.vy = -2.0; s.snap
 s.iv(:enemies).each { |en| en.active = true }
-sc = s.iv(:score)
+sc = s.run.score
 s.step([], 6)
 check 'stomp flattens blob', e.state == :flat || e.state == :gone
-check 'stomp scores', s.iv(:score) > sc
+check 'stomp scores', s.run.score > sc
 check 'stomp bounces player', s.p.vy > 0 || s.p.y > e.y + 40
 check 'still playing after stomp', s.mode == :play
 
@@ -106,13 +106,13 @@ check 'wrench comes back', s.iv(:wrench).nil?
 
 # --- pit death and respawn ---
 s = Sim.new.start(0)
-lives = s.iv(:lives)
+lives = s.run.lives
 pit = (0...s.level.columns).find { |c| (0..9).none? { |r| SOLID[s.level.cell(c, r)] || s.level.cell(c, r) == '-' } && (0..9).none? { |r| SOLID[s.level.cell(c + 1, r)] } }
 s.p.x = pit * TILE + 12; s.p.y = 300; s.snap
 s.step([], 60)
 check 'pit kills', s.mode == :dying
 s.step([], 200)
-check 'life lost', s.iv(:lives) == lives - 1
+check 'life lost', s.run.lives == lives - 1
 check 'back to intro', s.mode == :intro
 
 # --- checkpoint respawn ---
@@ -127,7 +127,7 @@ check 'respawn at checkpoint', (s.p.x - cone[:c] * TILE).abs < 64
 
 # --- timer runs out ---
 s = Sim.new.start(0)
-s.set(:time, 1); s.set(:time_accumulator, 0)
+s.run.start_shift(1)
 s.step([], TICK_LENGTH + 1)
 check 'timer death', s.mode == :dying
 
@@ -170,7 +170,7 @@ check 'advances to 1-B', s.iv(:level_index) == 1 && %i[intro play].include?(s.mo
 
 # --- game over and back to title ---
 s = Sim.new.start(0)
-s.set(:lives, 1)
+s.run.lives = 1
 s.g.send(:die); s.step([], 200)
 check 'game over', s.mode == :gameover
 s.step([], 130); s.step([:start])
@@ -184,9 +184,9 @@ check 'last level plays the ending', s.mode == :ending
 
 # --- 50 nuts = 1UP ---
 s = Sim.new.start(0)
-s.set(:nuts, 49); l0 = s.iv(:lives)
+s.run.nuts = 49; l0 = s.run.lives
 s.g.send(:add_nut)
-check '50 nuts gives 1UP', s.iv(:lives) == l0 + 1 && s.iv(:nuts) == 0
+check '50 nuts gives 1UP', s.run.lives == l0 + 1 && s.run.nuts == 0
 
 # --- a thrown wrench that hits the main valve clears the level ---
 s = Sim.new.start(0).beat_boss

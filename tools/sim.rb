@@ -57,6 +57,7 @@ class Sim
   def iv(n) = @g.instance_variable_get("@#{n}")
   def set(n, v) = @g.instance_variable_set("@#{n}", v)
   def level = iv(:level)
+  def run = iv(:run)
 
   # held: array of button symbols held this frame
   def step(held = [], n = 1)

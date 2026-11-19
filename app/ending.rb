@@ -31,8 +31,7 @@ class Game
   def start_ending
     @mode = :ending
     @mode_frames = 0
-    @score += @time * 50       # the whole time bonus at once
-    @time = 0
+    @run.bank_time             # the whole time bonus at once
     save_hiscore
     @sound.stop_music
     @spin = 0.0                # valve frame phase
@@ -229,7 +228,7 @@ class Game
       @screen.label(640, 330, 'JOB COMPLETE', 6, WHITE, true)
     end
     if elapsed > END_PROMPT
-      @screen.label(640, 200, "FINAL SCORE #{pad6(@score)}", 4, WHITE, true)
+      @screen.label(640, 200, "FINAL SCORE #{pad6(@run.score)}", 4, WHITE, true)
       @screen.label(640, 130, 'PRESS START', 3, WHITE, true) if (@mode_frames / 30) % 2 == 0
     end
   end

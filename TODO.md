@@ -161,7 +161,7 @@ delegating methods at first if that keeps the diff small, then callers move.
       `overlap?`, `rect_hit?`, constants for gravity. Mixed into whatever needs
       it, or functions taking the level.
 - [x] `Camera` (app/camera.rb): position, follow, shake, `max_camera_x`.
-- [ ] `Run` / session state (app/run.rb): score, lives, nuts, time, combo,
+- [x] `Run` / session state (app/run.rb): score, lives, nuts, time, combo,
       rush mode, high score load/save (`save_u32` slot 0).
 
 ### 3. Entities with real classes
@@ -451,3 +451,22 @@ paths, anything the next session needs.)
   Tests ALL PASS (185), shots ALL SAME (the ending ones included),
   reach/bot unchanged; bench level 1 0.92 vs 0.91-0.93, 2-B 0.91-0.94 vs
   0.90-0.91 (noise).
+- 2026-11-19: step 2, `Run` and `HighScore` (app/run.rb). Step 2 done.
+  `Run.new(rush)` per game holds `score`, `lives`, `nuts`, `time`, `rush?`,
+  `checkpoint`, `powered` (the wrench carried between levels), with
+  `add_nut` (true on the 50th: Game plays the sound and awards the 1UP, in
+  the old order), `add_score`, and the shift clock: `start_shift(length)`,
+  `tick_clock` (true when a unit passes), `low_time_warning?` (true once at
+  100) and `bank_time(n = all)` for the end-of-level count-up and the
+  ending's lump sum. Points and life counts are named constants.
+  `HighScore.new(gtk)` loads slot 0; `submit(score)` saves if higher.
+  Not moved: combo stays on Player (it's the stomp chain, reset on
+  landing); `@level_index` stays on Game for now (8 scenario uses; could
+  join Run with the level-flow code later); `@rush_armed` is title state.
+  `to_title` still clears only the rush flag, not the score, so
+  `debug_score` reads as before.
+  Tools: `Sim#run`; scenarios use `s.run.lives` etc. and
+  `s.run.start_shift(1)` instead of setting @time/@time_accumulator;
+  bench_start.rb sets `@run.lives` (old refs: `@lives`).
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged; bench level 1
+  0.92 vs 0.91-0.92, 2-B 0.93 vs 0.91-0.92 (noise).
