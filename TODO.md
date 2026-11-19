@@ -182,7 +182,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
 - [x] `Player` gets its own update split out of the 89-line
       `update_player`: `apply_input`, `apply_gravity`, `jump`, `land`,
       `ride_lift`, `animate`.
-- [ ] Effects: `Particle` Struct for puff/dust/sparkle/steam; `Popup` for
+- [x] Effects: `Particle` Struct for puff/dust/sparkle/steam; `Popup` for
       floating scores. Keep the existing lifetimes and motion exactly.
 - [ ] Performance check against the baseline.
 
@@ -553,3 +553,15 @@ paths, anything the next session needs.)
   throw_t/invuln/combo/facing, score, lives, particles, sounds):
   identical. Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged;
   bench level 1 0.87 vs 0.86 (+2%), arena 0.85-0.86 vs 0.85-0.88.
+- 2026-11-19: step 3, effects (app/effects.rb): `Particle` (x, y, vx, vy,
+  life, color), `Popup` (x, y, text, t) and, for the ending, `SteamPuff`
+  (x, y, vx, vy, life, size), each a `class X < Struct.new(...)` with
+  `update`, `gone?` and (Particle, Popup) `draw`, replacing the index
+  arrays. Constants live in the class bodies; a `Struct.new do` block
+  would have put them at top level. Traced against the previous commit
+  (particles and popups every step on 3 levels x 1200 steps, and the
+  ending's steam, 399 steps with puffs, compared via `to_a`): identical.
+  Tests ALL PASS (185), shots ALL SAME, reach/bot unchanged. Bench:
+  level 1 0.87-0.88 vs 0.86 (+2%), arena 0.86 vs 0.85-0.90, ending
+  0.45-0.46 vs 0.42 (+6-8%, consistent: Struct accessors on ~100 steam
+  puffs; under the noise bar and the ending costs half a level).

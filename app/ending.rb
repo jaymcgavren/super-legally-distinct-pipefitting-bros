@@ -39,7 +39,7 @@ class Game
     @rise = 0.0                # how far the camera has risen
     @rise_speed = 0.0
     @locked = false
-    @steam = []                # [x, y, vx, vy, life, size], world coords
+    @steam = []                # SteamPuffs, world coords
     @fireworks = []
     @fireworks_launched = 0
     @next_firework_at = END_FIRE
@@ -70,7 +70,7 @@ class Game
       n = elapsed / 40 + 1
       n.times do |i|
         angle = (elapsed * 37 + i * 101) % 360 * 0.01745
-        @steam << [vx + Math.cos(angle) * 24, vy + 40 + Math.sin(angle) * 24, Math.cos(angle) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4]
+        @steam << SteamPuff.new(vx + Math.cos(angle) * 24, vy + 40 + Math.sin(angle) * 24, Math.cos(angle) * 2.5, 1.5 + (i % 3), 24, 8 + (elapsed % 3) * 4)
       end
       @end_shake = elapsed > 80 ? (elapsed - 80) / 14.0 : 0.0
     elsif elapsed == END_BURST
@@ -81,7 +81,7 @@ class Game
       @sound.play(:pound)
       24.times do |i|
         angle = i * 0.2618
-        @steam << [vx, vy + 20, Math.cos(angle) * 9, Math.sin(angle).abs * 6 + 1, 40, 48]
+        @steam << SteamPuff.new(vx, vy + 20, Math.cos(angle) * 9, Math.sin(angle).abs * 6 + 1, 40, 48)
       end
     end
     @end_shake -= 0.3 if elapsed > END_BURST && @end_shake > 0
@@ -91,7 +91,7 @@ class Game
       @flying_valve[:y] += @flying_valve[:v]
       # steam trail
       if @flying_valve[:y] - @rise < 800
-        @steam << [@flying_valve[:x] + 32 + (elapsed % 3 - 1) * 6, @flying_valve[:y] - 8, (elapsed % 5 - 2) * 0.6, -@flying_valve[:v] * 0.15, 18, 32]
+        @steam << SteamPuff.new(@flying_valve[:x] + 32 + (elapsed % 3 - 1) * 6, @flying_valve[:y] - 8, (elapsed % 5 - 2) * 0.6, -@flying_valve[:v] * 0.15, 18, 32)
       end
       if elapsed < END_SLOW
         if !@locked && @flying_valve[:y] - @rise > END_LOCK_Y
@@ -117,14 +117,8 @@ class Game
     end
     @twinkle[:t] += 1 if @twinkle
 
-    @steam.each do |steam_puff|
-      steam_puff[0] += steam_puff[2]
-      steam_puff[1] += steam_puff[3]
-      steam_puff[2] *= 0.94
-      steam_puff[4] -= 1
-      steam_puff[5] += 1
-    end
-    @steam.reject! { |steam_puff| steam_puff[4] <= 0 }
+    @steam.each(&:update)
+    @steam.reject!(&:gone?)
 
     if elapsed >= END_FIRE
       @sound.music(:clear, looping: false) if elapsed == END_FIRE
@@ -187,11 +181,11 @@ class Game
     end
     camera_x = @camera.x.to_i
     @steam.each do |steam_puff|
-      x = steam_puff[0].to_i - camera_x + shake_x
-      y = steam_puff[1].to_i - rise + shake_y
+      x = steam_puff.x.to_i - camera_x + shake_x
+      y = steam_puff.y.to_i - rise + shake_y
       next if y < -80 || y > 760
-      size = steam_puff[5]
-      @screen.rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff[4] * 5, 200].min)
+      size = steam_puff.size
+      @screen.rect(x - size / 2, y - size / 2, size, size, STEAM, [steam_puff.life * 5, 200].min)
     end
     if @flying_valve
       x = @flying_valve[:x].to_i - camera_x + shake_x

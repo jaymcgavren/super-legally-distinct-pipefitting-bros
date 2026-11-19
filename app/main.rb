@@ -158,6 +158,7 @@ require 'app/items.rb'
 require 'app/props.rb'
 require 'app/enemies.rb'
 require 'app/wrench.rb'
+require 'app/effects.rb'
 
 class Game
   include Physics
@@ -792,40 +793,32 @@ class Game
 
   # ── effects ───────────────────────────────────────────────────────
   def popup(x, y, text)
-    @popups << [x, y, text, 0]
+    @popups << Popup.new(x, y, text, 0)
   end
 
   def puff(x, y)
     6.times do |i|
       angle = i * 1.047
-      @particles << [x, y, Math.cos(angle) * 3, Math.sin(angle) * 3 + 1, 16, STEAM]
+      @particles << Particle.new(x, y, Math.cos(angle) * 3, Math.sin(angle) * 3 + 1, 16, STEAM)
     end
   end
 
   def dust(x, y)
-    @particles << [x, y + 4, -@player.facing * 1.5, 1.0, 12, LIGHT_GRAY]
+    @particles << Particle.new(x, y + 4, -@player.facing * 1.5, 1.0, 12, LIGHT_GRAY)
   end
 
   def sparkle(x, y)
     4.times do |i|
       angle = i * 1.571 + 0.785
-      @particles << [x, y, Math.cos(angle) * 4, Math.sin(angle) * 4, 10, PALE_YELLOW]
+      @particles << Particle.new(x, y, Math.cos(angle) * 4, Math.sin(angle) * 4, 10, PALE_YELLOW)
     end
   end
 
   def update_effects
-    @particles.each do |particle|
-      particle[0] += particle[2]
-      particle[1] += particle[3]
-      particle[3] -= 0.15
-      particle[4] -= 1
-    end
-    @particles.reject! { |particle| particle[4] <= 0 }
-    @popups.each do |popup|
-      popup[1] += 1.5
-      popup[3] += 1
-    end
-    @popups.reject! { |popup| popup[3] > 45 }
+    @particles.each(&:update)
+    @particles.reject!(&:gone?)
+    @popups.each(&:update)
+    @popups.reject!(&:gone?)
     @bumps.keys.each do |k|
       @bumps[k] -= 1
       @bumps.delete(k) if @bumps[k] <= 0
@@ -1030,12 +1023,8 @@ class Game
     if @wrench
       @wrench.draw(@screen, camera_x)
     end
-    @particles.each do |particle|
-      @screen.rect(particle[0].to_i - camera_x, particle[1].to_i, 8, 8, particle[5], [particle[4] * 20, 255].min)
-    end
-    @popups.each do |popup|
-      @screen.label(popup[0].to_i - camera_x + 20, popup[1].to_i, popup[2], 3, WHITE, true)
-    end
+    @particles.each { |particle| particle.draw(@screen, camera_x) }
+    @popups.each { |popup| popup.draw(@screen, camera_x) }
     draw_hud if hud
   end
 
