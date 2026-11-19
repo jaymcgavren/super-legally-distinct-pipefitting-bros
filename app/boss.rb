@@ -22,8 +22,8 @@ class Game
     @rng % n
   end
 
-  def boss_level; @lv[:boss] || 1; end
-  def boss_knows?(move); BOSS_MOVES.index { |m| m[0] == move } < boss_level; end
+  def boss_level = @lv[:boss] || 1
+  def boss_knows?(move) = BOSS_MOVES.index { |m| m[0] == move } < boss_level
 
   def spawn_boss(c, r)
     b = Actor.new(:boss, c * T - 24, tile_bottom(r), BOSS_W, BOSS_H)
@@ -108,7 +108,8 @@ class Game
       boss_choose if d[:cd] <= 0 && b.on_ground
     when :hop
       if b.t == 1
-        b.vy = 13.0; b.vx = dir * 3.0 * spd
+        b.vy = 13.0
+        b.vx = dir * 3.0 * spd
       elsif b.on_ground && b.t > 3
         boss_idle(50)
       end
@@ -119,7 +120,8 @@ class Game
         b.vy = 21.0
         d[:air] = true
         b.vx = ((p.x - b.x) / 42.0).to_f
-        b.vx = 7.0 if b.vx > 7; b.vx = -7.0 if b.vx < -7
+        b.vx = 7.0 if b.vx > 7
+        b.vx = -7.0 if b.vx < -7
       elsif b.on_ground && d[:air] && b.t > 22
         d[:air] = false
         b.vx = 0.0
@@ -193,10 +195,13 @@ class Game
     b.y += b.vy
     b.on_ground = false
     if b.y <= 128
-      b.y = 128.0; b.vy = 0.0; b.on_ground = true
+      b.y = 128.0
+      b.vy = 0.0
+      b.on_ground = true
     end
     b.x += b.vx
-    lo = (@arena_c + 1) * T + 4; hi = @cols * T - b.w - 4
+    lo = (@arena_c + 1) * T + 4
+    hi = @cols * T - b.w - 4
     if b.x < lo || b.x > hi
       b.x = b.x < lo ? lo.to_f : hi.to_f
       if b.state == :charge
@@ -231,7 +236,7 @@ class Game
     b.t = 0
   end
 
-  def boss_spiky?; @boss.data[:spiky] > 0; end
+  def boss_spiky? = @boss.data[:spiky] > 0
 
   def boss_hit(dmg)
     b = @boss
@@ -289,7 +294,8 @@ class Game
         s[:dead] = true if s[:x] < @arena_c * T || s[:x] > @cols * T
       when :glob
         s[:vy] -= 0.5
-        s[:x] += s[:vx]; s[:y] += s[:vy]
+        s[:x] += s[:vx]
+        s[:y] += s[:vy]
         if s[:y] <= 128 || SOLID[cell(col_at(s[:x] + 16), row_at(s[:y]))]
           s[:dead] = true
           puff(s[:x] + 16, s[:y])

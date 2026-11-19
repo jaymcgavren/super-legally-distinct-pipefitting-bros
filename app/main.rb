@@ -55,9 +55,21 @@ class Actor
   attr_accessor :kind, :x, :y, :w, :h, :vx, :vy, :on_ground, :state, :t, :facing,
                 :active, :data, :prev_y, :riding
   def initialize(kind, x, y, w, h)
-    @kind = kind; @x = x.to_f; @y = y.to_f; @w = w; @h = h
-    @vx = 0.0; @vy = 0.0; @on_ground = false; @state = :walk; @t = 0
-    @facing = -1; @active = false; @data = {}; @prev_y = @y; @riding = nil
+    @kind = kind
+    @x = x.to_f
+    @y = y.to_f
+    @w = w
+    @h = h
+    @vx = 0.0
+    @vy = 0.0
+    @on_ground = false
+    @state = :walk
+    @t = 0
+    @facing = -1
+    @active = false
+    @data = {}
+    @prev_y = @y
+    @riding = nil
   end
 end
 
@@ -65,8 +77,16 @@ class Player < Actor
   attr_accessor :powered, :invuln, :coyote, :buffer, :jumping, :combo, :anim, :skid, :throw_t
   def initialize(x, y)
     super(:player, x, y, 40, PLAYER_H)
-    @facing = 1; @powered = false; @invuln = 0; @coyote = 0; @buffer = 0
-    @jumping = false; @combo = 0; @anim = 0.0; @skid = false; @throw_t = 0
+    @facing = 1
+    @powered = false
+    @invuln = 0
+    @coyote = 0
+    @buffer = 0
+    @jumping = false
+    @combo = 0
+    @anim = 0.0
+    @skid = false
+    @throw_t = 0
   end
 end
 
@@ -86,7 +106,10 @@ class Game
     @hiscore = args.gtk.load_u32(0) || 0
     @bro = 0
     @frame = 0
-    @score = 0; @nuts = 0; @lives = 3; @level = 0
+    @score = 0
+    @nuts = 0
+    @lives = 3
+    @level = 0
     to_title
   end
 
@@ -176,7 +199,9 @@ class Game
 
   def new_game(rush = false)
     @rush = rush
-    @score = 0; @nuts = 0; @lives = rush ? 5 : 3
+    @score = 0
+    @nuts = 0
+    @lives = rush ? 5 : 3
     @level = 0
     @checkpoint = nil
     @powered = rush
@@ -271,18 +296,32 @@ class Game
       lv[:segs].each { |s| s.each_with_index { |row, r| rows[r] += row } }
     end
     @cols = rows[0].size
-    @grid = rows.map { |row| a = []; row.size.times { |i| a << row[i] }; a }
-    @enemies = []; @lifts = []; @vents = []; @cones = []; @items = []
-    @particles = []; @popups = []; @bumps = {}; @multi = {}
-    @wrench = nil; @goal = nil
-    @boss = nil; @boss_on = false; @shots = []; @shake = 0; @banner = 0
+    @grid = rows.map(&:chars)
+    @enemies = []
+    @lifts = []
+    @vents = []
+    @cones = []
+    @items = []
+    @particles = []
+    @popups = []
+    @bumps = {}
+    @multi = {}
+    @wrench = nil
+    @goal = nil
+    @boss = nil
+    @boss_on = false
+    @shots = []
+    @shake = 0
+    @banner = 0
     @rng = 1 + idx * 31
     boss_at = nil
     start = [2, 7]
     @grid.each_with_index do |row, r|
       row.each_with_index do |ch, c|
         case ch
-        when 'P' then start = [c, r]; row[c] = '.'
+        when 'P'
+          start = [c, r]
+          row[c] = '.'
         when 'r'
           @enemies << Actor.new(:blob, c * T + 8, tile_bottom(r), 48, 40)
           row[c] = '.'
@@ -298,9 +337,15 @@ class Game
           @lifts << l
           row[c] = '.'
         when 'S' then @vents << { c: c, r: r, phase: (c * 37) % 180, h: 0 }
-        when 'K' then @cones << { c: c, r: r, lit: false }; row[c] = '.'
-        when 'G' then @goal = { c: c, r: r, turn: 0 }; row[c] = '.'
-        when 'B' then boss_at = [c, r]; row[c] = '.'
+        when 'K'
+          @cones << { c: c, r: r, lit: false }
+          row[c] = '.'
+        when 'G'
+          @goal = { c: c, r: r, turn: 0 }
+          row[c] = '.'
+        when 'B'
+          boss_at = [c, r]
+          row[c] = '.'
         end
       end
     end
@@ -335,15 +380,17 @@ class Game
     @grid[r][c]
   end
 
-  def col_at(x); (x / T).floor; end
-  def row_at(y); ROWS - 1 - (y / T).floor; end
-  def tile_bottom(r); (ROWS - 1 - r) * T; end
-  def tile_top(r); (ROWS - r) * T; end
-  def max_cam; @cols * T - VW; end
+  def col_at(x) = (x / T).floor
+  def row_at(y) = ROWS - 1 - (y / T).floor
+  def tile_bottom(r) = (ROWS - 1 - r) * T
+  def tile_top(r) = (ROWS - r) * T
+  def max_cam = @cols * T - VW
 
   def box_free?(x, y, w, h)
-    r0 = row_at(y + h - 0.01); r1 = row_at(y + 0.01)
-    c0 = col_at(x + 0.01); c1 = col_at(x + w - 0.01)
+    r0 = row_at(y + h - 0.01)
+    r1 = row_at(y + 0.01)
+    c0 = col_at(x + 0.01)
+    c1 = col_at(x + w - 0.01)
     r0.upto(r1) { |r| c0.upto(c1) { |c| return false if SOLID[cell(c, r)] } }
     true
   end
@@ -359,13 +406,22 @@ class Game
   # horizontal move with tile collision; returns true on wall hit
   def move_x(a)
     a.x += a.vx
-    r0 = row_at(a.y + a.h - 0.01); r1 = row_at(a.y + 0.01)
+    r0 = row_at(a.y + a.h - 0.01)
+    r1 = row_at(a.y + 0.01)
     if a.vx > 0
       c = col_at(a.x + a.w - 0.01)
-      r0.upto(r1) { |r| if SOLID[cell(c, r)] then a.x = c * T - a.w; return true end }
+      r0.upto(r1) do |r|
+        next unless SOLID[cell(c, r)]
+        a.x = c * T - a.w
+        return true
+      end
     elsif a.vx < 0
       c = col_at(a.x)
-      r0.upto(r1) { |r| if SOLID[cell(c, r)] then a.x = (c + 1) * T; return true end }
+      r0.upto(r1) do |r|
+        next unless SOLID[cell(c, r)]
+        a.x = (c + 1) * T
+        return true
+      end
     end
     false
   end
@@ -377,14 +433,17 @@ class Game
     a.y += a.vy
     a.on_ground = false
     a.riding = nil
-    c0 = col_at(a.x + 0.01); c1 = col_at(a.x + a.w - 0.01)
+    c0 = col_at(a.x + 0.01)
+    c1 = col_at(a.x + a.w - 0.01)
     if a.vy <= 0
       r = row_at(a.y)
       top = tile_top(r)
       c0.upto(c1) do |c|
         ch = cell(c, r)
         if SOLID[ch] || (ch == '-' && prev >= top - 0.01)
-          a.y = top; a.vy = 0.0; a.on_ground = true
+          a.y = top
+          a.vy = 0.0
+          a.on_ground = true
           break
         end
       end
@@ -392,7 +451,10 @@ class Game
         @lifts.each do |l|
           lt = l.y + l.h
           if a.x + a.w > l.x + 4 && a.x < l.x + l.w - 4 && a.y <= lt && prev >= lt - 14
-            a.y = lt; a.vy = 0.0; a.on_ground = true; a.riding = l
+            a.y = lt
+            a.vy = 0.0
+            a.on_ground = true
+            a.riding = l
             break
           end
         end
@@ -401,7 +463,10 @@ class Game
     end
     r = row_at(a.y + a.h)
     hits = []
-    c0.upto(c1) { |c| ch = cell(c, r); hits << c if SOLID[ch] || ch == 'I' }
+    c0.upto(c1) do |c|
+      ch = cell(c, r)
+      hits << c if SOLID[ch] || ch == 'I'
+    end
     return hits if hits.empty?
     # a hidden crate only blocks if the head started below it
     hits = hits.select { |c| cell(c, r) != 'I' || prev + a.h <= tile_bottom(r) + 0.01 }
@@ -568,10 +633,14 @@ class Game
       s = Math.sin(@frame * 6.2832 / 240 + d[:phase])
       if d[:axis] == :x
         nx = d[:bx] + s * d[:amp]
-        d[:dx] = nx - l.x; d[:dy] = 0.0; l.x = nx
+        d[:dx] = nx - l.x
+        d[:dy] = 0.0
+        l.x = nx
       else
         ny = d[:by] + s * d[:amp]
-        d[:dy] = ny - l.y; d[:dx] = 0.0; l.y = ny
+        d[:dy] = ny - l.y
+        d[:dx] = 0.0
+        l.y = ny
       end
     end
   end
@@ -609,7 +678,9 @@ class Game
     p.coyote = ground ? 6 : p.coyote - 1
     if p.buffer > 0 && p.coyote > 0
       p.vy = p.vx.abs >= RUN_JUMP_SPEED ? JUMP_V_RUN : JUMP_V
-      p.buffer = 0; p.coyote = 0; p.jumping = true
+      p.buffer = 0
+      p.coyote = 0
+      p.jumping = true
       p.riding = nil
       sfx(:jump)
     end
@@ -678,8 +749,10 @@ class Game
   end
 
   def collect_nuts(a)
-    r0 = row_at(a.y + a.h - 8); r1 = row_at(a.y + 8)
-    c0 = col_at(a.x + 6); c1 = col_at(a.x + a.w - 6)
+    r0 = row_at(a.y + a.h - 8)
+    r1 = row_at(a.y + 8)
+    c0 = col_at(a.x + 6)
+    c1 = col_at(a.x + a.w - 6)
     r0.upto(r1) do |r|
       next if r < 0 || r >= ROWS
       c0.upto(c1) do |c|
@@ -715,7 +788,8 @@ class Game
     ch = cell(c, r)
     key = r * 10000 + c
     @bumps[key] = BUMP_ARC.size
-    x = c * T; top = tile_top(r)
+    x = c * T
+    top = tile_top(r)
     case ch
     when 'C'
       @grid[r][c] = 'U'
@@ -1071,10 +1145,16 @@ class Game
 
   def update_effects
     @particles.each do |pt|
-      pt[0] += pt[2]; pt[1] += pt[3]; pt[3] -= 0.15; pt[4] -= 1
+      pt[0] += pt[2]
+      pt[1] += pt[3]
+      pt[3] -= 0.15
+      pt[4] -= 1
     end
     @particles.reject! { |pt| pt[4] <= 0 }
-    @popups.each { |pp| pp[1] += 1.5; pp[3] += 1 }
+    @popups.each do |pp|
+      pp[1] += 1.5
+      pp[3] += 1
+    end
     @popups.reject! { |pp| pp[3] > 45 }
     @bumps.keys.each do |k|
       @bumps[k] -= 1
@@ -1151,7 +1231,8 @@ class Game
       o.solids << [x, cy - 16, 160, 16, cc[0], cc[1], cc[2]]
       o.solids << [x - 16, cy - 32, 208, 16, cc[0], cc[1], cc[2]]
     end
-    b = th[:bush]; bd = th[:bush_dk]
+    b = th[:bush]
+    bd = th[:bush_dk]
     # trees of varying heights, trunks rising from the bottom of the screen
     # (indoors, from the floor) into blocky canopies; indoors they show
     # through the windows (y 192..384)
@@ -1176,7 +1257,9 @@ class Game
   SUN_GAPS = [3, 6, 9, 11, 13, 15, 17, 19]   # 8 px rows below the centre left out
   SUN_RAMP = [[255, 236, 112], [255, 176, 72], [248, 88, 136], [216, 32, 168]]
   SUN_ROWS = begin
-    cx = 900; cy = 340; r = 168
+    cx = 900
+    cy = 340
+    r = 168
     rows = []
     (2 * r / 8).times do |n|
       y = cy - r + n * 8
@@ -1187,7 +1270,9 @@ class Game
       t = ((1 - (dy + r) / (2.0 * r)) * 8).floor / 7.0
       sc = t * (SUN_RAMP.size - 1)
       i = [sc.floor, SUN_RAMP.size - 2].min
-      a = SUN_RAMP[i]; b = SUN_RAMP[i + 1]; k = sc - i
+      a = SUN_RAMP[i]
+      b = SUN_RAMP[i + 1]
+      k = sc - i
       col = (0..2).map { |j| (a[j] + (b[j] - a[j]) * k).round }
       rows << [cx - hw, y, hw * 2, 8, col[0], col[1], col[2]]
     end
@@ -1215,11 +1300,13 @@ class Game
         spr(tiles, x, tile_bottom(r), T, T, 88, 0, 8, 16)
       end
     end
-    wood = [140, 88, 44]; sill = [196, 148, 92]
+    wood = [140, 88, 44]
+    sill = [196, 148, 92]
     c0.upto(c1 + 1) do |c|
       next unless c % 13 == 6 && window_at?(c)
       x = c * T - cam
-      bot = tile_bottom(WIN_ROWS.last); top = tile_top(WIN_ROWS.first)
+      bot = tile_bottom(WIN_ROWS.last)
+      top = tile_top(WIN_ROWS.first)
       w = 2 * T
       rect(x, bot, w, 8, sill)                 # sill
       rect(x - 8, bot - 8, w + 16, 8, wood)

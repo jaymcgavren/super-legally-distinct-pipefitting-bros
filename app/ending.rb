@@ -78,7 +78,8 @@ class Game
       @goal[:gone] = true
       @rk = { x: vx - 32, y: vy.to_f, v: 14.0 }
       @end_shake = 16.0
-      sfx(:blast); sfx(:pound)
+      sfx(:blast)
+      sfx(:pound)
       24.times do |i|
         a = i * 0.2618
         @steam << [vx, vy + 20, Math.cos(a) * 9, Math.sin(a).abs * 6 + 1, 40, 48]
@@ -117,7 +118,13 @@ class Game
     end
     @twinkle[:t] += 1 if @twinkle
 
-    @steam.each { |s| s[0] += s[2]; s[1] += s[3]; s[2] *= 0.94; s[4] -= 1; s[5] += 1 }
+    @steam.each do |s|
+      s[0] += s[2]
+      s[1] += s[3]
+      s[2] *= 0.94
+      s[4] -= 1
+      s[5] += 1
+    end
     @steam.reject! { |s| s[4] <= 0 }
 
     if t >= END_FIRE

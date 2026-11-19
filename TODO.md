@@ -30,9 +30,13 @@ nothing below has been started yet.
     `send`, `attr_*`, modules/`include`.
   - Not available: `Set` (use a Hash), the standard library, `require` of gems.
     Files load with `require 'app/foo.rb'` (path from the packed app dir).
-  - Unverified in mruby, so check before relying on them:
-    `Struct.new(..., keyword_init: true)`, endless `def x = ...`,
-    pattern matching (`case/in`), `Data`. Prefer plain forms.
+  - Probed in the real runtime (2026-11-19):
+    - works: endless `def x = ...` (used for one-line helpers), `String#chars`.
+    - missing: `Struct.new(..., keyword_init: true)` (TypeError), pattern
+      matching `case/in` (syntax error), `Data`, `Float#clamp`.
+    - Probe anything else before relying on it: a one-file cart in the
+      scratchpad that draws the result as a label, run with `--frames 3
+      --shot`; exceptions print as `[cart] ruby exception ...`.
 - **Tests run under CRuby, the game runs under mruby.** `tools/sim.rb` loads
   `app/main.rb` in host Ruby with a stub `args`. Passing tests do NOT prove the
   code works in mruby, so every step also needs the real-runtime check below.
@@ -111,9 +115,10 @@ refactor step will break some of them. Update them in the same commit.
       be re-rendered from `un-refactored` at any time, so nothing is stored.
 
 ### 1. Line-level cleanup (no structural change)
-- [ ] One statement per line: remove `;` chains (about 51 lines in main.rb,
+- [x] One statement per line: remove `;` chains (about 51 lines in main.rb,
       more in boss.rb/ending.rb). Keep short `def x; ...; end` one-liners only
-      if they stay readable (or convert to normal defs).
+      if they stay readable (or convert to normal defs). Done: no `;` tokens
+      left in app/; one-liner helpers became endless defs.
 - [ ] Descriptive local names: `p` -> `player` (it also shadows Kernel#p),
       `b` -> `boss`, `e` -> `enemy`, `l` -> `lift`, `w` -> `wrench`,
       `it` -> `item`, `t` -> `time`/`frames` where it helps. Rename `T` (tile
@@ -261,3 +266,11 @@ paths, anything the next session needs.)
   internals; when the refactor renames them, keep it working for both the
   working tree and `un-refactored` (e.g. `respond_to?` checks), or the
   comparison breaks.
+- 2026-11-19: step 1, semicolons. 36 lines (29 main.rb, 5 boss.rb, 2
+  ending.rb) split one statement per line; `when 'X' then a; b` became
+  multi-line `when`; brace blocks with several statements became `do`
+  blocks; the 8 `def x; ...; end` one-liners became endless defs. One small
+  rewrite: the grid split `rows.map { |row| a = []; row.size.times { ... } }`
+  became `rows.map(&:chars)` (same arrays). Tests ALL PASS with identical
+  info lines; `tools/shots.sh --compare` ALL SAME. To find semicolons
+  without matching strings, lex with Ripper and look for `:on_semicolon`.
