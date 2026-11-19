@@ -207,7 +207,7 @@ level, player, physics, sound, effects (probably the Play scene or Game).
       and the "encounter n learns move n" rule in one table.
 - [x] Real attributes instead of `data`: `hp`, `max_hp`, `invulnerable`,
       `cooldown`, `spiky`, `warn_spiky`, `angry?`, `minions`.
-- [ ] Shots (`@shots`: spit, bolts with their shadow warning) as small classes.
+- [x] Shots (`@shots`: spit, bolts with their shadow warning) as small classes.
 - [ ] Keep the warning/klaxon sequence, arena gate, valve placement, and the
       stomp rule (rising into the player's feet counts as a stomp).
 - [ ] Keep `boss_rand` (its own LCG in `@rng`) and call order identical so
@@ -684,3 +684,18 @@ paths, anything the next session needs.)
   `data` on the old side): identical. Tests ALL PASS (185), shots ALL
   SAME, reach/bot unchanged; bench arena 7 0.432-0.437 vs 0.424-0.431,
   arena 5 0.861-0.876 vs 0.857-0.900.
+- 2026-11-19: step 5, Rusty's shots are classes (end of app/boss.rb):
+  `Shot` (x, y, w, h, vx, vy, t; `gone?`, `harmful?`) and `SteamWave`
+  (ground pound; dies leaving the arena, bounds given by Boss),
+  `RustGlob` (rust spit; `burst(game, dy)` on the floor, a solid tile or
+  the wrench) and `Bolt` (bolt storm; `falling?` once its shadow has shown
+  BOLT_WARNING steps; only then `harmful?`). Each has `update(game)` and
+  `draw(screen, camera_x)`; the shadow/beam warning drawing moved into
+  `Bolt#draw`. `Game#update_shots` is now: update, hurt the player if
+  harmful, pop globs the wrench touches (overlap? on the shot itself, no
+  throwaway Actor), drop the gone ones. `draw_boss` draws the shots, then
+  Rusty. Floor y is `Boss::FLOOR`. Scenario 02 uses `is_a?(Bolt)`, `.t`,
+  `.y`, `.vy`. Fight trace (same 70,180 steps; ~10,000 shot-steps of
+  waves, globs and bolts): identical. Tests ALL PASS (185), shots ALL
+  SAME, reach/bot unchanged; bench arena 7 0.430-0.435 vs 0.425-0.434,
+  arena 5 0.863-0.865 vs 0.866-0.878.

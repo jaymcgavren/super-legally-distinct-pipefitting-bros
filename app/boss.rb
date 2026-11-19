@@ -127,67 +127,18 @@ class Game
   def update_shots
     player = @player
     @shots.each do |shot|
-      shot[:t] += 1
-      case shot[:k]
-      when :wave
-        shot[:x] += shot[:vx]
-        shot[:dead] = true if shot[:x] < @arena_column * TILE || shot[:x] > @level.width
-      when :glob
-        shot[:vy] -= 0.5
-        shot[:x] += shot[:vx]
-        shot[:y] += shot[:vy]
-        if shot[:y] <= 128 || SOLID[@level.cell(@level.column_at(shot[:x] + 16), @level.row_at(shot[:y]))]
-          shot[:dead] = true
-          puff(shot[:x] + 16, shot[:y])
-        end
-      when :bolt
-        next if shot[:t] < BOLT_WARNING
-        shot[:vy] -= 0.506   # 0.9, then 25% slower twice
-        shot[:y] += shot[:vy]
-        if shot[:y] <= 128
-          shot[:dead] = true
-          puff(shot[:x] + 16, 128)
-          @sound.play(:bump)
-        end
-      end
-      next if shot[:dead] || (shot[:k] == :bolt && shot[:t] < BOLT_WARNING)
-      hurt if playing? && rect_hit?(player, shot[:x] + 4, shot[:y], shot[:w] - 8, shot[:h] - 4)
-      if @wrench && shot[:k] == :glob && overlap?(@wrench, Actor.new(:x, shot[:x], shot[:y], shot[:w], shot[:h]))
-        shot[:dead] = true
-        puff(shot[:x] + 16, shot[:y] + 16)
-      end
+      shot.update(self)
+      next unless shot.harmful?
+      hurt if playing? && rect_hit?(player, shot.x + 4, shot.y, shot.w - 8, shot.h - 4)
+      shot.burst(self, 16) if @wrench && shot.is_a?(RustGlob) && overlap?(@wrench, shot)
     end
-    @shots.reject! { |shot| shot[:dead] }
+    @shots.reject!(&:gone?)
   end
 
   def draw_boss(camera_x)
     boss = @boss
     return unless boss
-    @shots.each do |shot|
-      x = shot[:x].to_i - camera_x
-      case shot[:k]
-      when :wave
-        3.times do |i|
-          h = 36 - i * 10 + ((shot[:t] / 3 + i) % 2) * 6
-          @screen.rect(x + i * 12 - (shot[:vx] > 0 ? 0 : 12), 128, 16, h, STEAM, 220 - i * 50)
-        end
-      when :glob then @screen.sprite('sprites/shots.png', x, shot[:y].to_i, 32, 32, FRAMES[:glob])
-      when :bolt
-        if shot[:t] < BOLT_WARNING
-          # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
-          k = shot[:t] < 0 ? 0 : shot[:t]
-          flash = (k / 4).even?
-          w = 32 + (k * 48 / BOLT_WARNING)
-          cx = x + 16
-          @screen.rect(cx - 16, 128, 32, 592, WARNING_RED, flash ? 80 : 45) if k > 0
-          @screen.rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? WARNING_YELLOW : WARNING_RED, 255)
-          @screen.rect(cx - w / 2, 130, w, 14, BLACK, 235)
-          @screen.label(cx, 236, '!', 6, flash ? WARNING_YELLOW : WARNING_RED, true) if k > 0
-        else
-          @screen.sprite('sprites/shots.png', x - 8, shot[:y].to_i, 48, 48, FRAMES[:bolt])
-        end
-      end
-    end
+    @shots.each { |shot| shot.draw(@screen, camera_x) }
     boss.draw(@screen, camera_x)
   end
 
@@ -395,8 +346,8 @@ class Boss < Actor
       waves = angry ? 2 : 1
       waves.times do |i|
         [-1, 1].each do |side|
-          @game.shots << { k: :wave, x: @x + @w / 2 - 20 + side * 50, y: @y, w: 40, h: 36,
-                           vx: side * (6.0 + i * 2.5) * speed, vy: 0.0, t: 0 }
+          @game.shots << SteamWave.new(@x + @w / 2 - 20 + side * 50, @y, side * (6.0 + i * 2.5) * speed,
+                                       @arena_column * TILE, @level.width)
         end
       end
       idle(60)
@@ -411,8 +362,7 @@ class Boss < Actor
       sound.play(:spit)
       dx = (@game.player.x - @x).to_f
       t_air = 50.0
-      @game.shots << { k: :glob, x: @x + @w / 2 - 16, y: @y + 70, w: 32, h: 32,
-                       vx: dx / t_air + (@t - 38) * 0.08, vy: 12.0, t: 0 }
+      @game.shots << RustGlob.new(@x + @w / 2 - 16, @y + 70, dx / t_air + (@t - 38) * 0.08)
     end
     idle(50) if @t > 30 + n * 14
   end
@@ -462,7 +412,7 @@ class Boss < Actor
       count.times do |i|
         c = @arena_column + 2 + rand_below(16)
         c = @level.column_at(@game.player.x + @game.player.w / 2) if i == 0
-        @game.shots << { k: :bolt, x: c * TILE + 16, y: 700.0, w: 32, h: 40, vx: 0.0, vy: 0.0, t: -i * 12 }
+        @game.shots << Bolt.new(c * TILE + 16, -i * 12)   # staggered
       end
     end
     idle(40) if @t > 60
@@ -492,5 +442,113 @@ class Boss < Actor
       end
       @vx = 0.0
     end
+  end
+end
+
+# Rusty's shots. Each moves itself one step in `update(game)`, and is
+# `harmful?` while it can hurt the player (Game#update_shots checks that).
+class Shot
+  attr_reader :x, :y, :w, :h, :vx, :vy, :t
+
+  def initialize(x, y, w, h, vx, vy, t)
+    @x = x
+    @y = y
+    @w = w
+    @h = h
+    @vx = vx
+    @vy = vy
+    @t = t
+    @gone = false
+  end
+
+  def gone? = @gone
+  def harmful? = !@gone
+end
+
+# GROUND POUND: a steam wave running along the floor until it leaves the arena
+class SteamWave < Shot
+  def initialize(x, y, vx, left, right)
+    super(x, y, 40, 36, vx, 0.0, 0)
+    @left = left
+    @right = right
+  end
+
+  def update(_game)
+    @t += 1
+    @x += @vx
+    @gone = true if @x < @left || @x > @right
+  end
+
+  def draw(screen, camera_x)
+    x = @x.to_i - camera_x
+    3.times do |i|
+      h = 36 - i * 10 + ((@t / 3 + i) % 2) * 6
+      screen.rect(x + i * 12 - (@vx > 0 ? 0 : 12), Boss::FLOOR, 16, h, STEAM, 220 - i * 50)
+    end
+  end
+end
+
+# RUST SPIT: a lobbed glob that bursts on the floor, a solid tile or the wrench
+class RustGlob < Shot
+  GRAVITY = 0.5
+
+  def initialize(x, y, vx)
+    super(x, y, 32, 32, vx, 12.0, 0)
+  end
+
+  def update(game)
+    @t += 1
+    @vy -= GRAVITY
+    @x += @vx
+    @y += @vy
+    level = game.level
+    burst(game, 0) if @y <= Boss::FLOOR || SOLID[level.cell(level.column_at(@x + 16), level.row_at(@y))]
+  end
+
+  def burst(game, dy)
+    @gone = true
+    game.puff(@x + 16, @y + dy)
+  end
+
+  def draw(screen, camera_x)
+    screen.sprite('sprites/shots.png', @x.to_i - camera_x, @y.to_i, 32, 32, FRAMES[:glob])
+  end
+end
+
+# BOLT STORM: a shadow marks the spot for BOLT_WARNING steps (counting up
+# from t, which starts negative to stagger them), then the bolt drops
+class Bolt < Shot
+  GRAVITY = 0.506   # 0.9, then 25% slower twice
+
+  def initialize(x, t)
+    super(x, 700.0, 32, 40, 0.0, 0.0, t)
+  end
+
+  def falling? = @t >= BOLT_WARNING
+  def harmful? = !@gone && falling?
+
+  def update(game)
+    @t += 1
+    return unless falling?
+    @vy -= GRAVITY
+    @y += @vy
+    return if @y > Boss::FLOOR
+    @gone = true
+    game.puff(@x + 16, Boss::FLOOR)
+    game.sound.play(:bump)
+  end
+
+  def draw(screen, camera_x)
+    x = @x.to_i - camera_x
+    return screen.sprite('sprites/shots.png', x - 8, @y.to_i, 48, 48, FRAMES[:bolt]) if falling?
+    # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
+    k = @t < 0 ? 0 : @t
+    flash = (k / 4).even?
+    w = 32 + (k * 48 / BOLT_WARNING)
+    cx = x + 16
+    screen.rect(cx - 16, Boss::FLOOR, 32, 592, WARNING_RED, flash ? 80 : 45) if k > 0
+    screen.rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? WARNING_YELLOW : WARNING_RED, 255)
+    screen.rect(cx - w / 2, 130, w, 14, BLACK, 235)
+    screen.label(cx, 236, '!', 6, flash ? WARNING_YELLOW : WARNING_RED, true) if k > 0
   end
 end

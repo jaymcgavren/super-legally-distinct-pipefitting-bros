@@ -104,15 +104,15 @@ s.set(:banner, 0)
 b = s.iv(:boss); b.state = :bolts; b.t = 0; s.set(:shots, [])
 s.p.invuln = 999
 s.step([], 1)
-bolts = s.iv(:shots).select { |sh| sh[:k] == :bolt }
+bolts = s.iv(:shots).select { |sh| sh.is_a?(Bolt) }
 check 'bolt storm drops 3 bolts', bolts.size == 3
-s.step([], 1) until bolts[0][:t] >= BOLT_WARNING - 1
-check 'bolt shadow warns for BOLT_WARNING frames', bolts[0][:y] == 700.0 && BOLT_WARNING > 40
+s.step([], 1) until bolts[0].t >= BOLT_WARNING - 1
+check 'bolt shadow warns for BOLT_WARNING frames', bolts[0].y == 700.0 && BOLT_WARNING > 40
 s.step([], 2)
-v1 = bolts[0][:vy]; s.step([], 1)
-check 'bolts fall 25% slower', (bolts[0][:vy] - v1 + 0.506).abs < 0.001
+v1 = bolts[0].vy; s.step([], 1)
+check 'bolts fall 25% slower', (bolts[0].vy - v1 + 0.506).abs < 0.001
 b.angry = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
-check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh[:k] == :bolt } == 5
+check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh.is_a?(Bolt) } == 5
 
 # wrench at the boss valve from the right side
 s = Sim.new.start(d_levels[0])
