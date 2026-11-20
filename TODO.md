@@ -871,3 +871,15 @@ paths, anything the next session needs.)
   Next: `t` timers (Actor, Shot, Popup, Firework, twinkle), then ask the
   user about the maths shorthand (c/r, w/h, vx/vy, dx/dy, cx/cy, i/j/k/n)
   and `bro`/`BROS`, `max`/`min` in constant names, pad3/pad6.
+- 2026-11-19: abbreviations, part 2: the one-letter `t` timers are
+  `timer` (Actor's attribute and everything built on it: enemies, items,
+  the wrench and Big Rusty's move steps; Shot and its subclasses; the
+  Popup and Firework Struct members; the ending's twinkle hash key).
+  Boss's `t_air` local is `air_time`. In tools, `t` meant other things:
+  sim.rb's render-target hash is `@targets` (scenario 04 reads it) and
+  mockup.rb's label is `text`. Scenario 02 sets `b.timer`.
+  Checked: tests ALL PASS (185, info lines unchanged), boss trace
+  (70,180) and ending trace same as HEAD, reach and bot same, shots ALL
+  SAME, rubocop 0 offenses.
+  Still open: the maths shorthand and the others listed in part 1,
+  waiting for the user's answer.

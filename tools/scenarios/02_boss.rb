@@ -103,17 +103,17 @@ s = Sim.new.start(d_levels[6])
 ac = s.iv(:arena_column)
 s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
-b = s.iv(:boss); b.state = :bolts; b.t = 0; s.set(:shots, [])
+b = s.iv(:boss); b.state = :bolts; b.timer = 0; s.set(:shots, [])
 s.p.invulnerable = 999
 s.step([], 1)
 bolts = s.iv(:shots).grep(Bolt)
 check 'bolt storm drops 3 bolts', bolts.size == 3
-s.step([], 1) until bolts[0].t >= BOLT_WARNING - 1
+s.step([], 1) until bolts[0].timer >= BOLT_WARNING - 1
 check 'bolt shadow warns for BOLT_WARNING frames', bolts[0].y == 700.0 && BOLT_WARNING > 40 # rubocop:disable Lint/FloatComparison -- not moved yet
 s.step([], 2)
 v1 = bolts[0].vy; s.step([], 1)
 check 'bolts fall 25% slower', (bolts[0].vy - v1 + 0.506).abs < 0.001
-b.angry = true; b.state = :bolts; b.t = 0; s.set(:shots, []); s.step([], 1)
+b.angry = true; b.state = :bolts; b.timer = 0; s.set(:shots, []); s.step([], 1)
 check 'angry bolt storm drops 5 bolts', s.iv(:shots).count { |sh| sh.is_a?(Bolt) } == 5
 
 # wrench at the boss valve from the right side
@@ -135,7 +135,7 @@ check 'wrench clears the boss valve from the right', cleared
   ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.set(:banner, 0)
-  b = s.iv(:boss); b.state = :wait; b.t = 0; b.invulnerable = 0
+  b = s.iv(:boss); b.state = :wait; b.timer = 0; b.invulnerable = 0
   b.y = 128.0; b.vy = 13.0; b.x = s.p.x + 200
   hp = b.hp
   s.p.powered = true; s.p.invulnerable = 0
@@ -151,7 +151,7 @@ end
   ac = s.iv(:arena_column)
   s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
   s.set(:banner, 0)
-  b = s.iv(:boss); b.state = :wait; b.t = 0; b.invulnerable = 0
+  b = s.iv(:boss); b.state = :wait; b.timer = 0; b.invulnerable = 0
   b.x = s.p.x + 200; b.y = 128.0 + above * 60; b.vy = bvy
   hp = b.hp
   s.p.powered = true; s.p.invulnerable = 0

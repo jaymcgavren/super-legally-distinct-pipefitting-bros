@@ -44,7 +44,7 @@ class Enemy < Actor
       @active = true
       @vx = -self.class::SPEED
     end
-    @t += 1
+    @timer += 1
     if dead?
       @vy -= KNOCKED_GRAVITY
       @x += @vx
@@ -110,7 +110,7 @@ class Blob < Enemy
   end
 
   def draw(screen, x)
-    source = flat? ? FRAMES[:blob_flat] : frame(:blob, (@t / 10) % 2)
+    source = flat? ? FRAMES[:blob_flat] : frame(:blob, (@timer / 10) % 2)
     screen.sprite('sprites/enemies.png', x - OFFSET, @y.to_i, TILE, 48, source, flip: @vx > 0, flip_v: dead?)
   end
 
@@ -153,15 +153,15 @@ class Crab < Enemy
   def stomp_points(points) = points * 2
 
   def draw(screen, x)
-    source = @spiky ? frame(:crab_spin, (@t / 4) % 2) : frame(:crab, (@t / 12) % 2)
-    alpha = @warning && (@t / 3).even? ? 110 : 255
+    source = @spiky ? frame(:crab_spin, (@timer / 4) % 2) : frame(:crab, (@timer / 12) % 2)
+    alpha = @warning && (@timer / 3).even? ? 110 : 255
     screen.sprite('sprites/enemies.png', x - OFFSET, @y.to_i, TILE, 48, source, alpha: alpha, flip_v: dead?)
   end
 
   private
 
   def pace
-    k = (@t + @cycle) % CYCLE
+    k = (@timer + @cycle) % CYCLE
     @spiky = k >= SPIN
     @warning = k >= WARN && k < SPIN
     @spiky ? SPIN_SPEED : SPEED

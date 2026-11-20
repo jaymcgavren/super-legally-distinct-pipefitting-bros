@@ -69,7 +69,7 @@ class Game
     @camera.settle
     boss.update
     if boss.dead?
-      reveal_valve if boss.t == 120
+      reveal_valve if boss.timer == 120
     else
       boss_vs_player
     end
@@ -235,14 +235,14 @@ class Boss < Actor
     @invulnerable = HIT_INVULNERABLE
     return if @hp > 0
     @state = :dead
-    @t = 0
+    @timer = 0
     @vy = 14.0
   end
 
   # one step of the fight
   def update
     @invulnerable -= 1 if @invulnerable > 0
-    @t += 1
+    @timer += 1
     if dead?
       @vy -= 0.6
       @y += @vy
@@ -263,15 +263,15 @@ class Boss < Actor
     return if invulnerable? && (@invulnerable / 3).even? && !dead?
     source = case @state
              when :dead, :stunned then FRAMES[:rusty_hurt]
-             when :pound then FRAMES[@t < 20 ? :rusty_crouch : :rusty_air]
+             when :pound then FRAMES[@timer < 20 ? :rusty_crouch : :rusty_air]
              when :hop then FRAMES[@on_ground ? :rusty_crouch : :rusty_air]
              when :spit, :summon then FRAMES[:rusty_mouth]
-             when :charge then FRAMES[@t < 45 ? :rusty_crouch : :rusty_angry]
-             else @angry ? FRAMES[:rusty_angry] : frame(:rusty_walk, (@t / 12) % 2)
+             when :charge then FRAMES[@timer < 45 ? :rusty_crouch : :rusty_angry]
+             else @angry ? FRAMES[:rusty_angry] : frame(:rusty_walk, (@timer / 12) % 2)
              end
     source = FRAMES[:rusty_hurt] if invulnerable? && !dead?
     x = @x.to_i - camera_x - 8
-    shake = @state == :charge && @t < 45 ? ((@t / 2) % 2) * 8 - 4 : 0
+    shake = @state == :charge && @timer < 45 ? ((@timer / 2) % 2) * 8 - 4 : 0
     screen.sprite('sprites/rusty.png', x + shake, @y.to_i, 128, 112, source, flip: @facing > 0, alpha: 255, flip_v: dead?)
     return unless spiky? || (@warn_spiky > 0 && (@warn_spiky / 4).even?)
     screen.sprite('sprites/rusty.png', x + shake, @y.to_i + 24, 128, 112, FRAMES[:rusty_crown])
@@ -291,7 +291,7 @@ class Boss < Actor
   # back to walking, with a cooldown before the next move
   def idle(cooldown)
     @state = :walk
-    @t = 0
+    @timer = 0
     @cooldown = @angry ? cooldown / 2 : cooldown
   end
 
@@ -304,7 +304,7 @@ class Boss < Actor
     move = :hop if move == :summon && @game.enemies.count { |enemy| enemy.minion && enemy.walking? } >= 2
     move = :hop if move == :spikes && spiky?
     @state = move
-    @t = 0
+    @timer = 0
   end
 
   # SHORT FUSE: at half health he fumes, and moves faster from then on
@@ -333,10 +333,10 @@ class Boss < Actor
   # a short hop toward the player
   def hop(direction, angry)
     speed = pace(angry)
-    if @t == 1
+    if @timer == 1
       @vy = 13.0
       @vx = direction * 3.0 * speed
-    elsif @on_ground && @t > 3
+    elsif @on_ground && @timer > 3
       idle(50)
     end
   end
@@ -344,15 +344,15 @@ class Boss < Actor
   # crouch, leap at the player, and land sending steam waves along the floor
   def ground_pound(_direction, angry)
     speed = pace(angry)
-    if @t < 20
+    if @timer < 20
       @vx = 0.0   # crouch
-    elsif @t == 20
+    elsif @timer == 20
       @vy = 21.0
       @airborne = true
       @vx = ((@game.player.x - @x) / 42.0).to_f
       @vx = 7.0 if @vx > 7
       @vx = -7.0 if @vx < -7
-    elsif @on_ground && @airborne && @t > 22
+    elsif @on_ground && @airborne && @timer > 22
       @airborne = false
       @vx = 0.0
       @game.camera.shake(20)
@@ -372,55 +372,55 @@ class Boss < Actor
   def rust_spit(_direction, angry)
     @vx = 0.0
     n = angry ? 3 : 1 + (@encounter >= 6 ? 1 : 0)
-    if @t == 24 || (n > 1 && @t == 38) || (n > 2 && @t == 52)
+    if @timer == 24 || (n > 1 && @timer == 38) || (n > 2 && @timer == 52)
       sound.play(:spit)
       dx = (@game.player.x - @x).to_f
-      t_air = 50.0
-      @game.shots << RustGlob.new(@x + @w / 2 - 16, @y + 70, dx / t_air + (@t - 38) * 0.08)
+      air_time = 50.0
+      @game.shots << RustGlob.new(@x + @w / 2 - 16, @y + 70, dx / air_time + (@timer - 38) * 0.08)
     end
-    idle(50) if @t > 30 + n * 14
+    idle(50) if @timer > 30 + n * 14
   end
 
   # coughs up a minion Blob
   def blob_belch(direction, _angry)
     @vx = 0.0
-    if @t == 30
+    if @timer == 30
       sound.play(:appear)
       @game.enemies << Blob.minion(@x + @w / 2 - 24, @y + 60, direction)
     end
-    idle(60) if @t > 50
+    idle(60) if @timer > 50
   end
 
   # shakes, then charges until he hits a wall (and is stunned)
   def bull_charge(direction, angry)
     speed = pace(angry)
-    if @t < 45
+    if @timer < 45
       @vx = 0.0
-      @facing = direction if @t == 1
-      sound.play(:warn) if @t == 1
+      @facing = direction if @timer == 1
+      sound.play(:warn) if @timer == 1
     else
       @vx = @facing * 9.0 * speed
-      idle(30) if @t > 240
+      idle(30) if @timer > 240
     end
   end
 
   # stunned after charging into a wall
   def reel(_direction, _angry)
     @vx = 0.0
-    idle(40) if @t > 70
+    idle(40) if @timer > 70
   end
 
   # warns, then grows a spiked crown: no stomping for a while
   def spiked_crown(_direction, _angry)
     @vx = 0.0
-    @warn_spiky = 40 if @t == 1
-    idle(30) if @t > 40
+    @warn_spiky = 40 if @timer == 1
+    idle(30) if @timer > 40
   end
 
   # bolts drop on shadows, the first one on the player
   def bolt_storm(_direction, angry)
     @vx = 0.0
-    if @t == 1
+    if @timer == 1
       sound.play(:warn)
       count = angry ? 5 : 3
       count.times do |i|
@@ -429,7 +429,7 @@ class Boss < Actor
         @game.shots << Bolt.new(c * TILE + 16, -i * 12)   # staggered
       end
     end
-    idle(40) if @t > 60
+    idle(40) if @timer > 60
   end
 
   # gravity, the arena floor and walls; a charge into a wall stuns him
@@ -452,7 +452,7 @@ class Boss < Actor
       @game.camera.shake(16)
       sound.play(:pound)
       @state = :stunned
-      @t = 0
+      @timer = 0
     end
     @vx = 0.0
   end
@@ -461,16 +461,16 @@ end
 # Rusty's shots. Each moves itself one step in `update(game)`, and is
 # `harmful?` while it can hurt the player (Game#update_shots checks that).
 class Shot
-  attr_reader :x, :y, :w, :h, :vx, :vy, :t
+  attr_reader :x, :y, :w, :h, :vx, :vy, :timer
 
-  def initialize(x, y, w, h, vx, vy, t)
+  def initialize(x, y, w, h, vx, vy, timer)
     @x = x
     @y = y
     @w = w
     @h = h
     @vx = vx
     @vy = vy
-    @t = t
+    @timer = timer
     @gone = false
   end
 
@@ -487,7 +487,7 @@ class SteamWave < Shot
   end
 
   def update(_game)
-    @t += 1
+    @timer += 1
     @x += @vx
     @gone = true if @x < @left || @x > @right
   end
@@ -495,7 +495,7 @@ class SteamWave < Shot
   def draw(screen, camera_x)
     x = @x.to_i - camera_x
     3.times do |i|
-      h = 36 - i * 10 + ((@t / 3 + i) % 2) * 6
+      h = 36 - i * 10 + ((@timer / 3 + i) % 2) * 6
       screen.rect(x + i * 12 - (@vx > 0 ? 0 : 12), Boss::FLOOR, 16, h, STEAM, 220 - i * 50)
     end
   end
@@ -510,7 +510,7 @@ class RustGlob < Shot
   end
 
   def update(game)
-    @t += 1
+    @timer += 1
     @vy -= GRAVITY
     @x += @vx
     @y += @vy
@@ -533,15 +533,15 @@ end
 class Bolt < Shot
   GRAVITY = 0.506   # 0.9, then 25% slower twice
 
-  def initialize(x, t)
-    super(x, 700.0, 32, 40, 0.0, 0.0, t)
+  def initialize(x, timer)
+    super(x, 700.0, 32, 40, 0.0, 0.0, timer)
   end
 
-  def falling? = @t >= BOLT_WARNING
+  def falling? = @timer >= BOLT_WARNING
   def harmful? = !@gone && falling?
 
   def update(game)
-    @t += 1
+    @timer += 1
     return unless falling?
     @vy -= GRAVITY
     @y += @vy
@@ -555,7 +555,7 @@ class Bolt < Shot
     x = @x.to_i - camera_x
     return screen.sprite('sprites/shots.png', x - 8, @y.to_i, 48, 48, FRAMES[:bolt]) if falling?
     # a growing black shadow ringed by a flashing red/yellow marker, under a warning beam
-    k = @t < 0 ? 0 : @t
+    k = @timer < 0 ? 0 : @timer
     flash = (k / 4).even?
     w = 32 + (k * 48 / BOLT_WARNING)
     cx = x + 16

@@ -113,7 +113,7 @@ def tick(args)
   # HUD bar
   bar args, 0, 0, 160, 16, :hud
   hud = [[24, 'DEZ  004300'], [400, 'NUTS x12'], [700, 'JOBSITE 1-A'], [1050, 'SHIFT 287']]
-  hud.each do |x, t|
-    args.outputs.labels << { x: x, y: 704, text: t, size_px: 4, r: 236, g: 212, b: 64 }
+  hud.each do |x, text|
+    args.outputs.labels << { x: x, y: 704, text: text, size_px: 4, r: 236, g: 212, b: 64 }
   end
 end

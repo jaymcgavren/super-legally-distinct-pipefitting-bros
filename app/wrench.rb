@@ -24,7 +24,7 @@ class Wrench < Actor
 
   def back? = @back
   def caught? = gone?
-  def expired? = @t > LIFETIME
+  def expired? = @timer > LIFETIME
   def heading = @vx > 0 ? 1 : -1
 
   def turn_back
@@ -37,13 +37,13 @@ class Wrench < Actor
     @vy = 7.0
     @back = true
     @bounce = BOUNCE_STEPS
-    @t = 0
+    @timer = 0
   end
 
   # One step. Returns true when it's in free flight and can hit things;
   # `caught?` once it's back in the player's hand.
   def update(player)
-    @t += 1
+    @timer += 1
     if @bounce > 0
       @bounce -= 1
       @vy -= BOUNCE_GRAVITY
@@ -73,7 +73,7 @@ class Wrench < Actor
 
   # mirroring reverses the spin for left throws
   def draw(screen, camera_x)
-    spin_frame = (@t / 2) % SPIN_FRAMES
+    spin_frame = (@timer / 2) % SPIN_FRAMES
     screen.sprite('sprites/wrench.png', @x.to_i - camera_x - 4, @y.to_i - 14, 48, 48, frame(:wrench_spin, spin_frame),
                   flip: @facing < 0)
   end

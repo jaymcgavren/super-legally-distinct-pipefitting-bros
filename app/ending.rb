@@ -66,7 +66,7 @@ class Ending < Scene
     elsif elapsed > END_BURST
       ease_rise
     end
-    @twinkle[:t] += 1 if @twinkle
+    @twinkle[:timer] += 1 if @twinkle
     @steam.each(&:update)
     @steam.reject!(&:gone?)
     update_fireworks(elapsed) if elapsed >= END_FIRE
@@ -86,7 +86,7 @@ class Ending < Scene
     camera_x = @game.camera.x.to_i
     draw_steam(camera_x, rise, shake_x, shake_y)
     draw_flying_valve(elapsed, camera_x, rise, shake_x, shake_y) if @flying_valve
-    draw_twinkle(camera_x) if @twinkle && @twinkle[:t] < 40
+    draw_twinkle(camera_x) if @twinkle && @twinkle[:timer] < 40
     @fireworks.each { |firework| firework.draw(screen) }
     draw_falling_rusty(elapsed) if elapsed >= RUSTY_FALL
     draw_captions(elapsed)
@@ -154,7 +154,7 @@ class Ending < Scene
     else
       ease_rise
       if !@twinkle && valve[:y] - @rise > 720
-        @twinkle = { x: valve[:x] + 32, t: 0 }
+        @twinkle = { x: valve[:x] + 32, timer: 0 }
         sound.play(:appear)
       end
     end
@@ -227,7 +227,7 @@ class Ending < Scene
 
   # a cross-shaped flare where the valve left the top of the screen
   def draw_twinkle(camera_x)
-    k = @twinkle[:t]
+    k = @twinkle[:timer]
     flare = k < 20 ? k * 2 : (40 - k) * 2
     x = @twinkle[:x] - camera_x
     screen.rect(x - flare, 690, flare * 2 + 8, 8, TWINKLE)
@@ -296,17 +296,17 @@ class Ending < Scene
 end
 
 # A huge blocky burst: three rings of chunky squares racing outward.
-class Firework < Struct.new(:x, :y, :color, :t)
+class Firework < Struct.new(:x, :y, :color, :timer)
   LIFETIME = 72
 
   def update
-    self.t += 1
+    self.timer += 1
   end
 
-  def gone? = t > LIFETIME
+  def gone? = timer > LIFETIME
 
   def draw(screen)
-    age = t
+    age = timer
     star_color = color
     center_x = x
     center_y = y

@@ -13,7 +13,7 @@ end
 
 # (only one Sim can run at a time: each one replaces $game)
 check 'no render target during normal play', Sim.new.start(0).tap { |x| x.step([:right], 60) }
-                                                             .args.outputs.instance_variable_get(:@t).nil?
+                                                             .args.outputs.instance_variable_get(:@targets).nil?
 s = to_ending
 check 'ending starts at the last valve', s.mode == :ending
 check 'time bonus is paid at once', s.run.time == 0 && s.iv(:high_score).value == s.run.score && s.run.score > 0

@@ -13,15 +13,15 @@ class PopNut < Actor
   end
 
   def update(_world)
-    @t += 1
+    @timer += 1
     @vy -= 1.2
     @y += @vy
-    @state = :gone if @t > LIFETIME
+    @state = :gone if @timer > LIFETIME
     false
   end
 
   def draw(screen, camera_x, _frame)
-    screen.tile('sprites/items.png', @x.to_i - camera_x, @y.to_i, frame(:nut, (@t / 3) % 4))
+    screen.tile('sprites/items.png', @x.to_i - camera_x, @y.to_i, frame(:nut, (@timer / 3) % 4))
   end
 end
 
@@ -37,7 +37,7 @@ class RisingItem < Actor
   def rising? = @rise > 0
 
   def update(world)
-    @t += 1
+    @timer += 1
     if rising?
       @rise -= 2
       @y += 2

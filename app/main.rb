@@ -116,7 +116,7 @@ BROS = [
 BUMP_ARC = [0, 8, 13, 16, 14, 10, 6, 2].freeze
 
 class Actor
-  attr_accessor :kind, :x, :y, :w, :h, :vx, :vy, :on_ground, :state, :t, :facing,
+  attr_accessor :kind, :x, :y, :w, :h, :vx, :vy, :on_ground, :state, :timer, :facing,
                 :active, :data, :previous_y, :riding
 
   def initialize(kind, x, y, w, h)
@@ -129,7 +129,7 @@ class Actor
     @vy = 0.0
     @on_ground = false
     @state = :walk
-    @t = 0
+    @timer = 0
     @facing = -1
     @active = false
     @data = {}
