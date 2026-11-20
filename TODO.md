@@ -116,7 +116,7 @@ refactor step will break some of them. Update them in the same commit.
 - [ ] There is still a `Game` class split up among multiple files that are not
       named `game.rb`. There should be only one class per file, and that file
       should be named after the class.
-- [ ] Rename `Boss` to `Rusty`.
+- [x] Rename `Boss` to `Rusty`.
 - [ ] For the classes that were in `boss.rb`, namespace them under
       `Rusty`. E.g. `Shot` becomes `Rusty::Shot`.
 
@@ -900,3 +900,11 @@ paths, anything the next session needs.)
   SAME (real runtime, so the load order works in mruby), rubocop 0.
   Next, per the user's new items: Boss -> Rusty, with his shots as
   Rusty::Shot etc. in their own files; then the other multi-class files.
+- 2026-11-19: `Boss` is `Rusty`, in app/rusty.rb (was boss.rb; git mv,
+  so history follows). Only the class name changed: `@boss`, `boss_hit`,
+  `boss_level`, `BOSS_MOVES` and the like keep "boss", the role he plays,
+  and the next item moves his constants and shots into `Rusty::`.
+  AGENTS.md and the .rubocop.yml note now say rusty.rb.
+  Checked: tests ALL PASS (185, info lines unchanged), boss trace
+  (70,180) and ending trace same as HEAD, reach and bot same, shots ALL
+  SAME, rubocop 0.

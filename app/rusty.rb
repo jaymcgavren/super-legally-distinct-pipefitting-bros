@@ -1,12 +1,12 @@
 # BIG RUSTY -- the boss at the end of every level. Same boss each time;
 # encounter n knows every move from encounters 1..n, and move n is new.
 #
-# Boss is Rusty himself: his moves, gravity and the arena walls. Game
-# (game.rb) runs the fight around him: the warning and gate, his shots,
-# and what touching or hitting him does.
+# Rusty (the class) is Big Rusty himself: his moves, gravity and the arena
+# walls. Game (game.rb) runs the fight around him: the warning and gate,
+# his shots, and what touching or hitting him does.
 
 # The move table: encounter n knows moves 1..n, and move n is the new one
-# the banner names. [state, banner name, the Boss method that runs it]
+# the banner names. [state, banner name, the Rusty method that runs it]
 BOSS_MOVES = [
   [:hop,    'HOP',          :hop],
   [:pound,  'GROUND POUND', :ground_pound],
@@ -23,7 +23,7 @@ WARN_AHEAD   = 12       # the warning goes off this many tiles before the arena 
 BOSS_WIDTH   = 112
 BOSS_HEIGHT  = 104
 
-class Boss < Actor
+class Rusty < Actor
   FLOOR = 128          # the arena floor: Rusty ignores the girders
   ANGRY_SPEED = 1.5
   HIT_INVULNERABLE = 45   # frames of flashing after a hit
@@ -329,7 +329,7 @@ class SteamWave < Shot
     x = @x.to_i - camera_x
     3.times do |i|
       h = 36 - i * 10 + ((@timer / 3 + i) % 2) * 6
-      screen.rect(x + i * 12 - (@vx > 0 ? 0 : 12), Boss::FLOOR, 16, h, STEAM, 220 - i * 50)
+      screen.rect(x + i * 12 - (@vx > 0 ? 0 : 12), Rusty::FLOOR, 16, h, STEAM, 220 - i * 50)
     end
   end
 end
@@ -348,7 +348,7 @@ class RustGlob < Shot
     @x += @vx
     @y += @vy
     level = game.level
-    burst(game, 0) if @y <= Boss::FLOOR || SOLID[level.cell(level.column_at(@x + 16), level.row_at(@y))]
+    burst(game, 0) if @y <= Rusty::FLOOR || SOLID[level.cell(level.column_at(@x + 16), level.row_at(@y))]
   end
 
   def burst(game, dy)
@@ -378,9 +378,9 @@ class Bolt < Shot
     return unless falling?
     @vy -= GRAVITY
     @y += @vy
-    return if @y > Boss::FLOOR
+    return if @y > Rusty::FLOOR
     @gone = true
-    game.puff(@x + 16, Boss::FLOOR)
+    game.puff(@x + 16, Rusty::FLOOR)
     game.sound.play(:bump)
   end
 
@@ -392,7 +392,7 @@ class Bolt < Shot
     flash = (k / 4).even?
     w = 32 + (k * 48 / BOLT_WARNING)
     cx = x + 16
-    screen.rect(cx - 16, Boss::FLOOR, 32, 592, WARNING_RED, flash ? 80 : 45) if k > 0
+    screen.rect(cx - 16, Rusty::FLOOR, 32, 592, WARNING_RED, flash ? 80 : 45) if k > 0
     screen.rect(cx - w / 2 - 8, 124, w + 16, 26, flash ? WARNING_YELLOW : WARNING_RED, 255)
     screen.rect(cx - w / 2, 130, w, 14, BLACK, 235)
     screen.label(cx, 236, '!', 6, flash ? WARNING_YELLOW : WARNING_RED, true) if k > 0

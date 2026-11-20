@@ -815,7 +815,7 @@ class Game
   def boss_level = @level.data[:boss] || 1
 
   def spawn_boss(c, r, seed)
-    boss = Boss.new(self, c, r, seed)
+    boss = Rusty.new(self, c, r, seed)
     @boss = boss
     @boss_on = false
     @arena_column = boss.arena_column

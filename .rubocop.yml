@@ -98,7 +98,7 @@ Lint/AmbiguousOperatorPrecedence:
 Layout/EmptyLineAfterGuardClause:
   Enabled: false
 # Small helper classes live next to the class that uses them
-# (effects.rb, boss.rb's shots).
+# (effects.rb, rusty.rb's shots).
 Style/OneClassPerFile:
   Enabled: false
 # `update` on items, enemies and the wrench returns whether it can be

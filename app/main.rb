@@ -139,7 +139,7 @@ require 'app/scenes.rb'
 
 require 'app/game.rb'
 
-require 'app/boss.rb'
+require 'app/rusty.rb'
 require 'app/ending.rb'
 
 def tick(args)

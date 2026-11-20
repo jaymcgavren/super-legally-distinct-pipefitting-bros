@@ -203,7 +203,7 @@ helpers and the runtime's `tick` entry point. It `require`s the rest:
   `wrench.rb` and `effects.rb` are the entities.
 - `scenes.rb` has the game's modes as `Scene` subclasses: Title, Intro,
   Play, Paused, Dying, Clear and Final (game over or win).
-- `boss.rb` holds Big Rusty, his moves (the `BOSS_MOVES` table) and his
+- `rusty.rb` holds Big Rusty (class `Rusty`), his moves (the `BOSS_MOVES` table) and his
   shots.
 - `ending.rb` is the ending scene.
 
