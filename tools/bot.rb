@@ -2,7 +2,7 @@
 # it gets stuck or falls. Enemies are ignored (invulnerable) by default.
 require_relative 'sim'
 
-def bot(index, frames: 5000, invuln: true)
+def bot(index, frames: 5000, invulnerable: true)
   s = Sim.new.start(index)
   level = s.level
   jump_hold = 0; stuck = 0; lastx = 0; deaths = []
@@ -15,7 +15,7 @@ def bot(index, frames: 5000, invuln: true)
       next
     end
     p = s.p
-    p.invuln = 5 if invuln
+    p.invulnerable = 5 if invulnerable
     s.run.time = 300
     fx = p.x + p.w + 30
     wall = SOLID[level.cell(level.column_at(fx), level.row_at(p.y + 10))]

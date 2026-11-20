@@ -844,3 +844,30 @@ paths, anything the next session needs.)
   - benches, 5 runs each, HEAD vs new: level 1 0.737-0.751 vs
     0.736-0.755, arena 5 0.737-0.763 vs 0.736-0.765, arena 7
     0.393-0.401 vs 0.389-0.398.
+- 2026-11-19: abbreviations, part 1 (Miscellaneous item, still open).
+  Token-based renames (Ripper, so strings and comments are untouched),
+  with a clash check against names already in each file:
+  - Player: anim -> animation, invuln -> invulnerable (matches Boss),
+    throw_t -> throw_timer; Actor/Player/Boss prev_y -> previous_y.
+  - Constants: ACCEL_* -> ACCELERATION_*, HOME_ACCEL, SKID_DECEL,
+    OVERSPEED_DECEL -> *_DECELERATION, STEP_MS -> STEP_MILLISECONDS
+    (and frame_ms -> frame_milliseconds). The runtime's own
+    `gtk.delta_ms` keeps its name.
+  - Theme key bush_dk -> bush_dark; save_hiscore -> save_high_score;
+    level data key segs -> segments (gen-levels.rb too; regenerated
+    levels.rb is byte-identical).
+  - Locals: dir -> direction, prev -> previous_y, f -> friction /
+    spin_frame, wob -> wobble, hw -> half_width, sc -> scaled_shade,
+    col -> color, ms -> milliseconds, the ending valve's [:v] ->
+    [:speed], and Firework#draw's k/col/x0/y0/px/py -> age/star_color/
+    center_x/center_y/star_x/star_y.
+  - tools: bot.rb `invuln:` -> `invulnerable:`, sim.rb @prev/col,
+    scenario locals, mockup.rb bush_dk.
+  Kept as acronyms or API names: HP, HUD, RNG (`@rng`), 1UP (`:oneup`),
+  gtk, size_px, alignment_enum, delta_ms.
+  Checked: tests ALL PASS (185, info lines unchanged), boss trace
+  (70,180) and ending trace same as HEAD, reach and bot same, shots ALL
+  SAME, rubocop 0 offenses. Names only, so no bench.
+  Next: `t` timers (Actor, Shot, Popup, Firework, twinkle), then ask the
+  user about the maths shorthand (c/r, w/h, vx/vy, dx/dy, cx/cy, i/j/k/n)
+  and `bro`/`BROS`, `max`/`min` in constant names, pad3/pad6.

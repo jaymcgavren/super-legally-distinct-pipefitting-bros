@@ -26,14 +26,14 @@ class Enemy < Actor
 
   # Knocked out (by a wrench, a bumped tile or Rusty): flips and falls off
   # the screen.
-  def knock(dir)
+  def knock(direction)
     @state = :dead
     @vy = KNOCK_VY
-    @vx = dir * KNOCK_VX
+    @vx = direction * KNOCK_VX
   end
 
-  def stomp(dir)
-    knock(dir)
+  def stomp(direction)
+    knock(direction)
   end
 
   # One step. Returns true when this enemy is walking near the view, so it
@@ -89,10 +89,10 @@ class Blob < Enemy
   FLAT_TIME = 30   # steps a squashed blob stays before it vanishes
 
   # Big Rusty spits one out, already awake and moving
-  def self.minion(x, y, dir)
+  def self.minion(x, y, direction)
     blob = new(x, y)
     blob.active = true
-    blob.vx = dir * SPEED
+    blob.vx = direction * SPEED
     blob.vy = 8.0
     blob.minion = true
     blob
@@ -104,7 +104,7 @@ class Blob < Enemy
 
   def flat? = @state == :flat
 
-  def stomp(_dir)
+  def stomp(_direction)
     @state = :flat
     @flat_t = 1   # counted from the step it was squashed
   end

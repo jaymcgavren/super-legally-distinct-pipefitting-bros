@@ -56,26 +56,26 @@ module Physics
   # vertical move; lands on solids, one-way pipes and lifts. Returns the
   # list of [col, row] cells hit by the head (empty if none).
   def move_y(actor, use_lifts, corner_fix)
-    prev = actor.y
+    previous_y = actor.y
     actor.y += actor.vy
     actor.on_ground = false
     actor.riding = nil
     c0 = @level.column_at(actor.x + 0.01)
     c1 = @level.column_at(actor.x + actor.w - 0.01)
-    return head_hits(actor, prev, c0, c1, corner_fix) if actor.vy > 0
-    land_on_tiles(actor, prev, c0, c1)
-    land_on_lift(actor, prev) if use_lifts && !actor.on_ground
+    return head_hits(actor, previous_y, c0, c1, corner_fix) if actor.vy > 0
+    land_on_tiles(actor, previous_y, c0, c1)
+    land_on_lift(actor, previous_y) if use_lifts && !actor.on_ground
     []
   end
 
   # falling (or standing): stop on a solid tile, or on a one-way pipe if
   # the feet were above it before this step
-  def land_on_tiles(actor, prev, c0, c1)
+  def land_on_tiles(actor, previous_y, c0, c1)
     r = @level.row_at(actor.y)
     top = @level.tile_top(r)
     c0.upto(c1) do |c|
       tile = @level.cell(c, r)
-      next unless SOLID[tile] || (tile == '-' && prev >= top - 0.01)
+      next unless SOLID[tile] || (tile == '-' && previous_y >= top - 0.01)
       actor.y = top
       actor.vy = 0.0
       actor.on_ground = true
@@ -84,11 +84,11 @@ module Physics
   end
 
   # a lift catches feet that crossed its top this step (with some slack)
-  def land_on_lift(actor, prev)
+  def land_on_lift(actor, previous_y)
     @lifts.each do |lift|
       lift_top = lift.y + lift.h
       over = actor.x + actor.w > lift.x + 4 && actor.x < lift.x + lift.w - 4
-      next unless over && actor.y <= lift_top && prev >= lift_top - 14
+      next unless over && actor.y <= lift_top && previous_y >= lift_top - 14
       actor.y = lift_top
       actor.vy = 0.0
       actor.on_ground = true
@@ -99,7 +99,7 @@ module Physics
 
   # rising: the head stops under solid tiles (and hidden crates it started
   # below). Returns the [col, row] cells hit, or [] if it got past.
-  def head_hits(actor, prev, c0, c1, corner_fix)
+  def head_hits(actor, previous_y, c0, c1, corner_fix)
     r = @level.row_at(actor.y + actor.h)
     hits = []
     c0.upto(c1) do |c|
@@ -108,7 +108,7 @@ module Physics
     end
     return hits if hits.empty?
     # a hidden crate only blocks if the head started below it
-    hits = hits.select { |c| @level.cell(c, r) != 'I' || prev + actor.h <= @level.tile_bottom(r) + 0.01 }
+    hits = hits.select { |c| @level.cell(c, r) != 'I' || previous_y + actor.h <= @level.tile_bottom(r) + 0.01 }
     return hits if hits.empty?
     return [] if corner_fix && hits.size == 1 && slip_past_corner(actor, hits[0])
     actor.y = @level.tile_bottom(r) - actor.h

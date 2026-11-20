@@ -15,7 +15,7 @@ class Level
     rows = @data[:rows]
     unless rows
       rows = Array.new(ROWS) { '' }
-      @data[:segs].each { |segment| segment.each_with_index { |row, r| rows[r] += row } }
+      @data[:segments].each { |segment| segment.each_with_index { |row, r| rows[r] += row } }
     end
     @columns = rows[0].size
     @grid = rows.map(&:chars)

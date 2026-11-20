@@ -94,12 +94,12 @@ SOLID = { '#' => true, 'F' => true, '=' => true, 'C' => true, 'W' => true, 'M' =
 COMBO = [100, 200, 400, 800, 1000, 2000, 4000, 8000].freeze
 
 OUTDOOR_THEMES = {
-  day: { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dk: [24, 104, 24],
+  day: { sky: [[84, 138, 236]], cloud: [236, 236, 236], bush: [56, 156, 40], bush_dark: [24, 104, 24],
          tiles: 'sprites/tiles_day.png' },
   dusk: { sky: [[72, 0, 120], [120, 16, 136], [160, 40, 120], [200, 72, 88], [228, 112, 56], [240, 160, 72]],
-          cloud: [248, 184, 168], bush: [48, 100, 80], bush_dk: [28, 64, 52], tiles: 'sprites/tiles_dusk.png',
+          cloud: [248, 184, 168], bush: [48, 100, 80], bush_dark: [28, 64, 52], tiles: 'sprites/tiles_dusk.png',
           sun: true },
-  night: { sky: [[8, 12, 48]], cloud: [52, 60, 108], bush: [28, 84, 48], bush_dk: [12, 52, 28],
+  night: { sky: [[8, 12, 48]], cloud: [52, 60, 108], bush: [28, 84, 48], bush_dark: [12, 52, 28],
            tiles: 'sprites/tiles_night.png', stars: true }
 }.freeze
 INDOOR_TILES = { tiles: 'sprites/tiles_indoor.png', indoor: true }.freeze
@@ -117,7 +117,7 @@ BUMP_ARC = [0, 8, 13, 16, 14, 10, 6, 2].freeze
 
 class Actor
   attr_accessor :kind, :x, :y, :w, :h, :vx, :vy, :on_ground, :state, :t, :facing,
-                :active, :data, :prev_y, :riding
+                :active, :data, :previous_y, :riding
 
   def initialize(kind, x, y, w, h)
     @kind = kind
@@ -133,7 +133,7 @@ class Actor
     @facing = -1
     @active = false
     @data = {}
-    @prev_y = @y
+    @previous_y = @y
     @riding = nil
   end
 
@@ -212,7 +212,7 @@ class Game
   end
 
   # The game runs in fixed 60 Hz steps whatever the display's refresh rate.
-  STEP_MS = 1000.0 / 60
+  STEP_MILLISECONDS = 1000.0 / 60
   MAX_STEPS = 4      # catch-up limit per frame, so a long stall can't spiral
 
   # One host frame: run as many 60 Hz updates as the elapsed time calls for
@@ -223,14 +223,14 @@ class Game
     @screen.outputs = @args.outputs
     @sound.new_frame
     @controls.poll
-    @step_accumulator = (@step_accumulator || 0.0) + frame_ms
+    @step_accumulator = (@step_accumulator || 0.0) + frame_milliseconds
     n = 0
-    while @step_accumulator >= STEP_MS && n < MAX_STEPS
+    while @step_accumulator >= STEP_MILLISECONDS && n < MAX_STEPS
       update
-      @step_accumulator -= STEP_MS
+      @step_accumulator -= STEP_MILLISECONDS
       n += 1
     end
-    @step_accumulator = 0.0 if @step_accumulator >= STEP_MS   # too far behind: drop the backlog
+    @step_accumulator = 0.0 if @step_accumulator >= STEP_MILLISECONDS   # too far behind: drop the backlog
     draw
     @args.gtk.debug_score = @run.score
     @args.gtk.debug_aux = @player ? @player.x.to_i : 0
@@ -240,12 +240,12 @@ class Game
   # 60 Hz counts as exactly one step, so vsync jitter on a 60 Hz display
   # doesn't turn into the odd skipped or doubled update. A runtime without
   # args.gtk.delta_ms (stock wasmcart-mruby) gets one step per frame.
-  def frame_ms
+  def frame_milliseconds
     gtk = @args.gtk
-    return STEP_MS unless gtk.respond_to?(:delta_ms)
-    ms = gtk.delta_ms.to_f
-    return STEP_MS if (ms - STEP_MS).abs < 1.0
-    [[ms, 0.0].max, 250.0].min
+    return STEP_MILLISECONDS unless gtk.respond_to?(:delta_ms)
+    milliseconds = gtk.delta_ms.to_f
+    return STEP_MILLISECONDS if (milliseconds - STEP_MILLISECONDS).abs < 1.0
+    [[milliseconds, 0.0].max, 250.0].min
   end
 
   def update
@@ -387,8 +387,8 @@ class Game
   # input, gravity and collision for one step
   def move_player(player)
     player.ride_lift
-    dir = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
-    skidding = player.apply_input(dir, @controls.run_held?)
+    direction = (@controls.right? ? 1 : 0) - (@controls.left? ? 1 : 0)
+    skidding = player.apply_input(direction, @controls.run_held?)
     dust(player.x + player.w / 2, player.y) if skidding && @frame % 4 == 0
     @sound.play(:jump) if player.jump(@controls.jump_pressed?)
     player.apply_gravity(@controls.jump_held?)
@@ -522,7 +522,7 @@ class Game
     return if player.invulnerable? || !playing?
     if player.powered
       player.powered = false
-      player.invuln = 120
+      player.invulnerable = 120
       @sound.play(:hurt)
     else
       die
@@ -572,24 +572,24 @@ class Game
   def start_ending
     switch_to(Ending.new(self))
     @run.bank_time
-    save_hiscore
+    save_high_score
     @sound.stop_music
   end
 
   # game over, or every level done
   def finish(kind)
     switch_to(Final.new(self, kind))
-    save_hiscore
+    save_high_score
     @sound.music(kind == :gameover ? :gameover : :clear, looping: false)
   end
 
-  def save_hiscore
+  def save_high_score
     @high_score.submit(@run.score)
   end
 
   # ── enemies ───────────────────────────────────────────────────────
-  def knock(enemy, dir)
-    enemy.knock(dir)
+  def knock(enemy, direction)
+    enemy.knock(direction)
     @sound.play(:kick)
   end
 
@@ -600,7 +600,7 @@ class Game
       next unless enemy.update(self, @level, camera_x, @enemies)
       next unless playing? && overlap?(player, enemy)
       # full box for stomps, a smaller one for getting hurt (forgiving)
-      if player.vy < 0 && player.prev_y >= enemy.y + enemy.h * 0.4 && !enemy.spiky?
+      if player.vy < 0 && player.previous_y >= enemy.y + enemy.h * 0.4 && !enemy.spiky?
         stomp(enemy)
       elsif rect_hit?(player, enemy.x + 8, enemy.y, enemy.w - 16, enemy.h - 8)
         hurt
@@ -721,7 +721,7 @@ class Game
     draw_stars_and_moon(outputs) if theme[:stars]
     SUN_ROWS.each { |r| outputs.solids << r } if theme[:sun]
     draw_clouds(outputs, theme[:cloud])
-    draw_trees(outputs, theme[:bush], theme[:bush_dk], floor)
+    draw_trees(outputs, theme[:bush], theme[:bush_dark], floor)
     # indoors, the dark below the floor
     outputs.solids << [0, 0, VIEW_WIDTH, 128, 0, 0, 0] if theme[:indoor]
   end
@@ -802,16 +802,16 @@ class Game
       y = cy - r + n * 8
       dy = y + 4 - cy
       next if dy < 0 && SUN_GAPS.include?(-dy / 8)
-      hw = (Math.sqrt([r * r - dy * dy, 0].max) / 8).floor * 8
-      next if hw <= 0
+      half_width = (Math.sqrt([r * r - dy * dy, 0].max) / 8).floor * 8
+      next if half_width <= 0
       shade = ((1 - (dy + r) / (2.0 * r)) * 8).floor / 7.0
-      sc = shade * (SUN_RAMP.size - 1)
-      i = [sc.floor, SUN_RAMP.size - 2].min
+      scaled_shade = shade * (SUN_RAMP.size - 1)
+      i = [scaled_shade.floor, SUN_RAMP.size - 2].min
       from = SUN_RAMP[i]
       to = SUN_RAMP[i + 1]
-      k = sc - i
-      col = (0..2).map { |j| (from[j] + (to[j] - from[j]) * k).round }
-      rows << [cx - hw, y, hw * 2, 8, col[0], col[1], col[2]]
+      k = scaled_shade - i
+      color = (0..2).map { |j| (from[j] + (to[j] - from[j]) * k).round }
+      rows << [cx - half_width, y, half_width * 2, 8, color[0], color[1], color[2]]
     end
     rows
   end.freeze
@@ -935,16 +935,16 @@ class Game
 
   def draw_player
     player = @player
-    return if player.invulnerable? && (player.invuln / 3).even? && playing?
+    return if player.invulnerable? && (player.invulnerable / 3).even? && playing?
     camera_x = @camera.x.to_i
     pose = if mode == :dying then :bro_die
-           elsif player.throw_t > 0 then :bro_throw
+           elsif player.throw_timer > 0 then :bro_throw
            elsif !player.on_ground then :bro_jump
            elsif player.skid then :bro_skid
            elsif player.vx.abs > 0.3 then :bro_run
            else :bro_stand
            end
-    run_frame = pose == :bro_run ? [0, 1, 2, 1][player.anim.to_i % 4] : 0
+    run_frame = pose == :bro_run ? [0, 1, 2, 1][player.animation.to_i % 4] : 0
     flip = pose == :bro_skid ? player.facing > 0 : player.facing < 0
     flip = false if pose == :bro_die
     x = player.x.to_i - camera_x - 12

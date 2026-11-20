@@ -1,7 +1,7 @@
 # spawn a lone active blob on the start segment's open floor
-def lone_blob(s, col)
+def lone_blob(s, column)
   s.iv(:enemies).clear
-  e = Blob.new(col * TILE + 8, s.level.tile_bottom(7))
+  e = Blob.new(column * TILE + 8, s.level.tile_bottom(7))
   e.active = true; e.vx = -1.0
   s.iv(:enemies) << e
   e
@@ -50,10 +50,10 @@ s = Sim.new.start(0)
 e = s.iv(:enemies).find { |en| en.is_a?(Blob) }
 s.p.x = e.x; s.p.y = e.y + e.h + 8; s.p.vy = -2.0; s.snap
 s.iv(:enemies).each { |en| en.active = true }
-sc = s.run.score
+score_before = s.run.score
 s.step([], 6)
 check 'stomp flattens blob', e.state == :flat || e.state == :gone
-check 'stomp scores', s.run.score > sc
+check 'stomp scores', s.run.score > score_before
 check 'stomp bounces player', s.p.vy > 0 || s.p.y > e.y + 40
 check 'still playing after stomp', s.mode == :play
 
@@ -70,7 +70,7 @@ s.put(3); e = lone_blob(s, 8)
 s.p.powered = true
 e.active = true
 s.step([:right], 90)
-check 'powered contact only loses power', s.mode == :play && !s.p.powered && s.p.invuln > 0
+check 'powered contact only loses power', s.mode == :play && !s.p.powered && s.p.invulnerable > 0
 
 # --- wrench crate -> pickup -> throw ---
 s = Sim.new.start(0)

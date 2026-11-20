@@ -36,9 +36,9 @@ class Vent
       screen.rect(x + 24, @top + (k % 10) * 2, 16, 8, STEAM, 180) if (k / 5).even?
     else
       (@height / 16).times do |i|
-        wob = ((i + frame / 3) % 3 - 1) * 8
+        wobble = ((i + frame / 3) % 3 - 1) * 8
         w = 24 + (i * 3) % 16
-        screen.rect(x + 32 - w / 2 + wob, @top + i * 16, w, 16, STEAM, 200 - i * 6)
+        screen.rect(x + 32 - w / 2 + wobble, @top + i * 16, w, 16, STEAM, 200 - i * 6)
       end
     end
   end

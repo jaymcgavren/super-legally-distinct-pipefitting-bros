@@ -117,8 +117,8 @@ class Game
   # A stomp is the player coming down onto him *relative to his motion*, so
   # Rusty hopping up into your feet counts too. Not while his crown is up.
   def stomping?(player, boss)
-    closing = (player.y - player.prev_y) - (boss.y - boss.prev_y) < 0
-    closing && player.prev_y >= boss.prev_y + boss.h * 0.6 && !boss.spiky?
+    closing = (player.y - player.previous_y) - (boss.y - boss.previous_y) < 0
+    closing && player.previous_y >= boss.previous_y + boss.h * 0.6 && !boss.spiky?
   end
 
   # bounce off his head: high (higher with jump held) if it hurt him, low
@@ -169,8 +169,8 @@ class Game
     left = 640 - w / 2
     @screen.rect(left - 4, 588, w + 8, 20, NEAR_BLACK)
     max_hp.times do |i|
-      col = i < hp ? (boss.angry? ? ORANGE : [216, 48, 48]) : DARK_GRAY
-      @screen.rect(left + i * 16 + 2, 592, 12, 12, col)
+      color = i < hp ? (boss.angry? ? ORANGE : [216, 48, 48]) : DARK_GRAY
+      @screen.rect(left + i * 16 + 2, 592, 12, 12, color)
     end
     return unless @banner > 0
     n = boss_level
@@ -254,8 +254,8 @@ class Boss < Actor
     @warn_spiky -= 1 if @warn_spiky > 0
     @spiky = (angry ? 220 : 160) if @warn_spiky == 1
     player = @game.player
-    dir = player.x + player.w / 2 > @x + @w / 2 ? 1 : -1
-    send(STEPS[@state], dir, angry)
+    direction = player.x + player.w / 2 > @x + @w / 2 ? 1 : -1
+    send(STEPS[@state], direction, angry)
     move_in_arena
   end
 
@@ -316,33 +316,33 @@ class Boss < Actor
   end
 
   # stands still until the banner has been up a second
-  def wait_for_banner(_dir, _angry)
+  def wait_for_banner(_direction, _angry)
     @vx = 0.0
     @state = :walk if @game.banner < 120
   end
 
   # walks at the player until the cooldown runs out, then picks a move
-  def walk(dir, angry)
+  def walk(direction, angry)
     speed = pace(angry)
-    @facing = dir
-    @vx = dir * 1.3 * speed
+    @facing = direction
+    @vx = direction * 1.3 * speed
     @cooldown -= 1
     choose_move if @cooldown <= 0 && @on_ground
   end
 
   # a short hop toward the player
-  def hop(dir, angry)
+  def hop(direction, angry)
     speed = pace(angry)
     if @t == 1
       @vy = 13.0
-      @vx = dir * 3.0 * speed
+      @vx = direction * 3.0 * speed
     elsif @on_ground && @t > 3
       idle(50)
     end
   end
 
   # crouch, leap at the player, and land sending steam waves along the floor
-  def ground_pound(_dir, angry)
+  def ground_pound(_direction, angry)
     speed = pace(angry)
     if @t < 20
       @vx = 0.0   # crouch
@@ -369,7 +369,7 @@ class Boss < Actor
   end
 
   # lobs globs of rust at the player (more when angry, or from encounter 6)
-  def rust_spit(_dir, angry)
+  def rust_spit(_direction, angry)
     @vx = 0.0
     n = angry ? 3 : 1 + (@encounter >= 6 ? 1 : 0)
     if @t == 24 || (n > 1 && @t == 38) || (n > 2 && @t == 52)
@@ -382,21 +382,21 @@ class Boss < Actor
   end
 
   # coughs up a minion Blob
-  def blob_belch(dir, _angry)
+  def blob_belch(direction, _angry)
     @vx = 0.0
     if @t == 30
       sound.play(:appear)
-      @game.enemies << Blob.minion(@x + @w / 2 - 24, @y + 60, dir)
+      @game.enemies << Blob.minion(@x + @w / 2 - 24, @y + 60, direction)
     end
     idle(60) if @t > 50
   end
 
   # shakes, then charges until he hits a wall (and is stunned)
-  def bull_charge(dir, angry)
+  def bull_charge(direction, angry)
     speed = pace(angry)
     if @t < 45
       @vx = 0.0
-      @facing = dir if @t == 1
+      @facing = direction if @t == 1
       sound.play(:warn) if @t == 1
     else
       @vx = @facing * 9.0 * speed
@@ -405,20 +405,20 @@ class Boss < Actor
   end
 
   # stunned after charging into a wall
-  def reel(_dir, _angry)
+  def reel(_direction, _angry)
     @vx = 0.0
     idle(40) if @t > 70
   end
 
   # warns, then grows a spiked crown: no stomping for a while
-  def spiked_crown(_dir, _angry)
+  def spiked_crown(_direction, _angry)
     @vx = 0.0
     @warn_spiky = 40 if @t == 1
     idle(30) if @t > 40
   end
 
   # bolts drop on shadows, the first one on the player
-  def bolt_storm(_dir, angry)
+  def bolt_storm(_direction, angry)
     @vx = 0.0
     if @t == 1
       sound.play(:warn)
@@ -435,7 +435,7 @@ class Boss < Actor
   # gravity, the arena floor and walls; a charge into a wall stuns him
   def move_in_arena
     @game.fall(self)
-    @prev_y = @y
+    @previous_y = @y
     @y += @vy
     @on_ground = false
     if @y <= FLOOR

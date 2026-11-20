@@ -23,7 +23,7 @@ d_levels.each_with_index do |li, n|
   # survive a while with invulnerability, record which moves were used
   seen = {}
   1500.times do
-    s.p.invuln = 5
+    s.p.invulnerable = 5
     s.step([])
     seen[b.state] = true
     break if s.mode != :play
@@ -34,10 +34,10 @@ d_levels.each_with_index do |li, n|
   hits = 0
   400.times do
     break if b.state == :dead
-    s.p.invuln = 5
+    s.p.invulnerable = 5
     b.spiky = 0; b.warn_spiky = 0
     if b.invulnerable == 0
-      s.p.x = b.x + 30; s.p.y = b.y + b.h - 2; s.p.vy = -3.0; s.p.prev_y = b.y + b.h + 4
+      s.p.x = b.x + 30; s.p.y = b.y + b.h - 2; s.p.vy = -3.0; s.p.previous_y = b.y + b.h + 4
       hits += 1
     end
     s.step([])
@@ -104,7 +104,7 @@ ac = s.iv(:arena_column)
 s.put(ac + 3); s.step([], 2); s.step([], 1) while s.iv(:warning) > 0
 s.set(:banner, 0)
 b = s.iv(:boss); b.state = :bolts; b.t = 0; s.set(:shots, [])
-s.p.invuln = 999
+s.p.invulnerable = 999
 s.step([], 1)
 bolts = s.iv(:shots).grep(Bolt)
 check 'bolt storm drops 3 bolts', bolts.size == 3
@@ -138,7 +138,7 @@ check 'wrench clears the boss valve from the right', cleared
   b = s.iv(:boss); b.state = :wait; b.t = 0; b.invulnerable = 0
   b.y = 128.0; b.vy = 13.0; b.x = s.p.x + 200
   hp = b.hp
-  s.p.powered = true; s.p.invuln = 0
+  s.p.powered = true; s.p.invulnerable = 0
   s.p.x = b.x + 30; s.p.y = b.y + b.h + 4; s.p.vy = pvy; s.p.on_ground = false; s.snap
   s.step([], 1)
   check "Rusty rising into the player's feet is a stomp (player #{name})",
@@ -154,7 +154,7 @@ end
   b = s.iv(:boss); b.state = :wait; b.t = 0; b.invulnerable = 0
   b.x = s.p.x + 200; b.y = 128.0 + above * 60; b.vy = bvy
   hp = b.hp
-  s.p.powered = true; s.p.invuln = 0
+  s.p.powered = true; s.p.invulnerable = 0
   s.p.x = above == 1 ? b.x + 30 : b.x - 20; s.snap
   s.step([], 1)
   check "Rusty still hurts the player (#{name})", !s.p.powered && b.hp == hp

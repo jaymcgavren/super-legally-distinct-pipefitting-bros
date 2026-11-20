@@ -5,7 +5,7 @@ class Wrench < Actor
   THROW_SPEED = 16.0
   CARRY = 0.5          # share of the player's speed it keeps
   DRAG = 0.5           # per step, until it turns back
-  HOME_ACCEL = 0.6
+  HOME_ACCELERATION = 0.6
   HOME_MAX = 13.0
   CATCH_RANGE = 40
   LIFETIME = 150       # steps; then it's dropped wherever it is
@@ -58,7 +58,7 @@ class Wrench < Actor
       dy = (player.y + 40) - (@y + @h / 2)
       distance = Math.sqrt(dx * dx + dy * dy)
       distance = 1 if distance < 1
-      speed = [@vx.abs + @vy.abs + HOME_ACCEL, HOME_MAX].min
+      speed = [@vx.abs + @vy.abs + HOME_ACCELERATION, HOME_MAX].min
       @vx = dx / distance * speed
       @vy = dy / distance * speed
       if distance < CATCH_RANGE
@@ -73,7 +73,8 @@ class Wrench < Actor
 
   # mirroring reverses the spin for left throws
   def draw(screen, camera_x)
-    f = (@t / 2) % SPIN_FRAMES
-    screen.sprite('sprites/wrench.png', @x.to_i - camera_x - 4, @y.to_i - 14, 48, 48, frame(:wrench_spin, f), flip: @facing < 0)
+    spin_frame = (@t / 2) % SPIN_FRAMES
+    screen.sprite('sprites/wrench.png', @x.to_i - camera_x - 4, @y.to_i - 14, 48, 48, frame(:wrench_spin, spin_frame),
+                  flip: @facing < 0)
   end
 end

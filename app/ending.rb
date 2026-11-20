@@ -124,7 +124,7 @@ class Ending < Scene
   # the steam blast: the valve leaves the level in a ring of steam
   def blast_off(goal, vx, vy)
     goal.gone = true
-    @flying_valve = { x: vx - 32, y: vy.to_f, v: 14.0 }
+    @flying_valve = { x: vx - 32, y: vy.to_f, speed: 14.0 }
     @shake = 16.0
     sound.play(:blast)
     sound.play(:pound)
@@ -138,11 +138,11 @@ class Ending < Scene
   # then eases off and lets it fly off the top with a twinkle
   def fly_valve(elapsed)
     valve = @flying_valve
-    valve[:v] = [valve[:v] + 2.2, END_TOP_SPEED].min
-    valve[:y] += valve[:v]
+    valve[:speed] = [valve[:speed] + 2.2, END_TOP_SPEED].min
+    valve[:y] += valve[:speed]
     if valve[:y] - @rise < 800
       @steam << SteamPuff.new(valve[:x] + 32 + (elapsed % 3 - 1) * 6, valve[:y] - 8, (elapsed % 5 - 2) * 0.6,
-                              -valve[:v] * 0.15, 18, 32)
+                              -valve[:speed] * 0.15, 18, 32)
     end
     if elapsed < END_SLOW
       @locked = true if !@locked && valve[:y] - @rise > END_LOCK_Y
@@ -306,21 +306,21 @@ class Firework < Struct.new(:x, :y, :color, :t)
   def gone? = t > LIFETIME
 
   def draw(screen)
-    k = t
-    col = color
-    x0 = x
-    y0 = y
-    alpha = 150 - k * 2
+    age = t
+    star_color = color
+    center_x = x
+    center_y = y
+    alpha = 150 - age * 2
     return if alpha <= 0
-    screen.rect(x0 - 80, y0 - 80, 160, 160, WHITE, 200 - k * 30) if k < 5
-    droop = k * k * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
+    screen.rect(center_x - 80, center_y - 80, 160, 160, WHITE, 200 - age * 30) if age < 5
+    droop = age * age * FIREWORK_GRAVITY / 2    # the stars fall under gravity as they spread
     [[1.0, 0.0, 64], [0.72, 0.13, 48], [0.45, 0.26, 32]].each do |radius_factor, offset, size|
-      r = (40 + k * 10) * radius_factor
+      r = (40 + age * 10) * radius_factor
       12.times do |i|
         angle = i * 0.5236 + offset
-        px = ((x0 + Math.cos(angle) * r) / 16).to_i * 16
-        py = ((y0 + Math.sin(angle) * r - droop) / 16).to_i * 16
-        screen.rect(px - size / 2, py - size / 2, size, size, col, alpha)
+        star_x = ((center_x + Math.cos(angle) * r) / 16).to_i * 16
+        star_y = ((center_y + Math.sin(angle) * r - droop) / 16).to_i * 16
+        screen.rect(star_x - size / 2, star_y - size / 2, size, size, star_color, alpha)
       end
     end
   end

@@ -23,12 +23,12 @@ def analyze(index)
   start = [(p.x / TILE).floor, level.row_at(p.y + 1)]
   seen = { start => true }; q = [start]
   controls = g.instance_variable_get(:@controls)
-  sim = lambda do |x, y, vx, dir, hold|
+  sim = lambda do |x, y, vx, direction, hold|
     p.x = x; p.y = y; p.vx = vx; p.vy = 0.0; p.on_ground = true; p.coyote = 0; p.buffer = 0
     p.riding = nil; p.jumping = false
     g.switch_to(Play.new(g))
     150.times do |f|
-      pad = { right: dir > 0, left: dir < 0, run_held: true, throw_pressed: false,
+      pad = { right: direction > 0, left: direction < 0, run_held: true, throw_pressed: false,
               jump_held: f < hold, jump_pressed: f == 0 && hold > 0 }
       pad.each { |k, v| controls.instance_variable_set(:"@#{k}", v) }
       g.send(:update_player)

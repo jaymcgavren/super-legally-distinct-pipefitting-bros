@@ -47,14 +47,14 @@ def build(world, sec, seed)
   names = [starts.sample(random: rng)] + pick(rng, pre, world, n_mid)
   goals.sample(random: rng) if sec != 3
   names << (indoor ? :in_arena : :arena)
-  segs = names.each_with_index.map do |nm, i|
+  segments = names.each_with_index.map do |nm, i|
     rows = SEGMENTS[nm][:rows].map(&:dup)
     mid = i > 0 && i < names.size - 1
     rows = rows.map(&:reverse) if mid && world >= 3 && rng.rand < 0.35
     rows = rows.map { |r| r.tr('K', '.') } if mid
     rows
   end
-  rows = Array.new(10) { |r| segs.map { |s| s[r] }.join }
+  rows = Array.new(10) { |r| segments.map { |s| s[r] }.join }
   cols = rows[0].size
   # a checkpoint in the middle of the level (and one before a boss arena)
   spots = [(names.size / 2) * 20]
@@ -83,7 +83,7 @@ def build(world, sec, seed)
     extra -= 1
   end
   { name: "JOBSITE #{world}-#{'ABCD'[sec]}", title: TITLES[world - 1][sec], theme: sec == 1 ? INDOOR_TIME[world - 1] : THEME[sec],
-    boss: (world - 1) * 4 + sec + 1, time: 500, segs: names, rows: rows }
+    boss: (world - 1) * 4 + sec + 1, time: 500, segments: names, rows: rows }
 end
 
 def write(levels)
@@ -101,7 +101,7 @@ def write(levels)
     levels.each do |lv|
       f.puts "  { name: '#{lv[:name]}', title: '#{lv[:title]}', theme: :#{lv[:theme]}, " \
              "boss: #{lv[:boss].inspect}, time: #{lv[:time]},"
-      f.puts "    # #{lv[:segs].join(' ')}"
+      f.puts "    # #{lv[:segments].join(' ')}"
       f.puts '    rows: ['
       lv[:rows].each { |r| f.puts "      '#{r}'," }
       f.puts '    ] },'

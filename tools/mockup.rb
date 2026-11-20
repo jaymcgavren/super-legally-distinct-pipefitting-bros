@@ -6,7 +6,7 @@ PAL = {
   black: [0, 0, 0],
   hud: [24, 26, 24],
   sky: [84, 138, 236], cloud: [236, 236, 236],
-  bush: [56, 156, 40], bush_dk: [24, 104, 24],
+  bush: [56, 156, 40], bush_dark: [24, 104, 24],
   brick: [176, 76, 40], mortar: [92, 36, 20], coping: [180, 176, 164],
   girder: [128, 136, 152], girder_hi: [188, 196, 208], rivet: [72, 76, 92],
   steel: [96, 100, 120],
@@ -71,7 +71,7 @@ def tick(args)
     bar args, c + w / 4, 132, w / 2, 4, :bush
     bar args, c + 1, 136, w - 2, 4, :bush
     bar args, c, 140, w, 8, :bush
-    bar args, c, 145, w, 3, :bush_dk
+    bar args, c, 145, w, 3, :bush_dark
   end
 
   # brick rooftops with stone coping, a gap between buildings

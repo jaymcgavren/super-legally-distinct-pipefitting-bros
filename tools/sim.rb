@@ -62,7 +62,7 @@ class Sim
 
   def initialize
     @args = Args.new(Inputs.new(KB.new), Outs.new, {}, Gtk.new, nil)
-    @prev = {}
+    @previous = {}
     @sounds = []
     $game = nil
     step
@@ -81,8 +81,8 @@ class Sim
       Keys::NAMES.each do |k|
         on = held.include?(k)
         kb.send("#{k}=", on)
-        kb.key_down.send("#{k}=", on && !@prev[k])
-        @prev[k] = on
+        kb.key_down.send("#{k}=", on && !@previous[k])
+        @previous[k] = on
       end
       @args.outputs.clear
       tick(@args)
@@ -116,8 +116,8 @@ class Sim
   end
 
   # teleport player to tile column (standing on the ground row 8)
-  def put(col, row = 7)
-    p.x = col * TILE + 12.0; p.y = level.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
+  def put(column, row = 7)
+    p.x = column * TILE + 12.0; p.y = level.tile_bottom(row).to_f; p.vx = 0.0; p.vy = 0.0
     snap
     self
   end
