@@ -189,8 +189,11 @@ tools/bench.sh <level> [frames] [runs]   # real-runtime ms/frame (BENCH_START, B
 
 ### Code layout (app/)
 
-`main.rb` holds `Game`, the world: level loading, the update and draw
-loop, and the HUD. It `require`s the rest, one concern per file:
+`main.rb` holds the shared constants (tile size, colours, `FRAMES`), small
+helpers and the runtime's `tick` entry point. It `require`s the rest:
+- `game.rb` is `Game`, the world: level loading, the update and draw
+  loop, the HUD and Big Rusty's fight around him. `actor.rb` is the base
+  class for things that move.
 - `screen.rb`, `sound.rb` and `controls.rb` are the output, audio and input
   wrappers.
 - `level.rb`, `physics.rb` and `camera.rb` cover the grid, collision and
