@@ -14,6 +14,7 @@ require 'app/level.rb'
 require 'app/physics.rb'
 require 'app/camera.rb'
 require 'app/run.rb'
+require 'app/high_score.rb'
 
 TILE        = 64
 ROWS        = 10
@@ -130,12 +131,28 @@ end
 # entities: their class bodies use the constants above
 require 'app/player.rb'
 require 'app/lift.rb'
-require 'app/items.rb'
-require 'app/props.rb'
-require 'app/enemies.rb'
+require 'app/pop_nut.rb'
+require 'app/rising_item.rb'
+require 'app/wrench_item.rb'
+require 'app/lunch.rb'
+require 'app/vent.rb'
+require 'app/cone.rb'
+require 'app/goal.rb'
+require 'app/enemy.rb'
+require 'app/blob.rb'
+require 'app/crab.rb'
 require 'app/wrench.rb'
-require 'app/effects.rb'
-require 'app/scenes.rb'
+require 'app/particle.rb'
+require 'app/popup.rb'
+require 'app/steam_puff.rb'
+require 'app/scene.rb'
+require 'app/title.rb'
+require 'app/intro.rb'
+require 'app/play.rb'
+require 'app/paused.rb'
+require 'app/dying.rb'
+require 'app/clear.rb'
+require 'app/final.rb'
 
 require 'app/game.rb'
 
@@ -145,6 +162,7 @@ require 'app/rusty/steam_wave.rb'
 require 'app/rusty/rust_glob.rb'
 require 'app/rusty/bolt.rb'
 require 'app/ending.rb'
+require 'app/firework.rb'
 
 def tick(args)
   $game ||= Game.new(args)

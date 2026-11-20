@@ -113,7 +113,7 @@ refactor step will break some of them. Update them in the same commit.
 - [ ] I see at least an `anim` abbreviation still in use. Find all remaining
       abbreviations that are not common acronyms (like "HTTP") or names of
       frameworks (like "GTK") and replace them with spelled-out versions.
-- [ ] There is still a `Game` class split up among multiple files that are not
+- [x] There is still a `Game` class split up among multiple files that are not
       named `game.rb`. There should be only one class per file, and that file
       should be named after the class.
 - [x] Rename `Boss` to `Rusty`.
@@ -921,3 +921,26 @@ paths, anything the next session needs.)
   (70,180, with ~4,800 shot-steps of all three kinds, compared by class
   base name) and ending trace same as HEAD, reach and bot same, shots ALL
   SAME (real runtime: mruby resolves the nested constants), rubocop 0.
+- 2026-11-19: one class per file, done. The seven multi-class files are
+  split, each class keeping the comment above it, into flat files named
+  after the class:
+  - scenes.rb -> scene, title, intro, play, paused, dying, clear, final;
+  - items.rb -> pop_nut, rising_item, wrench_item, lunch;
+  - enemies.rb -> enemy, blob, crab; props.rb -> vent, cone, goal;
+  - effects.rb -> particle, popup, steam_puff;
+  - run.rb -> run, high_score; ending.rb -> ending, firework.
+  Flat rather than folders, since in Ruby a folder means a namespace (only
+  Rusty's shots have one). A file's header comment and file-level
+  constants stay with its first class (the base class where there is
+  one); the shared headers now name the classes they cover. main.rb
+  requires the new files in the old order. The moved code is the old code:
+  with comments and blank lines stripped, each group of new files joined
+  together equals the old file.
+  RuboCop now enforces it for app/: `Style/OneClassPerFile` is on, and
+  `Naming/FileName` has `ExpectMatchingDefinition` (main.rb and levels.rb
+  excluded, since they hold no class; a misnamed copy was flagged).
+  tools/ is excluded: sim.rb keeps its runtime stubs together. AGENTS.md's
+  code layout lists the new files and the rule.
+  Checked: tests ALL PASS (185, info lines unchanged), boss trace
+  (70,180) and ending trace same as HEAD, reach and bot same, shots ALL
+  SAME (real runtime: the load order works in mruby), rubocop 0.

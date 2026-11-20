@@ -189,6 +189,12 @@ tools/bench.sh <level> [frames] [runs]   # real-runtime ms/frame (BENCH_START, B
 
 ### Code layout (app/)
 
+One class per file, named after the class (`steam_puff.rb` is
+`SteamPuff`). A nested class gets a folder (`rusty/bolt.rb` is
+`Rusty::Bolt`). RuboCop enforces both (`Style/OneClassPerFile`,
+`Naming/FileName`). A new file must be added to `main.rb`'s `require`s,
+after anything its class body uses (its superclass, constants).
+
 `main.rb` holds the shared constants (tile size, colours, `FRAMES`), small
 helpers and the runtime's `tick` entry point. It `require`s the rest:
 - `game.rb` is `Game`, the world: level loading, the update and draw
@@ -196,18 +202,24 @@ helpers and the runtime's `tick` entry point. It `require`s the rest:
   class for things that move.
 - `screen.rb`, `sound.rb` and `controls.rb` are the output, audio and input
   wrappers.
-- `level.rb`, `physics.rb` and `camera.rb` cover the grid, collision and
-  scrolling.
-- `run.rb` keeps lives and score across levels.
-- `player.rb`, `lift.rb`, `items.rb`, `props.rb`, `enemies.rb`,
-  `wrench.rb` and `effects.rb` are the entities.
-- `scenes.rb` has the game's modes as `Scene` subclasses: Title, Intro,
-  Play, Paused, Dying, Clear and Final (game over or win).
+- `level.rb`, `physics.rb` (a module) and `camera.rb` cover the grid,
+  collision and scrolling.
+- `run.rb` keeps lives and score across levels; `high_score.rb` saves the
+  best.
+- Entities:
+  - `player.rb`, `wrench.rb` (the thrown wrench) and `lift.rb`.
+  - Enemies: `enemy.rb` and its subclasses `blob.rb` and `crab.rb`.
+  - Items from crates: `pop_nut.rb`, and `rising_item.rb` with its
+    subclasses `wrench_item.rb` and `lunch.rb`.
+  - Props: `vent.rb`, `cone.rb` and `goal.rb` (the main valve).
+  - Effects: `particle.rb`, `popup.rb` and `steam_puff.rb`.
+- Scenes, the game's modes: `scene.rb` and its subclasses `title.rb`,
+  `intro.rb`, `play.rb`, `paused.rb`, `dying.rb`, `clear.rb`, `final.rb`
+  (game over or win) and `ending.rb` (with `firework.rb`).
 - `rusty.rb` holds Big Rusty (class `Rusty`) and his moves (the
   `BOSS_MOVES` table). His shots are `Rusty::Shot` and its subclasses
   `Rusty::SteamWave`, `Rusty::RustGlob` and `Rusty::Bolt`, one per file in
   `rusty/`.
-- `ending.rb` is the ending scene.
 
 ## Package
 

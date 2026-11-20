@@ -1,6 +1,7 @@
 # Game is the world: the level and everything in it, the update and draw
 # loop, the HUD, and Big Rusty's fight (the warning and gate, his shots,
-# and what touching or hitting him does). Scenes (scenes.rb) drive it.
+# and what touching or hitting him does). Scenes (scene.rb and its
+# subclasses) drive it.
 
 class Game
   include Physics

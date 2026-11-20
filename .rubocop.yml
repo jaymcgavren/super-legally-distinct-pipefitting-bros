@@ -85,10 +85,17 @@ Lint/AmbiguousBlockAssociation:
 Style/BlockDelimiters:
   Exclude:
     - 'tools/scenarios/**/*'
-# Tool scripts are named like the shell tools beside them (gen-levels.rb).
+# In app/, each file defines the class its name says (game.rb -> Game,
+# rusty/bolt.rb -> Rusty::Bolt). main.rb (constants, helpers, `tick`) and
+# the generated levels.rb hold no class. Tool scripts are named like the
+# shell tools beside them (gen-levels.rb) and don't define classes.
 Naming/FileName:
+  ExpectMatchingDefinition: true
+  CheckDefinitionPathHierarchyRoots: ['app']
   Exclude:
-    - 'tools/gen-levels.rb'
+    - 'tools/**/*'
+    - 'app/main.rb'
+    - 'app/levels.rb'
 
 # ── house style ────────────────────────────────────────────────────
 # Arithmetic like `x + w / 2` reads fine without extra brackets.
@@ -96,10 +103,6 @@ Lint/AmbiguousOperatorPrecedence:
   Enabled: false
 # Guard clauses stay tight against the code they guard.
 Layout/EmptyLineAfterGuardClause:
-  Enabled: false
-# Small helper classes live next to the class that uses them
-# (effects.rb, rusty.rb's shots).
-Style/OneClassPerFile:
   Enabled: false
 # `update` on items, enemies and the wrench returns whether it can be
 # touched; renaming it `update?` would read worse.
@@ -139,3 +142,9 @@ Style/NestedTernaryOperator:
 # `[6, 7].include?(x)` allocates an array; `x == 6 || x == 7` doesn't.
 Style/MultipleComparison:
   Enabled: false
+# One class per file, named after the class (nested classes such as
+# Rusty::Shot get a folder: app/rusty/shot.rb). tools/sim.rb keeps its
+# runtime stubs (Keys, Outs, Gtk, ...) together as one harness.
+Style/OneClassPerFile:
+  Enabled: true
+  Exclude: ['tools/**/*']
