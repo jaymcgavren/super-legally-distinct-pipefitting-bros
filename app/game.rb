@@ -933,7 +933,7 @@ class Game
       shot.update(self)
       next unless shot.harmful?
       hurt if playing? && rect_hit?(player, shot.x + 4, shot.y, shot.w - 8, shot.h - 4)
-      shot.burst(self, 16) if @wrench && shot.is_a?(RustGlob) && overlap?(@wrench, shot)
+      shot.burst(self, 16) if @wrench && shot.is_a?(Rusty::RustGlob) && overlap?(@wrench, shot)
     end
     @shots.reject!(&:gone?)
   end

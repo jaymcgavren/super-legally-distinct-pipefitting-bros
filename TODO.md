@@ -117,7 +117,7 @@ refactor step will break some of them. Update them in the same commit.
       named `game.rb`. There should be only one class per file, and that file
       should be named after the class.
 - [x] Rename `Boss` to `Rusty`.
-- [ ] For the classes that were in `boss.rb`, namespace them under
+- [x] For the classes that were in `boss.rb`, namespace them under
       `Rusty`. E.g. `Shot` becomes `Rusty::Shot`.
 
 ### 0. Baseline
@@ -908,3 +908,16 @@ paths, anything the next session needs.)
   Checked: tests ALL PASS (185, info lines unchanged), boss trace
   (70,180) and ending trace same as HEAD, reach and bot same, shots ALL
   SAME, rubocop 0.
+- 2026-11-19: Rusty's shots are namespaced, one class per file:
+  app/rusty/shot.rb (`Rusty::Shot`), steam_wave.rb, rust_glob.rb and
+  bolt.rb, each as `class Rusty; class X < Shot`, required by main.rb
+  right after rusty.rb. The code didn't change: inside `Rusty`, `Shot`,
+  `SteamWave` etc. still resolve by lexical scope; outside, game.rb and
+  scenario 02 say `Rusty::RustGlob` / `Rusty::Bolt`. Kept the class names
+  (`Rusty::RustGlob` repeats "Rust"; `Rusty::Glob` would be shorter if
+  wanted). BOSS_MOVES, BOSS_WIDTH/HEIGHT, BOLT_WARNING, WARN_* are still
+  top-level constants in rusty.rb; they could become `Rusty::MOVES` etc.
+  Checked: tests ALL PASS (185, info lines unchanged), boss trace
+  (70,180, with ~4,800 shot-steps of all three kinds, compared by class
+  base name) and ending trace same as HEAD, reach and bot same, shots ALL
+  SAME (real runtime: mruby resolves the nested constants), rubocop 0.

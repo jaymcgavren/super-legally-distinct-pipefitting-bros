@@ -140,6 +140,10 @@ require 'app/scenes.rb'
 require 'app/game.rb'
 
 require 'app/rusty.rb'
+require 'app/rusty/shot.rb'
+require 'app/rusty/steam_wave.rb'
+require 'app/rusty/rust_glob.rb'
+require 'app/rusty/bolt.rb'
 require 'app/ending.rb'
 
 def tick(args)
